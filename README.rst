@@ -1,24 +1,26 @@
 Lightstreamer SDK for Python Adapters 1.0.0
 ===========================================
 
-A Python library to write write Data Adapters and Metadata Adapters for [Lightstreamer](http://www.lightstreamer.com/ "Lightstreamer") Server. 
+A Python library to  write Data Adapters and Metadata Adapters for `Lightstreamer Server`_.
 The adapters will run in a separate process, communicating with the Server through the Adapter Remoting Infrastructure.
-
-![architecture](architecture.png)
 
 Use
 ---
 Install the package:
-.. code-block:: bash
-   $ pip install lightstreamer-adapter
 
+.. code-block:: bash
+
+   $ pip install lightstreamer-adapter
 
 Configure Lightstreamer
 -----------------------
+
 1) Download and install Lightstreamer
-2) Go to the "adapters" folder of your Lightstreamer Server installation. Create a new folder to deploy the remote adapters in, let's call it "PythonAdapter".
+2) Go to the "adapters" folder of your Lightstreamer Server installation. Create a new folder to deploy the remote adapters in, let's call it "PythonAdapter"
 3) Create an "adapters.xml" file inside the "PythonAdapter" folder and use the following contents (this is an example configuration, you can modify it to your liking by using the generic template, `DOCS-SDKs/adapter_remoting_infrastructure/doc/adapter_conf_template/adapters.xml` or `DOCS-SDKs/adapter_remoting_infrastructure/doc/adapter_robust_conf_template/adapters.xml`, as a reference):
+
 .. code-block:: xml
+
    <?xml version="1.0"?>
    <adapters_conf id="PROXY_NODE">
        <metadata_provider>
@@ -36,3 +38,5 @@ Configure Lightstreamer
         </data_provider>
     </adapters_conf>
 4) Take note of the ports configured in the adapters.xml file as those are needed to write the remote part of the adapters.
+
+.. _Lightstreamer Server: http://www.lightstreamer.com
