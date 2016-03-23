@@ -5,26 +5,25 @@ Created on 20 gen 2016
 '''
 import unittest
 import logging
+import queue
 
 from common import RemoteAdapterBase
-
-from lightstreamer.adapter.server import MetadataProviderServer, \
-    ExceptionHandler
-from lightstreamer.interfaces.metadata import (MetadataProvider,
-                                               MpnDeviceInfo,
-                                               Mode,
-                                               AccessError,
-                                               CreditsError,
-                                               NotificationError,
-                                               ConflictingSessionError,
-                                               SchemaError,
-                                               ItemsError,
-                                               MetadataProviderError,
-                                               MpnPlatformType,
-                                               TableInfo,
-                                               MpnApnsSubscriptionInfo,
-                                               MpnGcmSubscriptionInfo)
-import queue
+from lightstreamer_adapter.server import (MetadataProviderServer,
+                                          ExceptionHandler)
+from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
+                                                       MpnDeviceInfo,
+                                                       Mode,
+                                                       AccessError,
+                                                       CreditsError,
+                                                       NotificationError,
+                                                       ConflictingSessionError,
+                                                       SchemaError,
+                                                       ItemsError,
+                                                       MetadataProviderError,
+                                                       MpnPlatformType,
+                                                       TableInfo,
+                                                       MpnApnsSubscriptionInfo,
+                                                       MpnGcmSubscriptionInfo)
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
@@ -148,8 +147,8 @@ class MetadataProviderTestClass(MetadataProvider):
         if not user.strip():
             raise AccessError("An empty user is not allowed")
 
-    def notify_user_with_client_principal(self, user, password, http_headers,
-                                          client_principal=None):
+    def notify_user_with_principal(self, user, password, http_headers,
+                                   client_principal=None):
         self.collector.update({'user': user,
                                'password': password,
                                'httpHeaders': http_headers,
@@ -299,7 +298,7 @@ class TableInfoTest(unittest.TestCase):
 
         self.assertEqual(1, tb1.win_index)
         self.assertEqual(Mode.MERGE, tb1.mode)
-        self.assertEqual("nasdaq100_AA_AL", tb1.id)
+        self.assertEqual("nasdaq100_AA_AL", tb1.group)
         self.assertEqual("short", tb1.schema)
         self.assertEqual(1, tb1.min)
         self.assertEqual(5, tb1.max)
@@ -372,6 +371,43 @@ class MpnDeviceInfoTest(unittest.TestCase):
         self.assertNotEqual(device_info_1, device_info_2)
 
 
+class MpnSubscriptionTest(unittest.TestCase):
+
+    def test_properties(self):
+        device = MpnDeviceInfo(MpnPlatformType.APNS, "applicationId",
+                               "deviceToken")
+        subscription = MpnApnsSubscriptionInfo(
+            device=device,
+            trigger="Double.parseDouble(${last_price}) > 1000.0",
+            sound="Default",
+            badge="AUTO",
+            launch_image=None,
+            txt_format=None,
+            localized_action_key="MARKET VIEW",
+            localized_format_key="MARKET UPDATE",
+            arguments=['${stock_name}', '${last_price}'],
+            custom_data={'customKey1': '123456',
+                         'customKey2': '7890',
+                         'customKey3': None,
+                         'customKey4': ''})
+
+        self.assertEqual(device, subscription.device)
+        self.assertEqual("Double.parseDouble(${last_price}) > 1000.0",
+                         subscription.trigger)
+        self.assertEqual("Default", subscription.sound)
+        self.assertEqual("AUTO", subscription.badge)
+        self.assertIsNone(subscription.launch_image)
+        self.assertIsNone(subscription.format)
+        self.assertEqual("MARKET VIEW", subscription.localized_action_key)
+        self.assertEqual("MARKET UPDATE", subscription.localized_format_key)
+        self.assertTupleEqual(('${stock_name}', '${last_price}'),
+                              subscription.arguments)
+        self.assertDictEqual({'customKey1': '123456',
+                              'customKey2': '7890',
+                              'customKey3': None,
+                              'customKey4': ''}, subscription.custom_data)
+
+
 class MyExceptionHandler(ExceptionHandler):
 
     def __init__(self):
@@ -396,9 +432,13 @@ class MyExceptionHandler(ExceptionHandler):
 
 class MetadataProviderTest(RemoteAdapterBase):
 
-    def on_setup(self):
+    def __init__(self, method_name):
+        super(MetadataProviderTest, self).__init__(method_name)
+        self.adapter = None
+        self.exception_handler = None
         self.collector = {}
 
+    def on_setup(self):
         # Configuring and starting MetadataProviderServer
         self.adapter = MetadataProviderTestClass(self.collector)
         server = MetadataProviderServer(self.adapter,
@@ -569,7 +609,7 @@ class MetadataProviderTest(RemoteAdapterBase):
         # user and password are missing.
         self.send_request("10000010c3e4d0462|NUS|S|")
         self.assert_caught_exception(("Token not found while parsing a NUS "
-                                     "request"))
+                                      "request"))
 
         # Wrong token type for user.
         self.send_request("10000010c3e4d0462|NUS|S1|user")
@@ -603,8 +643,7 @@ class MetadataProviderTest(RemoteAdapterBase):
                               "clientPrincipal": '<CLIENT_PRINCIPAL>',
                               "httpHeaders": {"<HEADER_1>": "<HEADER_VALUE1>",
                                               "<HEADER_2>": "<HEADER_VALUE2>"}
-                              },
-                             self.collector)
+                             }, self.collector)
 
     def test_notify_user_with_auth_credits_exception(self):
         # Testing CreditsError
@@ -827,7 +866,7 @@ class MetadataProviderTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GSC|S|")
         self.assert_caught_exception(("Token not found while parsing a GSC "
-                                     "request"))
+                                      "request"))
 
         self.send_request("70000010c3e4d0462|GSC|S1|nasdaq100_AA_AL")
         self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
@@ -955,8 +994,7 @@ class MetadataProviderTest(RemoteAdapterBase):
                                                        first_idx=4,
                                                        last_idx=3,
                                                        selector='selector')]
-                              },
-                             self.collector)
+                             }, self.collector)
 
     def test_notify_new_tables_with_null_mode(self):
         self.do_init_and_skip()
@@ -1050,8 +1088,7 @@ class MetadataProviderTest(RemoteAdapterBase):
                                                        schema="short",
                                                        first_idx=1,
                                                        last_idx=5)]
-                              },
-                             self.collector)
+                             }, self.collector)
 
     def test_notify_tables_close_with_no_table_info(self):
         self.do_init_and_skip()
@@ -1174,25 +1211,25 @@ class MetadataProviderTest(RemoteAdapterBase):
         self.assert_reply("c00000147c9bc4c74|MSA|V")
 
         device = MpnDeviceInfo(
-                     platform_type=MpnPlatformType.APNS,
-                     application_id="com.lightstreamer.demo.ios.stocklistdemo",
-                     device_token=("f74d8ffc5ee7cb31749a329a8f9202867c0a9906e8"
-                                   "0ee7f9eeccca1f24c5aaf1"))
+            platform_type=MpnPlatformType.APNS,
+            application_id="com.lightstreamer.demo.ios.stocklistdemo",
+            device_token=("f74d8ffc5ee7cb31749a329a8f9202867c0a9906e8"
+                          "0ee7f9eeccca1f24c5aaf1"))
 
         subscription = MpnApnsSubscriptionInfo(
-                          device=device,
-                          trigger="Double.parseDouble(${last_price}) > 1000.0",
-                          sound="Default",
-                          badge="AUTO",
-                          launch_image=None,
-                          format=None,
-                          localized_action_key="MARKET VIEW",
-                          localized_format_key="MARKET UPDATE",
-                          arguments=['${stock_name}', '${last_price}'],
-                          custom_data={'customKey1': '123456',
-                                       'customKey2': '7890',
-                                       'customKey3': None,
-                                       'customKey4': ''})
+            device=device,
+            trigger="Double.parseDouble(${last_price}) > 1000.0",
+            sound="Default",
+            badge="AUTO",
+            launch_image=None,
+            txt_format=None,
+            localized_action_key="MARKET VIEW",
+            localized_format_key="MARKET UPDATE",
+            arguments=['${stock_name}', '${last_price}'],
+            custom_data={'customKey1': '123456',
+                         'customKey2': '7890',
+                         'customKey3': None,
+                         'customKey4': ''})
 
         table_info = TableInfo(win_index=1, mode=Mode.MERGE,
                                group="item4 item19",
@@ -1285,18 +1322,18 @@ class MetadataProviderTest(RemoteAdapterBase):
                                schema="stock_name last_price time",
                                first_idx=1, last_idx=2)
         device = MpnDeviceInfo(
-                 platform_type=MpnPlatformType.GCM,
-                 application_id="com.lightstreamer.demo.android.stocklistdemo",
-                 device_token="2082055669")
+            platform_type=MpnPlatformType.GCM,
+            application_id="com.lightstreamer.demo.android.stocklistdemo",
+            device_token="2082055669")
 
         subscription = MpnGcmSubscriptionInfo(
-                        device=device,
-                        trigger="Double.parseDouble(${last_price}) > 1000.0",
-                        collapse_key='Stock update',
-                        delay_while_idle='false',
-                        time_to_live='30',
-                        data={'time': '${time}', 'last_price': '${last_price}',
-                              'stock_name': '${stock_name}'})
+            device=device,
+            trigger="Double.parseDouble(${last_price}) > 1000.0",
+            collapse_key='Stock update',
+            delay_while_idle='false',
+            time_to_live='30',
+            data={'time': '${time}', 'last_price': '${last_price}',
+                  'stock_name': '${stock_name}'})
 
         expected_dict = {"user": "user1",
                          "sessionId": "Sc4a1769b6bb83a4aT2852044",
@@ -1431,10 +1468,10 @@ class MetadataProviderTest(RemoteAdapterBase):
                            "fc56635c89c566dda3c6708fd893549"))
         self.assert_reply("3700000147c9bc4c74|MDC|V")
         device = MpnDeviceInfo(
-                     platform_type=MpnPlatformType.APNS,
-                     application_id="com.lightstreamer.demo.ios.stocklistdemo",
-                     device_token=("f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c"
-                                   "09e202ec24cff14a9906f1"))
+            platform_type=MpnPlatformType.APNS,
+            application_id="com.lightstreamer.demo.ios.stocklistdemo",
+            device_token=("f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec2"
+                          "4cff14a9906f1"))
 
         expected_dict = {"user": "user1",
                          "mpnDeviceInfo": device,

@@ -2,7 +2,6 @@ import socket
 import threading
 import logging
 import unittest
-import queue
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
@@ -18,14 +17,14 @@ class LighstreamerServerSimulator(unittest.TestCase):
         self._rr_sock.bind(req_reply_adr)
         self._rr_sock.listen(1)
         self._rr_client_socket = None
-        self.notify_sock, self._ntfy_client_socket = None, None
+        self._notify_sock, self._ntfy_client_socket = None, None
         if notify_adr is not None:
-            self.notify_sock = socket.socket(socket.AF_INET,
+            self._notify_sock = socket.socket(socket.AF_INET,
                                              socket.SOCK_STREAM)
-            self.notify_sock.setsockopt(socket.SOL_SOCKET,
+            self._notify_sock.setsockopt(socket.SOL_SOCKET,
                                         socket.SO_REUSEADDR, 1)
-            self.notify_sock.bind(notify_adr)
-            self.notify_sock.listen(1)
+            self._notify_sock.bind(notify_adr)
+            self._notify_sock.listen(1)
 
     def _accept_connections(self):
         log.info("Listening at {}" .format(self._rr_sock.getsockname()))
@@ -36,17 +35,17 @@ class LighstreamerServerSimulator(unittest.TestCase):
                  .format(self._rr_sock.getsockname()))
         self._rr_sock.close()
 
-        if self.notify_sock is not None:
-            log.info("Listening at {}".format(self.notify_sock.getsockname()))
-            socket_pair = self.notify_sock.accept()
+        if self._notify_sock is not None:
+            log.info("Listening at {}".format(self._notify_sock.getsockname()))
+            socket_pair = self._notify_sock.accept()
             self._ntfy_client_socket = socket_pair[0]
             ntfy_client_addr = socket_pair[1]
             log.info("Accepted a connection from {} on {}"
                      .format(ntfy_client_addr,
-                             self.notify_sock.getsockname()))
+                             self._notify_sock.getsockname()))
             log.info("Listener at {} closed"
-                     .format(self.notify_sock.getsockname()))
-            self.notify_sock.close()
+                     .format(self._notify_sock.getsockname()))
+            self._notify_sock.close()
 
     def start(self):
         self.main_thread = threading.Thread(target=self._accept_connections,
@@ -101,6 +100,9 @@ class RemoteAdapterBase(unittest.TestCase):
     HOST, REQ_REPLY_PORT, NOTIFY_PORT = 'localhost', 6662, 6663
     REQ_REPLY_ADDRESS = (HOST, REQ_REPLY_PORT)
     NOTIFY_ADDRESS = (HOST, NOTIFY_PORT)
+
+    def __init__(self, method_name):
+        super(RemoteAdapterBase, self).__init__(method_name)
 
     def setUp(self):
         log.info("\n\nStarting new test...")

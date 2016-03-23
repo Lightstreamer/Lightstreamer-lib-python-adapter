@@ -4,11 +4,11 @@ import time
 import unittest
 import logging
 from common import RemoteAdapterBase
-from lightstreamer.adapter.server import DataProviderServer
-from lightstreamer.interfaces.data import (DataProviderError,
+from lightstreamer_adapter.server import DataProviderServer
+from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                            SubscribeError,
                                            FailureError,
-                                           ItemEventListener, DataProvider)
+                                           DataProvider)
 from collections import OrderedDict
 import queue
 
