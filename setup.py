@@ -2,36 +2,40 @@
 
 
 # Always prefer setuptools over distutils
-from setuptools import setup, find_packages
+from setuptools import setup
 # To use a consistent encoding
 from codecs import open
 from os import path
+from sphinx import package_dir
 
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
-    long_description = f.read()
+    readme = f.read()
 
-packages = [
-    'lightstreamer-adapter',
-    'lightstreamer-adapter.lightstreamer',
-    'lightstreamer-adapter.lightstreamer.adapter',
-    'lightstreamer-adapter.lightstreamer.interfaces',
-]
+# Get the long description from the README file
+with open(path.join(here, 'HISTORY.rst'), encoding='utf-8') as f:
+    history = f.read()
+
+packages = ['lightstreamer_adapter',
+            'lightstreamer_adapter.interfaces']
 
 setup(
-    name='lightstreamer adapter',
+    name='lightstreamer_adapter',
     version='1.0.0a1',
-    description='Lighstreamer SDK for Python Adapters',
-    long_description=long_description,
+    description='Lighstreamer SDK1 for Python Adapters',
+    long_description=readme + '\n\n' + history,
     url='https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter',
     author='Lightstreamer Srl',
     author_email='support@lightstreamer.com',
-    license='Apache 2.0',
+    license='Apache License 2.0',
+    packages=packages,
+    include_package_data=True,
+    package_data={'': ['LICENSE', 'HISTORY.rst']},
+    package_dir={'lightstreamer_adapter':'lightstreamer_adapter'},
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'Environment :: Console'
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
@@ -42,6 +46,5 @@ setup(
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Application Frameworks'
     ],
-    keywords='lightstreamer push realtime real-time',
-    packages=packages
+    keywords='lightstreamer push realtime real-time'
 )
