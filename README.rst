@@ -136,6 +136,11 @@ From the command line, execute:
 
    $ python adapters.py
 
+API Reference
+-------------
+
+`http://pythonhosted.org/lightstreamer-adapter`
+
 See Also
 =================================
 
