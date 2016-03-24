@@ -60,7 +60,9 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
    .. code-block:: python
    
       class MyDataAdapter(DataProvider):
-
+          """This Remote Data Adapter sample class shows a simple implementation of
+          the DataProvider abstract class."""
+      
           def __init__(self):
               # Reference to the provided ItemEventListener instance
               self._listener = None
@@ -89,7 +91,22 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
               you should stop sending updates for item_name item."""
 
 
-3) Bla Bla Bla
+3) Create a new Remote Metadata Adapter by subclassing the MetadataProvider class, if the latter's default behaviour does not meet your requirements, and override the methods for which you want to supply a custom implementation:
+
+   .. code-block:: python
+      
+      class MyMetadataAdapter(MetadataProvider):
+          """This Remote Metadata Adapter sample class shows a minimal custom
+          implementation of the notify_user_message method.
+          """
+          
+          def notify_user_message(self, user, session_id, message):
+              """Invoked to forward a message received by a User"""
+              print("Message {} arrived for user {} in the session {}"
+                    .format(user, session_id, message))
+                    
+
+
 
 
     
