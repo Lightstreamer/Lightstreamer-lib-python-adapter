@@ -10,5 +10,5 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.4.3
+Compatible with Adapter Remoting Infrastructure since 1.7
 
