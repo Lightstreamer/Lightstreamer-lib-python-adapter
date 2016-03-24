@@ -51,10 +51,11 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
 and the adapter classes to be extended to write your own Remote Adapters 
 
    .. code-block:: python
-      
+   
       from lightstreamer_adapter.server import (DataProviderServer, MetadataProviderServer)
       from lightstreamer_adapter.interfaces.data import DataProvider
       from lightstreamer_adapter.interfaces.metadata import MetadataProvider
+
    
 2) Create a new Remote Data Adapter by subclassing the DataProvider abstract class
 
