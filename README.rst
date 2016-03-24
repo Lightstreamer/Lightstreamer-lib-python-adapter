@@ -1,11 +1,15 @@
+
+=============================================
 Lightstreamer SDK for Python Adapters 1.0.0a5
 =============================================
 
 A Python library to  write Data Adapters and Metadata Adapters for `Lightstreamer Server`_.
 The adapters will run in a separate process, communicating with the Server through the Adapter Remoting Infrastructure.
 
+.. _Lightstreamer Server: http://www.lightstreamer.com
+
 Use
----
+===
 Install the package:
 
 .. code-block:: bash
@@ -39,8 +43,6 @@ Configure Lightstreamer
       </adapters_conf>
     
 4) Take note of the ports configured in the adapters.xml file as those are needed to write the remote part of the adapters.
-
-.. _Lightstreamer Server: http://www.lightstreamer.com
 
 Write the Adapters
 ------------------
@@ -126,13 +128,28 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
           data_provider_sever.start()
 
 Run
-------------------
+---
 
 From the command line, execute:
 
 .. code-block:: bash
 
-   python adapters.py
+   $ python adapters.py
+
+See Also
+=================================
+
+- `Adapter Remoting Infrastructure Network Protocol Specification`_
+- Lightstreamer Chat Demo adapter for Python
+
+.. _Adapter Remoting Infrastructure Network Protocol Specification: http://www.lightstreamer.com/docs/adapter_generic_base/ARI%20Protocol.pdf
+
+
+Lightstreamer Compatibility Notes
+=================================
+
+Compatible with Adapter Remoting Infrastructure since 1.7
+
    
 
 
