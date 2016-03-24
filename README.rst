@@ -62,22 +62,32 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
       class MyDataAdapter(DataProvider):
 
           def __init__(self):
+              # Reference to the provided ItemEventListener instance
               self._listener = None
-   
+
           def issnapshot_available(self, item_name):
-              '''Return True if Snapshot information will be sent for this Item before the updates.'''
-              # Snaphsot may be based on the item_name
-              return False
-   
+              """Returns True if Snapshot information will be sent for the item_name
+              item before the updates."""
+              snapshot = False  # May be based on the item_name item
+              return snapshot
+         
           def set_listener(self, event_listener):
-              '''Sets the ItemEventListener used to send real time updates to the Lightstreamer Server'''
+              """Caches the reference to the provided ItemEventListener instance."""
               self._listener = event_listener
-   
+              
           def subscribe(self, item_name):
-              self._listener.update(item_name, {'field1': }, False)
-   
+              """Invoked to request data for an item. From now on you can start
+              sending real time updates for item_name item, through invocations like
+              the following:
+              
+              self._listener.update(item_name, {'field1': valField1,
+                                                'field2': valField2}, False)
+              """
+              
           def unsubscribe(self, item_name):
-              DataProvider.unsubscribe(self, item_name)
+              """Invoked to end a previous request of data for an item. From now on,
+              you should stop sending updates for item_name item."""
+
 
 3) Bla Bla Bla
 
