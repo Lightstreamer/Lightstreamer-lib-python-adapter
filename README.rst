@@ -47,41 +47,39 @@ Write the Adapters
 
 Create a new python module, let's call it ``adapters.py``, where we will put  the minimal logic required to write a basic Adapter Set.
 
-1) Import the sever classes needed to setup the connection to the Lightstreamer server, 
-and the adapter classes to be extended to write your own Remote Adapters 
+1) Import the sever classes needed to setup the connection to the Lightstreamer server, and the adapter classes to be extended to write your own Remote Adapters:
 
    .. code-block:: python
    
       from lightstreamer_adapter.server import (DataProviderServer, MetadataProviderServer)
       from lightstreamer_adapter.interfaces.data import DataProvider
       from lightstreamer_adapter.interfaces.metadata import MetadataProvider
-
    
-2) Create a new Remote Data Adapter by subclassing the DataProvider abstract class
+2) Create a new Remote Data Adapter by subclassing the DataProvider abstract class:
 
    .. code-block:: python
    
       class MyDataAdapter(DataProvider):
-   
-       def __init__(self):
-           self._listener = None
-   
-       def issnapshot_available(self, item_name):
-           '''Return True if Snapshot information will be sent for this Item
-           before the updates.'''
-           # Snaphsot may be bases on the item_name
-           return False
-   
-       def set_listener(self, event_listener):
-           '''Sets the ItemEventListener used to send real time updates to the Lightstreamer Server'''
-           self._listener = event_listener
-   
-       def subscribe(self, item_name):
-           self._listener.update(item_name, {'field1': }, False)
-   
-       def unsubscribe(self, item_name):
-           DataProvider.unsubscribe(self, item_name)
 
-       
+          def __init__(self):
+              self._listener = None
+   
+          def issnapshot_available(self, item_name):
+              '''Return True if Snapshot information will be sent for this Item before the updates.'''
+              # Snaphsot may be based on the item_name
+              return False
+   
+          def set_listener(self, event_listener):
+              '''Sets the ItemEventListener used to send real time updates to the Lightstreamer Server'''
+              self._listener = event_listener
+   
+          def subscribe(self, item_name):
+              self._listener.update(item_name, {'field1': }, False)
+   
+          def unsubscribe(self, item_name):
+              DataProvider.unsubscribe(self, item_name)
+
+3) Bla Bla Bla
+
 
     
