@@ -1,7 +1,7 @@
 
-=============================================
-Lightstreamer SDK for Python Adapters 1.0.0a5
-=============================================
+=====================================
+Lightstreamer SDK for Python Adapters
+=====================================
 
 A Python library to  write Data Adapters and Metadata Adapters for `Lightstreamer Server`_.
 The adapters will run in a separate process, communicating with the Server through the Adapter Remoting Infrastructure.
