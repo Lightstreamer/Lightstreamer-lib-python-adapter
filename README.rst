@@ -152,13 +152,14 @@ API Reference
 -------------
 
 API Reference is available at `<http://pythonhosted.org/lightstreamer-adapter>`_.
+
 You can generate it by executing the following command from the ``doc`` folder:
 
 .. code-block:: bash
 
-   & make html
+   $ make html
    
-The generated documentation will be available under ``doc\_build\html`` folder. 
+The generated documentation will be available under the ``doc\_build\html`` folder. 
 
 
 See Also
