@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# python_adapter documentation build configuration file, created by
-# sphinx-quickstart on Tue Mar  1 17:28:52 2016.
+# lightstreamer_adapter documentation build configuration file, created by
+# sphinx-quickstart on Thu Mar 24 16:23:02 2016.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -19,7 +19,8 @@ import os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('..\python_adapter'))
+# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('..\\'))
 
 # -- General configuration ------------------------------------------------
 
@@ -31,8 +32,7 @@ sys.path.insert(0, os.path.abspath('..\python_adapter'))
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.todo',
-    'sphinx.ext.inheritance_diagram'
+    'sphinx.ext.todo'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -50,9 +50,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'python_adapter'
-copyright = '2016, Lightstreamer Srl'
-author = 'Lightstreamer Srl'
+project = 'lightstreamer_adapter'
+copyright = '2016, Author'
+author = 'Author'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -204,7 +204,7 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'python_adapterdoc'
+htmlhelp_basename = 'lightstreamer_adapterdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -226,7 +226,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'python_adapter.tex', 'python\\_adapter Documentation',
+    (master_doc, 'lightstreamer_adapter.tex', 'lightstreamer\\_adapter Documentation',
      'Author', 'manual'),
 ]
 
@@ -256,7 +256,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'python_adapter', 'python_adapter Documentation',
+    (master_doc, 'lightstreamer_adapter', 'lightstreamer_adapter Documentation',
      [author], 1)
 ]
 
@@ -270,8 +270,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'python_adapter', 'python_adapter Documentation',
-     author, 'python_adapter', 'One line description of project.',
+    (master_doc, 'lightstreamer_adapter', 'lightstreamer_adapter Documentation',
+     author, 'lightstreamer_adapter', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -340,7 +340,7 @@ autodoc_member_order = "bysource"
 autodoc_default_flags = ["members", "show-inheritance"]
 
 # The depth of the table of contents in toc.ncx.
-# epub_tocdepth = 3
+# epub_tocdepth = 2
 
 # Allow duplicate toc entries.
 # epub_tocdup = True
