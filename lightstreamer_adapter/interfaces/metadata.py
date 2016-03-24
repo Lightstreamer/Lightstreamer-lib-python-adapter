@@ -14,12 +14,13 @@ class MetadataProvider():
 
     To facilitate the coding of the Adapter, each method provides a default
     implementation to allow a simple default behavoiur, which can be overridden
-    by extending this class and supplying the custom implementation. Such
-    default behavoiur will be specified in this documentation trough the use
-    of the marker: **IMPLEMENTATION NOTE**.
+    by extending this class and supplying the custom implementation.
+
+    Such default behavoiur will be specified in this documentation trough the
+    use of the marker: **IMPLEMENTATION NOTE**.
 
     An instance of a Remote Metadata Adapter is supplied to Lightstreamer
-    through a :class:`lightstreamer-adapter.server.MetadataProviderServer`
+    through a :class:`lightstreamer_adapter.server.MetadataProviderServer`
     instance.
 
     A Metadata Provider is used by Lightstreamer Kernel in combination with one
@@ -74,15 +75,16 @@ class MetadataProvider():
          pairs corresponding to the parameters elements supplied for the
          Metadata Adapter configuration. The parameters can be supplied through
          the
-         :meth:`lightstreamer-adapter.server.MetadataProviderServer.set_adapter_params`
+         :meth:`lightstreamer_adapter.server.MetadataProviderServer.set_adapter_params`
          method of the MetadataProviderServer instance. More parameters can be
          added by leveraging the "init_remote" parameter in the Proxy Adapter
          configuration.
         :param str config_file: The path on the local disk of the Metadata
          Adapter configuration file. The file path can be supplied through the
-         :meth:`lightstreamer-adapter.server.MetadataProviderServer.set_config_file`
+         :meth:`lightstreamer_adapter.server.MetadataProviderServer.set_config_file`
          method of the used MetadataProviderServer instance.
-        :raises lightstreamer.interfaces.metadata.MetadataProviderError:
+        :raises \
+        lightstreamer_adapter.interfaces.metadata.MetadataProviderError:
          (never raised in the default implementation) in case an error occurs
          that prevents the correct behavior of the Metadata Adapter.
 
@@ -120,10 +122,11 @@ class MetadataProvider():
          header values, separated by a ",". One pair is added by Lightstreamer
          Server; the name is "REQUEST_ID" and the value is a unique id assigned
          to the client request.
-        :raises lightstreamer.interfaces.metadata.AccessError: if the User name
-         is not known or the supplied password is not correct.
-        :raises lightstreamer.interfaces.metadata.CreditsError: if the User is
-         known but is not enabled to make further Requests at the moment.
+        :raises lightstreamer_adapter.interfaces.metadata.AccessError: if the
+         User name is not known or the supplied password is not correct.
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: if the
+         User is known but is not enabled to make further Requests at the
+         moment.
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
@@ -133,7 +136,7 @@ class MetadataProvider():
                                    client_principal=None):
         """Called by Lightstreamer Kernel, through the Remote Server, instead
         of calling the
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_user`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_user`
         method, in case the Server has been instructed to acquire the client
         principal from the client TLS/SSL certificate through the
         <use_client_auth> configuration flag.
@@ -148,7 +151,7 @@ class MetadataProvider():
         still be invoked, with ``None`` principal.
 
         See
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_user`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_user`
         for other notes.
 
         :Edition Note: https connections are not enabled in Allegro edition.
@@ -170,14 +173,15 @@ class MetadataProvider():
          issue the request that originated the call; it can be not specified
          if client has not authenticated itself or the authentication has
          failed.
-        :raises lightstreamer.interfaces.metadata.AccessError: if the User name
-         is not known or the supplied password is not correct.
-        :raises lightstreamer.interfaces.metadata.CreditsError: if the User is
-         known but is not enabled to make further Requests at the moment.
+        :raises lightstreamer_adapter.interfaces.metadata.AccessError: if the
+         User name is not known or the supplied password is not correct.
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: if the
+         User is known but is not enabled to make further Requests at the
+         moment.
 
 
         **IMPLEMENTATION NOTE:** invokes the
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_user`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_user`
         method, where the ``client_principal`` argument is discarded.
         """
         self.notify_user(user, password, http_headers)
@@ -231,8 +235,9 @@ class MetadataProvider():
         :param str group: An Item Group name (or Item List specification).
         :return: A list of the names of the Items in the Group.
         :rtype: list of strings
-        :raises lightstreamer.interfaces.metadata.ItemsError: if the supplied
-         Item Group name (or Item List specification) is not recognized.
+        :raises lightstreamer_adapter.interfaces.metadata.ItemsError: if the
+         supplied Item Group name (or Item List specification) is not
+         recognized.
 
         **IMPLEMENTATION NOTE:** handles Item List specifications, therefore
         the result is simply a list of all space-separated names forming the
@@ -272,10 +277,12 @@ class MetadataProvider():
         :param str schema: A Field Schema name (or Field List specification).
         :return: A list of the names of the Fields in the Schema
         :rtype: list of string
-        :raises lightstreamer.interfaces.metadata.ItemsError: if the supplied
-         Item Group name (or Item List specification) is not recognized.
-        :raises lightstreamer.interfaces.metadata.SchemaError: if the supplied
-         Field Schema name (or Field List specification) is not recognized.
+        :raises lightstreamer_adapter.interfaces.metadata.ItemsError: if the
+         supplied Item Group name (or Item List specification) is not
+         recognized.
+        :raises lightstreamer_adapter.interfaces.metadata.SchemaError: if the
+         supplied Field Schema name (or Field List specification) is not
+         recognized.
 
         **IMPLEMENTATION NOTE:** handles Field List specifications, therefore
         the result is simply a list of all space-separated names forming the
@@ -491,16 +498,17 @@ class MetadataProvider():
         :param str user: A User name.
         :param str session_id: The ID of a Session owned by the User.
         :param str message: A string.
-        :raises lightstreamer.interfaces.metadata.CreditsError: in case the
-         User is not enabled to send the message or the message cannot be
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: in case
+         the User is not enabled to send the message or the message cannot be
          correctly managed.
-        :raises lightstreamer.interfaces.metadata.NotificationError: in case
-         something is wrong in the parameters, such as a nonexistent Session
-         ID.
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
+         case something is wrong in the parameters, such as a nonexistent
+         Session ID.
 
         **IMPLEMENTATION NOTE:** the Metadata Adapter does never accept the
-        message, therefore a
-        :class:`lightstreamer.interfaces.metadata.CreditsError` is raised.
+         message, therefore a
+        :class:`lightstreamer_adapter.interfaces.metadata.CreditsError` is
+         raised.
         """
         raise CreditsError(0, "Unsupported function")
 
@@ -538,22 +546,23 @@ class MetadataProvider():
            the current connection, as configured through the <http_server> or
            <https_server> element
          * "REQUEST_ID" - the same id that has just been supplied to
-           :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_user`
+           :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_user`
            method for the current client request instance; this allows for
            using local authentication-related details for the authorization
            task. Note: the Remote Adapter is responsible for disposing any
            cached information in case this method is not called because of any
            early error during request management.
 
-        :raises lightstreamer.interfaces.metadata.CreditsError: in case the
-         User is not enabled to open the new Session. If it's possible that the
-         User would be enabled as soon as another Session were closed, then a
-         :class:`lightstreamer.interfaces.metadata.ConflictingSessionError` can
-         be raised, in which the ID of the other Session must be specified. In
-         this case, a second invocation of the method with the same
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: in case
+         the User is not enabled to open the new Session. If it's possible that
+         the User would be enabled as soon as another Session were closed, then
+         a
+         :class:`lightstreamer_adapter.interfaces.metadata.ConflictingSessionError`
+         can be raised, in which the ID of the other Session must be specified.
+         In this case, a second invocation of the method with the same
          "REQUEST_ID" and a different Session ID will be received.
-        :raises lightstreamer.interfaces.metadata.NotificationError: in case
-         something is wrong in the parameters, such as the ID of a Session
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
+         case something is wrong in the parameters, such as the ID of a Session
          already open for this or a different User.
 
         **IMPLEMENTATION NOTE:** does nothing.
@@ -568,9 +577,9 @@ class MetadataProvider():
         a pooled thread.
 
         :param str session_id: A Session ID.
-        :raises: lightstreamer.interfaces.metadata.NotificationError: in case
-         something is wrong in the parameters, such as the ID of a Session that
-         is not currently open.
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
+         case something is wrong in the parameters, such as the ID of a Session
+         that is not currently open.
 
         **IMPLEMENTATION NOTE:** does nothing, because the Metadata Adapter
         doesn't need to remember the open Sessions
@@ -582,9 +591,9 @@ class MetadataProvider():
         whether the Metadata Adapter must or must not be notified any time a
         Table (i.e. Subscription) is added or removed from a push Session owned
         by a supplied User. If this method returns ``False``, the methods
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_new_tables`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_tables`
         and
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_tables_close`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_tables_close`
         will never be called for this User, saving some processing time. In
         this case, the User will be allowed to add to his Sessions any Tables
         (i.e. Subscriptions) he wants.
@@ -599,9 +608,9 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** always return ``False``, to prevent being
         notified with
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_new_tables`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_tables`
         and
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_tables_close`,
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_tables_close`,
         as the the Metadata Adapter doesn't require such notifications
         in this default implementation
         """
@@ -614,7 +623,7 @@ class MetadataProvider():
         Adapter that the Tables are being added to the Session.
 
         The method is invoked only if enabled for the User through
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.wants_tables_notification`.
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.wants_tables_notification`.
 
         This method runs in the Server thread pool specific for the Data
         Adapter that supplies the involved items, if defined.
@@ -622,24 +631,24 @@ class MetadataProvider():
         :param str user: A User name.
         :param str session_id: The ID of a Session owned by the User.
         :param tables: A list of
-         :class:`lightstreamer.interfaces.metadata.TableInfo` instances, each
-         of them containing the details of a Table (i.e. Subscription) to be
-         added to the Session. The elements in the list represent Tables
-         (i.e.: Subscriptions) whose subscription is requested atomically by
-         the client. A single element should be expected in the list, unless
-         clients based on a very old version of a client library or text
-         protocol may be in use.
+         :class:`lightstreamer_adapter.interfaces.metadata.TableInfo`
+         instances, each of them containing the details of a Table (i.e.
+         Subscription) to be added to the Session. The elements in the list
+         represent Tables (i.e.: Subscriptions) whose subscription is requested
+         atomically by the client. A single element should be expected in the
+         list, unless clients based on a very old version of a client library
+         or text protocol may be in use.
         :type tables: list
-        :raises lightstreamer.interfaces.metadata.CreditsError: in case the
-         User is not allowed to add the specified Tables (i.e. Subscriptions)
-         to the Session.
-        :raises: lightstreamer.interfaces.metadata.NotificationError: in case
-         something is wrong in the parameters, such as the ID of a Session that
-         is not currently open or inconsistent informations about a Table
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: in case
+         the User is not allowed to add the specified Tables (i.e.
+         Subscriptions) to the Session.
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
+         case something is wrong in the parameters, such as the ID of a Session
+         that is not currently open or inconsistent informations about a Table
          (i.e. Subscription).
 
         **IMPLEMENTATION NOTE:** unless the
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.wants_tables_notification`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.wants_tables_notification`
         method is overridden, this method will never be called.
         """
         pass
@@ -650,25 +659,25 @@ class MetadataProvider():
         removed from a push Session.
 
         The method is invoked only if enabled for the User through
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.wants_tables_notification`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.wants_tables_notification`
 
         This method is called by the Server asynchronously and does not consume
         a pooled thread.
 
         :param str session_id: A Session ID.
         :param tables: A list of
-         :class:`lightstreamer.interfaces.metadata.TableInfo` instance each of
-         them containing the details of a Table (i.e. Subscription) that has
-         been removed from the Session. The supplied list is in 1:1
-         correspondance with the list supplied by
-         :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_new_tables`
-         in a previous call; the correspondance can be recognized by matching
+         :class:`lightstreamer_adapter.interfaces.metadata.TableInfo` instance
+         each of them containing the details of a Table (i.e. Subscription)
+         that has been removed from the Session. The supplied list is in 1:1
+         correspondence with the list supplied by
+         :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_tables`
+         in a previous call; the correspondence can be recognized by matching
          the ``win_index`` property of the included TableInfo objects
          (if multiple objects are included, it must be the same for all of
          them).
-        :raises lightstreamer.inerfaces.metadata.NotificationError: in case
-         something is wrong in the parameters, such as the ID of a Session that
-         is not currently open or a Table (i.e. Subscription) that is not
+        :raises lightstreamer_adapter.interfacesmetadata.NotificationError: in
+         case something is wrong in the parameters, such as the ID of a Session
+         that is not currently open or a Table (i.e. Subscription) that is not
          contained in the Session.
 
         **IMPLEMENTATION NOTE:** does nothing, because the Metadata Adapter
@@ -683,9 +692,9 @@ class MetadataProvider():
         the activation of a subscription, the deactivation of a subscription,
         the change of a device token, etc. Some of these operations have a
         subsequent specific notification, i.e.
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_mpn_subscription_activation`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_mpn_subscription_activation`
         and
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_mpn_device_token_change`.
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_mpn_device_token_change`.
 
         Take particular precautions when authorizing device access, if possible
         ensure the user is entitled to the specific platform, device token and
@@ -710,7 +719,7 @@ class MetadataProvider():
 
         Take particular precautions when authorizing subscriptions, if possible
         check for validity the trigger expression reported by the
-        :meth:`lightstreamer.interfaces.metadata.MpnSubscriptionInfo.trigger`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MpnSubscriptionInfo.trigger`
         property, as it may contain maliciously crafted code. The MPN notifiers
         configuration file contains a first-line validation mechanism based on
         regular expression that may also be used for this purpose.
@@ -729,17 +738,17 @@ class MetadataProvider():
          which Push Notification have to be activated.
         :param MpnSubscriptionInfo mpn_subscription:
          An instance of a
-         :class:`lightstreamer.interfaces.metadata.MpnSubscriptionInfo`'s
+         :class:`lightstreamer_adapter.interfaces.metadata.MpnSubscriptionInfo`'s
          subclasss (i.e
-         :class:`lightstreamer.interfaces.metadata.MpnApnsSubscriptionInfo`,
+         :class:`lightstreamer_adapter.interfaces.metadata.MpnApnsSubscriptionInfo`,
          etc.), containing the platform specific details of a PushNotification
          to be activated.
         :type mpn_subscription: subclass of
-         of :class:`lightstreamer.interfaces.metadata.MpnSubscriptionInfo`
-        :raises lightstreamer.interfaces.metadata.CreditsError: if the User is
-         not allowed to activate the specified Push Notification in the
+         :class:`lightstreamer_adapter.interfaces.metadata.MpnSubscriptionInfo`
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: if the
+         User is not allowed to activate the specified Push Notification in the
          Session.
-        :raises lightstreamer.interfaces.metadata.NotificationError: if
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: if
          something is wrong in the parameters, such as inconsistent
          information about a Table (i.e.: Subscription) or a Push Notification.
 
@@ -763,9 +772,9 @@ class MetadataProvider():
         :param MpnDeviceInfo device: Specifies a MPN device.
         :param str new_device_token: The new token being assigned to the
          device.
-        :raises lightstreamer.interfaces.metadata.CreditsError: if the User is
-         not allowed to change the specified device token.
-        :raises lightstreamer.interfaces.metadata.NotificationError: if
+        :raises lightstreamer_adapter.interfaces.metadata.CreditsError: if the
+         User is not allowed to change the specified device token.
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: if
          something is wrong in the parameters, such as inconsistent information
          about the device.
 
@@ -846,7 +855,8 @@ class MpnDeviceInfo():
     def mpn_platform_type(self):
         """The platform type of the device.
 
-        :type: :class:`lightstreamer.interfaces.metadata.MpnPlatformType`
+        :type: \
+        :class:`lightstreamer_adapter.interfaces.metadata.MpnPlatformType`
         """
         return self._type
 
@@ -869,9 +879,9 @@ class MpnDeviceInfo():
 
 class TableInfo():
     """Used by MetadataProvider to provide value objects to the calls to methods
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_new_tables()`
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_tables()`
     and
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_tables_close()`.
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_tables_close()`.
     The attributes of every Table (i.e.: Subscription) to be added or removed
     to a Session have to be written to a TableInfo instance.
     """
@@ -898,8 +908,8 @@ class TableInfo():
         client library or text protocol, subscription requests may involve
         multiple Tables (i.e.: Subscriptions), hence multiple objects of this
         type can be supplied in a single array by MetadataProvider through
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvdider.notify_new_tables`
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvdider.notify_tables_close`.
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvdider.notify_new_tables`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvdider.notify_tables_close`.
         In this case, the value returned is the same for all these objects and
         the single Tables (i.e.: Subscriptions) can be identified by their
         relative position in the array.
@@ -913,7 +923,7 @@ class TableInfo():
         """The publishing Mode for the Items in the Table (i.e. Subscription)
         (it must be the same across all the Table).
 
-        :type: :class:`lightstreamer.interfaces.metadata.Mode`
+        :type: :class:`lightstreamer_adapter.interfaces.metadata.Mode`
         """
         return self._mode
 
@@ -965,7 +975,7 @@ class TableInfo():
 
 class MpnSubscriptionInfo:
     """Abstract class used by Lightstreamer to provide value objects to method
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_mpn_subscription_activation`.
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_mpn_subscription_activation`.
     The attributes of every Push Notification to be activated is provided as a
     MpnSubscriptionInfo subclass instance. See subclasses for platform specific
     details.
@@ -986,7 +996,7 @@ class MpnSubscriptionInfo:
     def device(self):
         """MPN device of the push notifications.
 
-        :type: :class:`lightstreamer.interfaces.metadata.MpnDeviceInfo`
+        :type: :class:`lightstreamer_adapter.interfaces.metadata.MpnDeviceInfo`
         """
         return self._device
 
@@ -1172,37 +1182,34 @@ class MetadataError(Exception):
 
 
 class MetadataProviderError(MetadataError):
-    """
-    Thrown by the init method in MetadataProvider if there is some problem
-    that prevents the correct behavior of the Metadata Adapter.
-    If this exception occurs, Lightstreamer Kernel must give up the startup.
+    """Thrown by the init method in MetadataProvider if there is some problem
+    that prevents the correct behavior of the Metadata Adapter. If this
+    exception occurs, Lightstreamer Kernel must give up the startup.
     """
     pass
 
 
 class NotificationError(MetadataError):
-    """
-    Raised by the ``notify_*`` methods in MetadataProvider if there is some
-    inconsistency in the supplied parameters.
-    Lightstreamer Kernel ensures that such conditions will never occur, but
-    they may be checked for debugging or documentation reasons.
+    """Raised by the ``notify_*`` methods in MetadataProvider if there is some
+    inconsistency in the supplied parameters. Lightstreamer Kernel ensures
+    that such conditions will never occur, but they may be checked for
+    debugging or documentation reasons.
     """
     pass
 
 
 class AccessError(MetadataError):
-    """
-    Raised by the ``notify_*`` methods in MetadataProvider if the supplied User
-    is not recognized or a functionality is not implemented for this User.
+    """Raised by the ``notify_*`` methods in MetadataProvider if the supplied
+    User is not recognized or a functionality is not implemented for this User.
     """
     pass
 
 
 class ItemsError(MetadataError):
-    """
-    Thrown by the
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.get_items` and
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.get_schema`
+    """Thrown by the
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.get_items`
+    and
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.get_schema`
     methods in MetadataProvider if the supplied Item Group name (or Item List
     specification) is not recognized or cannot be resolved.
     """
@@ -1210,9 +1217,8 @@ class ItemsError(MetadataError):
 
 
 class SchemaError(MetadataError):
-    """
-    Raised by the
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.get_schema`
+    """Raised by the
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.get_schema`
     method in MetadataProvider if the supplied Field Schema name (or Field List
     specification) is not recognized or cannot be resolved.
     """
@@ -1220,8 +1226,7 @@ class SchemaError(MetadataError):
 
 
 class CreditsError(MetadataError):
-    """
-    Thrown by the ``notify_*`` methods in MetadataProvider if some
+    """Thrown by the ``notify_*`` methods in MetadataProvider if some
     functionality cannot be allowed to the supplied User. This may occur if the
     user is not granted some resource or if the user would exceed the granted
     amount. Different kinds of problems can be distinguished by an error
@@ -1266,13 +1271,13 @@ class CreditsError(MetadataError):
 class ConflictingSessionError(CreditsError):
     """
     Thrown by the
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_new_session`
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_session`
     method of MetadataProvider if a User is not enabled to open a new Session
     but he would be enabled as soon as another Session were closed. By using
     this exception, the ID of the other Session is also supplied. After
     receiving this exception, the Server may try to close the specified
     session and invoke
-    :meth:`lightstreamer.interfaces.metadata.MetadataProvider.notify_new_session`
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_session`
     again.
     """
     def __init__(self, code, msg, conflicting_session_id, user_msg=None):

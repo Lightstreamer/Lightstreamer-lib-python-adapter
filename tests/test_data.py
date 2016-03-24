@@ -38,7 +38,7 @@ class DataProviderTestClass(DataProvider):
         self.collector['params'] = parameters
 
     def set_listener(self, event_listener):
-        self.listener = event_listener
+        self._listener = event_listener
 
     def issnapshot_available(self, item):
         return False
@@ -80,7 +80,7 @@ class DataProviderInitializationTest(unittest.TestCase):
         self.assertIsInstance(the_exception, TypeError)
         self.assertEqual(str(the_exception),
                          ("The provided adapter is not a subclass of "
-                          "lightstreamer.interfaces.DataProvider"))
+                          "lightstreamer_adapter.interfaces.DataProvider"))
 
     def test_properties(self):
         # Test default properties
@@ -232,7 +232,7 @@ class DataProviderTest(RemoteAdapterBase):
         self.do_init()
         self.assert_reply("10000010c3e4d0462|DPI|V")
         self.assertDictEqual({}, self.collector['params'])
-        self.assertIsNotNone(self.adapter.listener)
+        self.assertIsNotNone(self.adapter._listener)
 
     def test_init_with_adapter_config(self):
         self.remote_adapter.adapter_config = "config.file"
@@ -393,13 +393,13 @@ class DataProviderTest(RemoteAdapterBase):
     def test_EOS(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
-        self.adapter.listener.end_of_snapshot("aapl_")
+        self.adapter._listener.end_of_snapshot("aapl_")
         self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
 
     def test_CLS(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
-        self.adapter.listener.clear_snapshot("aapl_")
+        self.adapter._listener.clear_snapshot("aapl_")
         self.assert_notify("CLS|S|aapl_|S|10000010c3e4d0462")
 
     def test_update_with_str_value(self):
@@ -409,7 +409,7 @@ class DataProviderTest(RemoteAdapterBase):
         # expressed in the assert statement.
         events_map = OrderedDict([("field1", "value1"),
                                   ("field2", "value2")])
-        self.adapter.listener.update("item1", events_map, False)
+        self.adapter._listener.update("item1", events_map, False)
 
         self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
                             "|value1|S|field2|S|value2"))
@@ -422,14 +422,14 @@ class DataProviderTest(RemoteAdapterBase):
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", b'12:48:24')])
-        self.adapter.listener.update('aapl', events_map, True)
+        self.adapter._listener.update('aapl', events_map, True)
         self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
                             "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|Y|"
                             "MTI6NDg6MjQ="))
 
     def test_failure(self):
         self.do_init_and_skip()
-        self.adapter.listener.failure(Exception("Generic exception"))
+        self.adapter._listener.failure(Exception("Generic exception"))
         self.assert_notify("FAL|E|Generic+exception")
 
 if __name__ == "__main__":

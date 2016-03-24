@@ -22,7 +22,7 @@ from lightstreamer_adapter.protocol import RemotingException
 __all__ = ['Server', 'DataProviderServer', 'MetadataProviderServer',
            'ExceptionHandler']
 log = logging.getLogger(name="Remote Adapter")
-server_log = logging.getLogger(name="lightstreamer.adapters.server")
+server_log = logging.getLogger(name="lightstreamer_adapters.server")
 dataprovider_log = logging.getLogger(("lightstreamer.adapters.server."
                                       "DataProviderServer"))
 
@@ -205,7 +205,7 @@ class Server(metaclass=ABCMeta):
         Server. By setting the handler, it's possible to override the default
         exception handling.
 
-        :param lightstreamer.adapter.server.ExceptionHandler handler: the
+        :param lightstreamer_adapter.server.ExceptionHandler handler: the
          handler for error conditions occurring on the Remote Server.
         """
         self._exception_handler = handler
@@ -352,8 +352,8 @@ class MetadataProviderServer(Server):
     The object should be provided with a MetadataProvider instance and with
     suitable initialization parameters and established connections,
     then activated through
-    :meth:`lightstreamer.adapter.server.MetadataProviderServer.start` and
-    finally disposed through :meth:`lightstreamer.adapter.server.Server.close`.
+    :meth:`lightstreamer_adapter.server.MetadataProviderServer.start` and
+    finally disposed through :meth:`lightstreamer_adapter.server.Server.close`.
     Further reuse of the same instance is not supported.
 
     The server will take care of sending keepalive packets on the connections
@@ -377,12 +377,12 @@ class MetadataProviderServer(Server):
     def __init__(self, adapter, address, name=None, keep_alive=1,
                  thread_pool_size=0):
         """Creates a server with the supplied configuration parameters. The
-        :meth:'lightstreamer.interfaces.metadata.MetadataAdapter.initialize'
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.initialize`
         method of the Remote Adapter will be invoked only upon a Proxy Adapter
         request.
 
-        :param lightstreamer.interfaces.metadata.MetadataProvider adapter: the
-         Remote Metadata Adapter instance to be run.
+        :param lightstreamer_adapter.interfaces.metadata.MetadataProvider \
+        adapter: the Remote Metadata Adapter instance to be run.
         :param tuple address: the address of the Proxy Adapter supplied as a
          2-tuple ``(host, request_reply_port)`` where:
 
@@ -390,13 +390,14 @@ class MetadataProviderServer(Server):
          * request_reply_port: an int representing the request/reply port
         :raises TypeError: if the supplied Remote Adapter is not an instance of
          a subclass of
-         :class:`lightstreamer-adapter.interfaces.metadata.MetadataProvider`.
+         :class:`lightstreamer_adapter.interfaces.metadata.MetadataProvider`.
         """
         super(MetadataProviderServer, self).__init__(address, name, keep_alive,
                                                      thread_pool_size)
         if not isinstance(adapter, MetadataProvider):
             raise TypeError(("The provided adapter is not a subclass of "
-                             "lightstreamer.interfaces.MetadatadataProvider"))
+                             "lightstreamer_adapter.interfaces."
+                             "MetadatadataProvider"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
@@ -718,7 +719,7 @@ class MetadataProviderServer(Server):
     def adapter_config(self):
         """The pathname of an optional configuration file for the Remote
         Metadata Adapter, to be passed to the
-        :meth:``lightstreamer-adapter.interfaces.metadata.MetadataProvider.initialize``
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.initialize`
         method.
 
         :Getter: Returns the pathname of the optional configuration file
@@ -734,7 +735,7 @@ class MetadataProviderServer(Server):
     @property
     def adapter_params(self):
         """A dictionary object to be passed to the
-        :meth:`lightstreamer-adapter.interfaces.metadata.MetadataProvider.initialize`
+        :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.initialize`
         method of the Remote Metadata Adapter, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters
@@ -753,7 +754,8 @@ class MetadataProviderServer(Server):
         issued by the Proxy Adapter are received and forwarded to the Remote
         Adapter.
 
-        :raises lightstreamer.interfaces.metadata.MetadataProviderError: If an
+        :raises \
+        lightstreamer_adapter.interfaces.metadata.MetadataProviderError: If an
          error occurred in the initialization phase. The adapter was not
          started.
         :raises Exception: if an error occurred in the initialization phase.
@@ -864,9 +866,9 @@ class DataProviderServer(Server):
     The object should be provided with a DataProvider instance and with
     suitable initialization parameters and established connections, then
     activated through
-    :meth:`lightstreamer.adapter.server.DataProviderServer.start()`
+    :meth:`lightstreamer_adapter.server.DataProviderServer.start()`
     and finally disposed through
-    :meth:`lightstreamer.adapter.server.Server.close()`.
+    :meth:`lightstreamer_adapter.server.Server.close()`.
     Further reuse of the same instance is not supported.
 
     The server will take care of sending keepalive packets on the connections
@@ -893,8 +895,8 @@ class DataProviderServer(Server):
         initialize method of the Remote Adapter will be invoked only upon a
         Proxy Adapter request.
 
-        :param lightstreamer.interfaces.data.DataProvider adapter: The Remote
-         Adapter instance to be run.
+        :param lightstreamer_adapter.interfaces.data.DataProvider adapter: The
+         Remote Adapter instance to be run.
         :param tuple address: the address of the Proxy Adapter supplied as a
          3-tuple ``(host, request_reply_port, notify_port)`` where:
 
@@ -906,7 +908,8 @@ class DataProviderServer(Server):
          (or fractions)
         :param int thread_pool_size: the thread pool size
         :raises TypeError: if the supplied Remote Adapter is not an instance of
-         a subclass of :class:`lightstreamer-adapter.interfaces.data.DataProvider`.
+         a subclass of
+         :class:`lightstreamer_adapter.interfaces.data.DataProvider`.
         """
         super(DataProviderServer, self).__init__((address[0], address[1]),
                                                  name,
@@ -915,7 +918,7 @@ class DataProviderServer(Server):
 
         if not isinstance(adapter, DataProvider):
             raise TypeError(("The provided adapter is not a subclass of "
-                             "lightstreamer.interfaces.DataProvider"))
+                             "lightstreamer_adapter.interfaces.DataProvider"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
@@ -950,7 +953,7 @@ class DataProviderServer(Server):
     def adapter_config(self):
         """The pathname of an optional configuration file for the Remote
         Data Adapter, to be passed to the
-        :meth:``lightstreamer-adapter.interfaces.data.DataProvider.initialize``
+        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.initialize`
         method.
 
         :Getter: Returns the pathname of the optional configuration file
@@ -966,7 +969,7 @@ class DataProviderServer(Server):
     @property
     def adapter_params(self):
         """A dictionary object to be passed to the
-        :meth:`lightstreamer-adapter.interfaces.data.DataProvider.initialize`
+        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.initialize`
         method of the Remote Metadata Adapter, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters
@@ -1142,8 +1145,9 @@ class DataProviderServer(Server):
         performed (as soon as one is available). Then, requests issued by the
         Proxy Adapter are received and forwarded to the Remote Adapter.
 
-        :raises lightstreamer.interfaces.data.DataProviderError: If an error
-         occurred in the initialization phase. The adapter was not started.
+        :raises lightstreamer_adapter.interfaces.data.DataProviderError: If an
+         error occurred in the initialization phase. The adapter was not
+         started.
         :raises Exception: if an error occurred in the initialization phase.
          The adapter was not started.
         """
