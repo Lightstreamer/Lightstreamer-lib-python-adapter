@@ -22,7 +22,7 @@ Configure Lightstreamer
    .. code-block:: xml
 
       <?xml version="1.0"?>
-      <adapters_conf id="PROXY_NODE">
+      <adapters_conf id="PROXY_PYTHON">
          <metadata_provider>
             <adapter_class>ROBUST_PROXY_FOR_REMOTE_ADAPTER</adapter_class>
             <classloader>log-enabled</classloader>
@@ -105,6 +105,25 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
               print("Message {} arrived for user {} in the session {}"
                     .format(user, session_id, message))
                     
+4) Run the adaters, by creating, configuring and starting the server class instances:
+
+   .. code-block:: python
+   
+      if __name__ == "__main__":
+          # The host of the Lighstreamer server, to be changed as required.
+          SERVER_HOST = 'localhost'
+          # Creates a new MetadataProviderServer instance, passing a new
+          # MyMetadataAdpater object and the remote address.
+          metadata_provider_server = MetadataProviderServer(MyMetadataAdapter(),
+                                                            (SERVER_HOST, 8003))
+          # Starts the server instance.
+          metadata_provider_server.start()
+          # Create a new DataProviderServer instance, passing a new MyDataAdpater
+          # object and the remote address
+          data_provider_sever = DataProviderServer(MyDataAdapter(),
+                                                   (SERVER_HOST, 8001, 8002))
+          # Starts the server instance.
+          data_provider_sever.start()
 
 
 
