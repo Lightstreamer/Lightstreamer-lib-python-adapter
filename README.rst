@@ -1,4 +1,3 @@
-
 =====================================
 Lightstreamer SDK for Python Adapters
 =====================================
@@ -152,7 +151,7 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-`http://pythonhosted.org/lightstreamer-adapter`
+`<http://pythonhosted.org/lightstreamer-adapter>`_
 
 See Also
 =================================
@@ -167,9 +166,3 @@ Lightstreamer Compatibility Notes
 =================================
 
 Compatible with Adapter Remoting Infrastructure since 1.7
-
-   
-
-
-
-    
