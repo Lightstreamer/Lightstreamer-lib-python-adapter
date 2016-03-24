@@ -151,7 +151,15 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-`<http://pythonhosted.org/lightstreamer-adapter>`_
+API Reference is available at `<http://pythonhosted.org/lightstreamer-adapter>`_.
+You can generate it by executing the following command from the ``doc`` folder:
+
+.. code-block:: bash
+
+   & make html
+   
+The generated documentation will be available under ``doc\_build\html`` folder. 
+
 
 See Also
 =================================
