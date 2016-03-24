@@ -334,7 +334,7 @@ class Server(metaclass=ABCMeta):
 
     @abstractmethod
     def _on_request_reply_started(self):
-        "Method meant to be overriden by subclasses"
+        "Method meant to be overridden by subclasses"
         pass
 
     @abstractmethod
@@ -390,7 +390,7 @@ class MetadataProviderServer(Server):
          * request_reply_port: an int representing the request/reply port
         :raises TypeError: if the supplied Remote Adapter is not an instance of
          a subclass of
-         :class:`lightstreamer.interfaces.metadata.MetadataProvider`.
+         :class:`lightstreamer-adapter.interfaces.metadata.MetadataProvider`.
         """
         super(MetadataProviderServer, self).__init__(address, name, keep_alive,
                                                      thread_pool_size)
@@ -718,7 +718,7 @@ class MetadataProviderServer(Server):
     def adapter_config(self):
         """The pathname of an optional configuration file for the Remote
         Metadata Adapter, to be passed to the
-        :meth:``lightstreamer.interfaces.metadata.MetadataProvider.initialize``
+        :meth:``lightstreamer-adapter.interfaces.metadata.MetadataProvider.initialize``
         method.
 
         :Getter: Returns the pathname of the optional configuration file
@@ -734,7 +734,7 @@ class MetadataProviderServer(Server):
     @property
     def adapter_params(self):
         """A dictionary object to be passed to the
-        :meth:`lightstreamer.interfaces.metadata.MetadataProvider.initialize`
+        :meth:`lightstreamer-adapter.interfaces.metadata.MetadataProvider.initialize`
         method of the Remote Metadata Adapter, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters
@@ -906,7 +906,7 @@ class DataProviderServer(Server):
          (or fractions)
         :param int thread_pool_size: the thread pool size
         :raises TypeError: if the supplied Remote Adapter is not an instance of
-         a subclass of :class:`lightstreamer.interfaces.data.DataProvider`.
+         a subclass of :class:`lightstreamer-adapter.interfaces.data.DataProvider`.
         """
         super(DataProviderServer, self).__init__((address[0], address[1]),
                                                  name,
@@ -950,7 +950,7 @@ class DataProviderServer(Server):
     def adapter_config(self):
         """The pathname of an optional configuration file for the Remote
         Data Adapter, to be passed to the
-        :meth:``lightstreamer.interfaces.data.DataProvider.initialize``
+        :meth:``lightstreamer-adapter.interfaces.data.DataProvider.initialize``
         method.
 
         :Getter: Returns the pathname of the optional configuration file
@@ -966,7 +966,7 @@ class DataProviderServer(Server):
     @property
     def adapter_params(self):
         """A dictionary object to be passed to the
-        :meth:`lightstreamer.interfaces.data.DataProvider.initialize`
+        :meth:`lightstreamer-adapter.interfaces.data.DataProvider.initialize`
         method of the Remote Metadata Adapter, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters

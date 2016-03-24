@@ -13,13 +13,13 @@ class MetadataProvider():
     order to attach a Metadata Provider to Lightstreamer.
 
     To facilitate the coding of the Adapter, each method provides a default
-    implementation to allow a simple default behavoiur, which can be overriden
+    implementation to allow a simple default behavoiur, which can be overridden
     by extending this class and supplying the custom implementation. Such
     default behavoiur will be specified in this documentation trough the use
     of the marker: **IMPLEMENTATION NOTE**.
 
     An instance of a Remote Metadata Adapter is supplied to Lightstreamer
-    through a :class:`lightstreamer.adapter.server.MetadataProviderServer`
+    through a :class:`lightstreamer-adapter.server.MetadataProviderServer`
     instance.
 
     A Metadata Provider is used by Lightstreamer Kernel in combination with one
@@ -74,13 +74,13 @@ class MetadataProvider():
          pairs corresponding to the parameters elements supplied for the
          Metadata Adapter configuration. The parameters can be supplied through
          the
-         :meth:`lightstreamer.adapter.server.MetadataProviderServer.set_adapter_params`
+         :meth:`lightstreamer-adapter.server.MetadataProviderServer.set_adapter_params`
          method of the MetadataProviderServer instance. More parameters can be
          added by leveraging the "init_remote" parameter in the Proxy Adapter
          configuration.
         :param str config_file: The path on the local disk of the Metadata
          Adapter configuration file. The file path can be supplied through the
-         :meth:`lightstreamer.adapter.server.MetadataProviderServer.set_config_file`
+         :meth:`lightstreamer-adapter.server.MetadataProviderServer.set_config_file`
          method of the used MetadataProviderServer instance.
         :raises lightstreamer.interfaces.metadata.MetadataProviderError:
          (never raised in the default implementation) in case an error occurs

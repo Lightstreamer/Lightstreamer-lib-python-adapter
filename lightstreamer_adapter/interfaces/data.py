@@ -8,7 +8,7 @@ class DataProvider(metaclass=ABCMeta):
     """Provides an abstract class meant to be extended by a Remote Data Adapter
     in order to attach a Data Provider to Lightstreamer. An instance of a
     Remote Data Adapter is supplied to Lightstreamer through a
-    :class:`lightstreamer.adapter.server.DataProviderServer` instance. After
+    :class:`lightstreamer-adapter.server.DataProviderServer` instance. After
     initialization, Lightstreamer sets itself as the Remote Data Adapter
     listener, by calling the
     :meth:`lightstreamer.interfaces.data.DataProvider.set_listener` method.
@@ -68,7 +68,7 @@ class DataProvider(metaclass=ABCMeta):
          objects.
 
          The parameters can be supplied through the
-         :meth:`lightstreamer.adapter.server.DataProviderServer.set_adapter_params`
+         :meth:`lightstreamer-adapter.server.DataProviderServer.set_adapter_params`
          method of the DataProviderServer instance. More parameters can be
          added by leveraging the ``init_remote`` parameter in the Proxy Adapter
          configuration.
