@@ -125,6 +125,15 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
           # Starts the server instance.
           data_provider_sever.start()
 
+Run
+------------------
+
+From the command line, execute:
+
+.. code-block:: bash
+
+   python adapters.py
+   
 
 
 
