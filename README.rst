@@ -113,13 +113,16 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
       if __name__ == "__main__":
           # The host of the Lighstreamer server, to be changed as required.
           LS_SERVER_HOST = 'localhost'
+          
           # Creates a new MetadataProviderServer instance, passing a new
           # MyMetadataAdpater object and the remote address.
           metadata_provider_server = MetadataProviderServer(MyMetadataAdapter(),
                                                             (LS_SERVER_HOST, 8003))
+          
           # Starts the server instance.
           metadata_provider_server.start()
-          # Create a new DataProviderServer instance, passing a new MyDataAdpater
+          
+          # Creates a new DataProviderServer instance, passing a new MyDataAdpater
           # object and the remote address
           data_provider_sever = DataProviderServer(MyDataAdapter(),
                                                    (LS_SERVER_HOST, 8001, 8002))
@@ -142,8 +145,8 @@ Connect a Client
 
     var lsClient = new LightstreamerClient(LS_SERVER_HOST, "PROXY_PYTHON");
     lsClient.connect();
-    // To be completed with other client side activites, like registration of subscriptions and handling of 
-    // real time upddates.
+    // To be completed with other client side activities, like registration of subscriptions and handling of 
+    // real time updates.
     // ...
     
 where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_PYTHON"`` is the Adapter Set ID as specified in the ``adapters.xml`` file.
