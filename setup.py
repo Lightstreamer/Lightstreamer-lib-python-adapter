@@ -6,7 +6,6 @@ from setuptools import setup
 # To use a consistent encoding
 from codecs import open
 from os import path
-from sphinx import package_dir
 
 here = path.abspath(path.dirname(__file__))
 
@@ -23,15 +22,14 @@ packages = ['lightstreamer_adapter',
 
 setup(
     name='lightstreamer_adapter',
-    version='1.0.0a1',
-    description='Lighstreamer SDK1 for Python Adapters',
+    version='1.0.0a21',
+    description='Lighstreamer SDK for Python Adapters',
     long_description=readme + '\n\n' + history,
     url='https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter',
     author='Lightstreamer Srl',
     author_email='support@lightstreamer.com',
     license='Apache License 2.0',
     packages=packages,
-    include_package_data=True,
     package_data={'': ['LICENSE', 'HISTORY.rst']},
     package_dir={'lightstreamer_adapter':'lightstreamer_adapter'},
     classifiers=[
