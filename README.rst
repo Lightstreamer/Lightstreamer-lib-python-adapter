@@ -106,7 +106,7 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
               print("Message {} arrived for user {} in the session {}"
                     .format(user, session_id, message))
                     
-4) Run the adaters, by creating, configuring and starting the server class instances:
+4) Run the adapters, by creating, configuring and starting the server class instances:
 
    .. code-block:: python
    
