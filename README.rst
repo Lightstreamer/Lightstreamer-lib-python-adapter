@@ -13,7 +13,7 @@ Install the package:
 
 .. code-block:: bash
 
-   $ pip install lightstreamer-adapter
+   $ pip install --pre lightstreamer-adapter
 
 Configure Lightstreamer
 -----------------------
