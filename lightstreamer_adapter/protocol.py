@@ -193,10 +193,11 @@ def encode_byte(byte_str):
 
 
 def encode_value(value):
-    if isinstance(value, str):
+    if value is None or isinstance(value, str):
         return "S|" + encode_string(value)
     elif isinstance(value, bytes):
         return "Y|" + encode_byte(value)
+
 
 
 def decode_modes(modes):
