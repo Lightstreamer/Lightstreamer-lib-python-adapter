@@ -111,7 +111,7 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
    .. code-block:: python
    
       if __name__ == "__main__":
-          # The host of the Lighstreamer server, to be changed as required.
+          # The host of the Lightstreamer server, to be changed as required.
           LS_SERVER_HOST = 'localhost'
           
           # Creates a new MetadataProviderServer instance, passing a new
