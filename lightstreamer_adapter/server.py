@@ -44,12 +44,13 @@ class _Worker(threading.Thread):
             task = self.tasks.get()
             try:
                 if task == "END":
-                    print("Terminated %s", self.name)
+                    # print("Terminated %s", self.name)
                     break
-                print("Running from %s", self.name)
+                # print("Running from %s", self.name)
                 task()  # func(*args, **kargs)
             except Exception as err:
-                print(err)
+                # print(err)
+                pass
             finally:
                 self.tasks.task_done()
 
@@ -126,6 +127,7 @@ class _NotifySender(object):
                     log.debug("Getting new message to notify...")
                     notification = self.queue.get()
                     self.queue.task_done()
+                log.debug("Notifying: %s", notification)
                 if notification == "STOP":
                     break
                 self._sock.sendall(bytes(notification + '\r\n', 'utf-8'))
