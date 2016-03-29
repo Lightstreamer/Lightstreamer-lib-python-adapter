@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
 
 
-class LighstreamerServerSimulator(unittest.TestCase):
+class LightstreamerServerSimulator(unittest.TestCase):
 
     def __init__(self, req_reply_adr, notify_adr=None):
         # Request-Reply Sockett
@@ -110,7 +110,7 @@ class RemoteAdapterBase(unittest.TestCase):
         # the Remote Adapter may raise and caught through custom defined
         # handle_exception function
         # Configures and starts the Lightstreamer Server simulator
-        self._ls_server = LighstreamerServerSimulator(
+        self._ls_server = LightstreamerServerSimulator(
                                                   self.get_req_reply_address(),
                                                   self.get_notify_address())
         self._ls_server.start()
