@@ -405,6 +405,7 @@ class DataProviderTest(RemoteAdapterBase):
     def test_update_with_str_value(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip("item1")
+
         # Usage of OrderdDict with the only purpose to respect the order
         # expressed in the assert statement.
         events_map = OrderedDict([("field1", "value1"),
@@ -426,6 +427,31 @@ class DataProviderTest(RemoteAdapterBase):
         self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
                             "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|Y|"
                             "MTI6NDg6MjQ="))
+
+    def test_update_with_none_value(self):
+        self.do_init_and_skip()
+        self.do_subscription_and_skip("aapl")
+        # Usage of OrderdDict with the only purpose to respect the order
+        # expressed in the assert statement.
+        events_map = OrderedDict([("pct_change", b'0.44'),
+                                  ("last_price", b'6.82'),
+                                  ("time", None)])
+        self.adapter._listener.update('aapl', events_map, True)
+        self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
+                            "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|S|#"))
+
+    def test_update_with_empty_value(self):
+        self.do_init_and_skip()
+        self.do_subscription_and_skip("aapl")
+        # Usage of OrderdDict with the only purpose to respect the order
+        # expressed in the assert statement.
+        events_map = OrderedDict([("pct_change", b'0.44'),
+                                  ("last_price", b'6.82'),
+                                  ("time", "")])
+        self.adapter._listener.update('aapl', events_map, True)
+        self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
+                            "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|S|$"))
+
 
     def test_failure(self):
         self.do_init_and_skip()
