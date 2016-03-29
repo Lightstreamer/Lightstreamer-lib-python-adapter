@@ -371,7 +371,7 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** always returns zero, to mean no size limit.
         """
-        pass
+        return 0
 
     def ismode_allowed(self, user, item, mode):
         """Called by Lightstreamer Kernel through the Remote Server to ask for
@@ -614,7 +614,7 @@ class MetadataProvider():
         as the the Metadata Adapter doesn't require such notifications
         in this default implementation
         """
-        pass
+        return False
 
     def notify_new_tables(self, user, session_id, tables):
         """Called by Lightstreamer Kernel through the Remote Server to check
