@@ -199,7 +199,6 @@ def encode_value(value):
         return "Y|" + encode_byte(value)
 
 
-
 def decode_modes(modes):
     if modes == NULL_VALUE or modes == EMPTY_VALUE:
         return None
