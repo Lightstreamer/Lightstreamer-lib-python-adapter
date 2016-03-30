@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 EMPTY_VALUE = "$"
 NULL_VALUE = "#"
+METHOD_KEEP_ALIVE = "KEEPALIVE"
 MODES = OrderedDict([("RAW", "R"),
                      ("MERGE", "M"),
                      ("DISTINCT", "D"),
@@ -45,8 +46,8 @@ class RemotingException(Exception):
     """
 
 
-def join(*args, append=False):
-    members = [str(i) for i in args]
+def join(*args, append=False, dec=str):
+    members = [dec(i) for i in args]
     suffix = "|" if append else ''
     return "|".join(members) + suffix
 
