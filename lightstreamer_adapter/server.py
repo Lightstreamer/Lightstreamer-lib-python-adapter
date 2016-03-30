@@ -3,10 +3,9 @@ import sys
 import socket
 import queue
 import logging
-import threading
 import time
 import multiprocessing
-
+from threading import Thread, Event, Lock, RLock
 from abc import ABCMeta, abstractmethod
 from _collections import deque
 
@@ -19,23 +18,20 @@ from lightstreamer_adapter.interfaces.metadata import Mode, MetadataProvider
 
 from lightstreamer_adapter.protocol import RemotingException
 
+
 __all__ = ['Server', 'DataProviderServer', 'MetadataProviderServer',
            'ExceptionHandler']
-log = logging.getLogger(name="Remote Adapter")
-server_log = logging.getLogger(name="lightstreamer_adapters.server")
-dataprovider_log = logging.getLogger(("lightstreamer.adapters.server."
-                                      "DataProviderServer"))
 
 
-class _Worker(threading.Thread):
+class _Worker(Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, name, tasks):
         super(_Worker, self).__init__(name=name)
         self.tasks = tasks
         self.daemon = False
-        self._executing = threading.Event()
+        self._executing = Event()
         self.start()
-        log.debug("Started Worker %s", name)
+        # log.debug("Started Worker %s", name)
 
     def run(self):
         while True:
@@ -94,51 +90,169 @@ def notify(function):
     return wrap
 
 
-class _NotifySender(object):
+class _Sender(object):
+    """Helper class which manages the communications from the Remote Adapter to
+    the ProxyAdapter, sending data over the unidirectional "replies" or
+    "notifications" channels.
+    sender.
+    """
 
-    def __init__(self, sock, name, keep_alive):
-        self._sock = sock
+    STOP_WAITING_PILL = "STOP_WAITING_PILL"
+
+    def __init__(self, sock, name, keep_alive, log):
+        self.sock = sock
         self.name = name
         self.keep_alive = keep_alive
+        self.log = log
+        self.keep_alive_log = logging.getLogger(log.name + ".keep_alives")
         self.queue = None
-        self.notify_thread = None
+        self.send_thread = None
 
     def start(self):
+        """Starts the management of unidirectional communications from the
+        Remote Adapter to the Proxy Adapter.
+        """
+        # Creates a queue to enqueue reading incoming replies/notifications to
+        # be sent to the ProxyAdapter.
         self.queue = queue.Queue()
-        self.notify_thread = threading.Thread(target=self.run,
-                                              name=self.name)
-        self.notify_thread.start()
 
-    def send_notify(self, ntfy):
+        # Starts new thread for dequeuing replies/notifications and then
+        # sending to the ProxyAdapter.
+        self.send_thread = Thread(target=self.do_run, name="Sender-Thread-{}"
+                                  .format(self.name))
+        self.send_thread.start()
+
+    def send(self, ntfy):
+        """Enqueues a reply or notification to be sent to the Proxy Adapter.
+        """
         self.queue.put(ntfy)
 
-    def run(self):
+    def do_run(self):
+        """Target method for the Sender-Thread-XXX, started in the
+        'start' method."""
+        self.log.info("'%s' starting", self.name)
         while True:
             try:
+                notification = None
                 if self.keep_alive > 0:
-                    log.debug("Getting new message to notify with timeout")
                     try:
                         notification = self.queue.get(timeout=self.keep_alive)
                         self.queue.task_done()
                     except queue.Empty:
-                        log.exception("Keep alive triggered...")
-                        notification = "KEEPALIVE"
+                        self.keep_alive_log.debug("Keep alive triggered...")
                 else:
-                    log.debug("Getting new message to notify...")
                     notification = self.queue.get()
                     self.queue.task_done()
-                log.debug("Notifying: %s", notification)
-                if notification == "STOP":
+                if notification == _Sender.STOP_WAITING_PILL:
+                    # Request of stopping dequeuing, thread termination.
                     break
-                self._sock.sendall(bytes(notification + '\r\n', 'utf-8'))
+
+                if notification is None:
+                    # Keepalive Timeout triggered.
+                    notification = protocol.METHOD_KEEP_ALIVE
+                    self.keep_alive_log.debug("line: %s", notification)
+                else:
+                    self.log.debug("line: %s", notification)
+
+                # Sends notification over the network.
+                self.sock.sendall(bytes(notification + '\r\n', 'utf-8'))
             finally:
                 pass
 
-    def stop(self):
-        self.queue.put("STOP")
+        self.log.info("'%s' stopped", self.name)
+
+    def quit(self):
+        """Terminates the unidirectional communications with the Proxy Adapter.
+        """
+        # Enqueues the STOP_WAITING_PILL to notify the Sender-Thread of
+        # stopping dequeuing of incoming replies/notifications.
+        self.queue.put(_Sender.STOP_WAITING_PILL)
         self.queue.join()
-        self.notify_thread.join()
-        log.info("_NotifySender stopped")
+        self.send_thread.join()
+
+
+class _RequestReceiver():
+    """Helper class which manages the communications with the Proxy Adpater
+    counterpart.
+    """
+
+    def __init__(self, sock, server):
+        self.log = logging.getLogger(("lightstreamer-adapter.requestreply"
+                                      ".requests"))
+        self.sock = sock
+        self.server = server
+        reply_sender_log = logging.getLogger(("lightstreamer-adapter."
+                                              "requestreply.replies."
+                                              "ReplySender"))
+        self.reply_sender = _Sender(sock=sock, name=server.name,
+                                    keep_alive=server.keep_alive,
+                                    log=reply_sender_log)
+        self.stop_request = Event()
+
+    def start(self):
+        """Starts the management of bidirectional communications with the Proxy
+        Adapter: requests coming form the Proxy Adapter, and the responses
+        coming from the Remote Adapters.
+        """
+        # Starts new thread for reading data from the socket.
+        thread = Thread(target=self.do_run,
+                        name="RequestReceiver-Thread-{}"
+                        .format(self.server.name),
+                        args=(self.sock,))
+        thread.start()
+
+        # Starts the reply sender.
+        self.reply_sender.start()
+
+    def do_run(self, sock):
+        """Target method for the RequestReceiver-Thread-XXX, started in the
+        'start' method."""
+        self.log.info("Request receiver '%s' starting...", self.server.name)
+        while not self.stop_request.is_set():
+            request = None
+            try:
+                data = b''
+                while True:
+                    self.log.debug("Reading from socket...")
+                    more = sock.recv(1024)
+                    self.log.debug("Received %d data", len(more))
+                    if not more:
+                        raise EOFError('Socket connection broken')
+                    data += more
+                    if data.endswith(b'\n'):
+                        break
+                request = data.decode()
+                self.log.debug("Request line: %s", request)
+            except Exception as err:
+                if self.stop_request.is_set():
+                    self.log.debug(("Error raised because of explicitly "
+                                    "closed socket, no issue"))
+                    break
+                # An exception has been raised, due to some issue
+                # in the network communication.
+                self.log.exception(("Exception while consuming data from the "
+                                    "socket"))
+                self.server._on_ioexception(err)
+                break
+
+            self.server._on_received_request(request)
+
+        self.log.info("Request receiver '%s' stopped", self.server.name)
+
+    def send_reply(self, request_id, response):
+        """Sends a response to the Proxy Adapter."""
+        reply = '|'.join((request_id, response))
+        self.reply_sender.send(reply)
+
+    def quit(self):
+        """Terminates the communications with the Proxy Adapter.
+        """
+        # Issues a request to terminate the 'RequestReceiver-Thread-XXX'
+        # thread.
+        self.stop_request.set()
+
+        # Issues a request to terminate the reply sender.
+        self.reply_sender.quit()
 
 
 class Server(metaclass=ABCMeta):
@@ -153,29 +267,34 @@ class Server(metaclass=ABCMeta):
     instance is not supported.
     """
 
-    DEFAULT_POOL_SIZE = 4
+    _DEFAULT_POOL_SIZE = 4
 
+    # Number of current instances of Server' subclasses.
     _number = 0
 
     def __init__(self, address, name, keep_alive, thread_pool_size):
         Server._number += 1
+
+        # Logger actually overridden by subclasses.
+        self._log = logging.getLogger("lightstreamer-adapter.server")
         self._exception_handler = None
-        self._address = address
-        self._name = "#{}".format(Server._number) if name is None else name
-        self._keep_alive = max(0, keep_alive) if keep_alive is not None else 0
+        self._config = {}
+        self._config['address'] = address
+        self._config['name'] = "#{}".format(Server._number) if (name is
+                                                                None) else name
+        self._config['keep_alive'] = max(0, keep_alive) if (keep_alive is not
+                                                            None) else 0
         pool = max(0, thread_pool_size) if thread_pool_size is not None else 0
         if pool == 0:
             try:
-                self._thread_pool_size = multiprocessing.cpu_count()
+                self._config['thread_pool_size'] = multiprocessing.cpu_count()
             except NotImplementedError:
-                self._thread_pool_size = Server.DEFAULT_POOL_SIZE
+                self._config['thread_pool_size'] = Server._DEFAULT_POOL_SIZE
         else:
-            self._thread_pool_size = pool
+            self._config['thread_pool_size'] = pool
         self.thread_pool = None
         self._server_sock = None
-        self._receiver_thread = None
-        self._notifyer = None
-        self._stop_request = threading.Event()
+        self._request_receiver = None
 
     @property
     def name(self):
@@ -184,7 +303,7 @@ class Server(metaclass=ABCMeta):
 
         :type: str
         """
-        return self._name
+        return self._config['name']
 
     @property
     def keep_alive(self):
@@ -192,7 +311,7 @@ class Server(metaclass=ABCMeta):
 
         :type: float
         """
-        return self._keep_alive
+        return self._config['keep_alive']
 
     @property
     def thread_pool_size(self):
@@ -200,7 +319,7 @@ class Server(metaclass=ABCMeta):
 
         :type: int
         """
-        return self._thread_pool_size
+        return self._config['thread_pool_size']
 
     def set_exception_handler(self, handler):
         """Sets the handler for error conditions occurring on the Remote
@@ -214,29 +333,26 @@ class Server(metaclass=ABCMeta):
 
     @abstractmethod
     def start(self):
-        if self._keep_alive > 0:
-            server_log.info("Keepalive time for %s set to %f milliseconds",
-                            self._name, self._keep_alive)
+        if self.keep_alive > 0:
+            self._log.info("Keepalive time for %s set to %f milliseconds",
+                           self.name, self.keep_alive)
         else:
-            server_log.info("Keepalive for %s disabled", self._name)
+            self._log.info("Keepalive for %s disabled", self.name)
 
         self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_sock.connect(self._address)
-        self._stop_request.clear()
+        self._server_sock.connect(self._config['address'])
 
         # Start the Thread Pool
-        self.thread_pool = _ThreadPool(self._thread_pool_size)
-        # Setup and start the receiver thread.
-        self._receiver_thread = threading.Thread(target=self.run,
-                                                 name="Receiver",
-                                                 args=(self._server_sock,))
-        self._receiver_thread.start()
+        self.thread_pool = _ThreadPool(self._config['thread_pool_size'])
 
-        # Setup and start the notify sender object
-        self._notifyer = _NotifySender(sock=self._server_sock, name="Replyer",
-                                       keep_alive=self._keep_alive)
-        self._notifyer.start()
-        self._on_request_reply_started()
+        # Setup and start the Request Receiver.
+        self._request_receiver = _RequestReceiver(sock=self._server_sock,
+                                                  server=self)
+        self._request_receiver.start()
+
+        # Invokes hook to notify subclass that the Request Receiver
+        # has been started.
+        self._on_request_receiver_started()
 
     def close(self):
         """Stops the management of the Remote Adapter and destroys the threads
@@ -248,49 +364,15 @@ class Server(metaclass=ABCMeta):
         accessing the supplied Adapter instance directly and calling custom
         methods.
         """
-        self._stop_request.set()
         self._server_sock.close()
-        self._receiver_thread.join()
-
-        self._notifyer.stop()
+        self._request_receiver.quit()
         self.thread_pool.join()
-
-    def run(self, sock):
-        server_log.info("Request receiver thread %s starting...", self._name)
-        while not self._stop_request.is_set():
-            log.debug("Waiting for new incoming request...")
-            request = None
-            try:
-                data = b''
-                while True:
-                    server_log.debug("Reading from socket...")
-                    more = sock.recv(1024)
-                    server_log.debug("Received %d test_data", len(more))
-                    if not more:
-                        raise EOFError('Socket connection broken')
-                    data += more
-                    if data.endswith(b'\n'):
-                        break
-                request = data.decode()
-            except Exception as err:
-                if self._stop_request.is_set():
-                    server_log.debug(("Error raised because of explicitly "
-                                      "closed socket, no issue"))
-                    continue
-                server_log.exception(("Exception while consuming data from the"
-                                      " socket"))
-                self._on_ioexception(err)
-                break
-
-            server_log.debug("Request line: %s", request)
-            self._on_received_request(request)
-        server_log.info("Request receiver thread %s stopped", self._name)
 
     def _on_received_request(self, request):
         try:
             parsed_request = protocol.parse_request(request)
             if parsed_request is None:
-                server_log.warning("Discarding malformed request")
+                self._log.warning("Discarding malformed request: %s", request)
                 return
 
             request_id = parsed_request["id"]
@@ -298,19 +380,18 @@ class Server(metaclass=ABCMeta):
             data = parsed_request["test_data"]
             self._handle_request(request_id, data, method)
         except Exception as err:
-            server_log.exception("Exception while handling a request")
+            self._log.exception("Exception while handling a request")
             self._on_exception(err)
 
     def _send_reply(self, request_id, response):
-        if response is not None:
-            reply = '|'.join((request_id, response))
-            self._notifyer.send_notify(reply)
+        self._log.debug("Processing request: %s", request_id)
+        self._request_receiver.send_reply(request_id, response)
 
     def _on_ioexception(self, ioexception):
         if self._exception_handler is not None:
             # Enable default handling in case of False
-            server_log.info(("Caught exception: %s, notifying the "
-                             "application..."), str(ioexception))
+            self._log.info(("Caught exception: %s, notifying the "
+                            "application..."), str(ioexception))
             if not self._exception_handler.handle_ioexception(ioexception):
                 return
 
@@ -319,8 +400,8 @@ class Server(metaclass=ABCMeta):
     def _on_exception(self, exception):
         if self._exception_handler is not None:
             # Enable default handling in case of False
-            server_log.info(("Caught exception: %s, notifying the "
-                             "application..."), str(exception))
+            self._log.info(("Caught exception: %s, notifying the "
+                            "application..."), str(exception))
             if not self._exception_handler.handle_exception(exception):
                 return
 
@@ -335,14 +416,16 @@ class Server(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _on_request_reply_started(self):
-        "Method meant to be overridden by subclasses"
+    def _on_request_receiver_started(self):
+        """Method intended to be overridden by subclasses. This method is an
+        hook to notify the subclass that the Request Receiver  has been started.
+        """
         pass
 
     @abstractmethod
     def _handle_request(self, request_id, data, method):
-        """Meant to be overridden by subclasses, invoked for handling the
-        received request, already splitted into the supplied parameters
+        """Intended to be overridden by subclasses, invoked for handling the
+        received request, already splitted into the supplied parameters.
         """
         pass
 
@@ -400,12 +483,18 @@ class MetadataProviderServer(Server):
             raise TypeError(("The provided adapter is not a subclass of "
                              "lightstreamer_adapter.interfaces."
                              "MetadatadataProvider"))
+        self._log = logging.getLogger(("lightstreamer-adapter.server."
+                                       "MetadataProviderServer"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
         self.init_expected = True
 
-    def _on_request_reply_started(self):
+    def _on_request_receiver_started(self):
+        """Method intended to be overridden by subclasses. This method is an
+        hook to notify the subclass that the Request Receiver has been started.
+        This class has a void implementation.
+        """
         pass
 
     def _handle_request(self, request_id, data, method):
@@ -422,24 +511,29 @@ class MetadataProviderServer(Server):
             res = self._on_mpi(data)
             self._send_reply(request_id, res)
             return
-        # Build the name of the method do be invoked, starting from the
+
+        # Builds the name of the method do be invoked, starting from the
         # protocol method name.
         on_method = "_on_" + method.lower()
-        # Invokes the method and gets the asynchronous function to be executed
-        # through the thread pool.
-        async_func = getattr(self, on_method)(data)
-        # Define the async function which wraps the invocation to
-        # async_func and decorates its response.
 
-        def async_task():
+        # Invokes the method and gets the returned asynchronous function to be
+        # executed through the thread pool.
+        try:
+            async_func = getattr(self, on_method)(data)
+        except AttributeError as err:
+            self._log.warning("Discarding unknown request: %s", method);
+            return
+
+        # Task wrapping execution of the returned async_func and
+        # successive reply.
+        def execute_and_reply():
             try:
                 response = async_func()
                 self._send_reply(request_id, response)
-                server_log.info("Request %s dispatched", request_id)
             except Exception as err:
                 self._on_exception(err)
 
-        self.thread_pool.submit(async_task)
+        self.thread_pool.submit(execute_and_reply)
 
     def _on_mpi(self, data):
         parsed_data = meta_protocol.read_init(data)
@@ -538,6 +632,9 @@ class MetadataProviderServer(Server):
         def execute():
             try:
                 items = self._adapter.get_items(user, session_id, group)
+                if not items:
+                    self._log.warning(("None or empty field list from "
+                                       "get_items for group '%s'"), group)
                 res = meta_protocol.write_get_items(items)
             except Exception as err:
                 res = meta_protocol.write_get_items(exception=err)
@@ -555,6 +652,10 @@ class MetadataProviderServer(Server):
             try:
                 fields = self._adapter.get_schema(user, session_id, group,
                                                   schema)
+                if not fields:
+                    self._log.warning(("None or empty field list from "
+                                       "get_schema for schema '%s' in group "
+                                       "'%s'"), schema, group)
                 res = meta_protocol.write_get_schema(fields)
             except Exception as err:
                 res = meta_protocol.write_get_schema(exception=err)
@@ -709,12 +810,12 @@ class MetadataProviderServer(Server):
         return execute
 
     def _handle_ioexception(self, ioexception):
-        log.fatal(("Exception caught while reading/writing from/to "
-                   "network: <%s>, aborting..."), str(ioexception))
+        self._log.fatal(("Exception caught while reading/writing from/to "
+                         "network: <%s>, aborting..."), str(ioexception))
         super(MetadataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
-        log.error("Caught exception: %s", str(exception))
+        self._log.error("Caught exception: %s", str(exception))
         return False
 
     @property
@@ -763,6 +864,8 @@ class MetadataProviderServer(Server):
         :raises Exception: if an error occurred in the initialization phase.
          The adapter was not started.
         """
+        self._log.info("Managing Metadata Adapter %s a thread pool size of %s",
+                       self.name, self.thread_pool_size)
         super(MetadataProviderServer, self).start()
 
 
@@ -797,7 +900,7 @@ class _ItemManager():
         self.thread_pool = thread_pool
         self._code = None
         self._isrunning = False
-        self._lock = threading.Lock()
+        self._lock = Lock()
         self.queued = 0
         self._last_subscribe_outcome = False
         self._server = server
@@ -847,7 +950,8 @@ class _ItemManager():
                     with self._server.items_lock:
                         self._code = None
             except Exception:
-                dataprovider_log.exception("Caugth an excpetion")
+                # self._log.exception("Caught an exception")
+                pass
 
         with self._server.items_lock:
             self.queued -= dequeued
@@ -921,12 +1025,14 @@ class DataProviderServer(Server):
         if not isinstance(adapter, DataProvider):
             raise TypeError(("The provided adapter is not a subclass of "
                              "lightstreamer_adapter.interfaces.DataProvider"))
+        self._log = logging.getLogger(("lightstreamer-adapter.server."
+                                       "dataproviderserver"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
         self.init_expected = True
         self.active_items = {}
-        self.items_lock = threading.RLock()
+        self.items_lock = RLock()
         self._notify_sender = None
         self.notify_address = (address[0], address[2])
         self._notify_sock = None
@@ -949,7 +1055,7 @@ class DataProviderServer(Server):
         elif method == "USB":
             self._on_usb(request_id, data)
         else:
-            dataprovider_log.warning("Discarding unknown request: %s", method)
+            self._log.warning("Discarding unknown request: %s", method)
 
     @property
     def adapter_config(self):
@@ -972,7 +1078,7 @@ class DataProviderServer(Server):
     def adapter_params(self):
         """A dictionary object to be passed to the
         :meth:`lightstreamer_adapter.interfaces.data.DataProvider.initialize`
-        method of the Remote Metadata Adapter, to supply optional parameters.
+        method of the Remote Data Adapter, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters
         :Setter: Sets the dictionary object of optional parameters
@@ -984,12 +1090,21 @@ class DataProviderServer(Server):
     def adapter_params(self, value):
         self._params = value
 
-    def _on_request_reply_started(self):
+    def _on_request_receiver_started(self):
+        """Method intended to be overridden by subclasses. This method is an
+        hook to notify the subclass that the Request Receiver has been started.
+        This class creates an additional socket to enable the unidirectional
+        communication from the Remote Data Adapter to the Proxy Adapter, in
+        order to send data over the notification channel.
+        """
         self._notify_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._notify_sock.connect(self.notify_address)
-        self._notify_sender = _NotifySender(sock=self._notify_sock,
-                                            name="Notifier",
-                                            keep_alive=self.keep_alive)
+        notify_sender_log = logging.getLogger(("lightstreamer-adapter."
+                                               "requestreply.notifications."
+                                               "NotifySender"))
+        self._notify_sender = _Sender(sock=self._notify_sock, name=self.name,
+                                      keep_alive=self.keep_alive,
+                                      log=notify_sender_log)
         self._notify_sender.start()
 
     def _get_active_item(self, item_name):
@@ -1032,7 +1147,7 @@ class DataProviderServer(Server):
             return success
 
         def do_late_task():
-            dataprovider_log.info("Skipping request: %s", request_id)
+            self._log.info("Skipping request: %s", request_id)
             subscribe_err = SubscribeError("Subscribe request come too late")
             res = data_protocol.write_sub(subscribe_err)
             return res
@@ -1062,15 +1177,14 @@ class DataProviderServer(Server):
             return success
 
         def do_late_task():
-            dataprovider_log.info("Skipping request: %s", request_id)
+            self._log.info("Skipping request: %s", request_id)
             res = data_protocol.write_unsub()
             self._send_reply(request_id, res)
 
         unsub_task = _ItemTask(request_id, False, do_task, do_late_task)
         with self.items_lock:
             if item_name not in self.active_items:
-                dataprovider_log.error("Task list expected for item %s",
-                                       item_name)
+                self._log.error("Task list expected for item %s", item_name)
                 return
             item_manager = self.active_items[item_name]
             item_manager.queued += 1
@@ -1078,7 +1192,7 @@ class DataProviderServer(Server):
 
     @notify
     def _send_notify(self, ntfy):
-        self._notify_sender.send_notify(ntfy)
+        self._notify_sender.send(ntfy)
 
     def update(self, item_name, events_map, issnapshot):
         request_id = self._get_active_item(item_name)
@@ -1090,8 +1204,7 @@ class DataProviderServer(Server):
             except protocol.RemotingException as err:
                 self._on_exception(err)
         else:
-            dataprovider_log.warning("Unexpected update for item %s",
-                                     item_name)
+            self._log.warning("Unexpected update for item %s", item_name)
 
     def end_of_snapshot(self, item_name):
         request_id = self._get_active_item(item_name)
@@ -1102,8 +1215,8 @@ class DataProviderServer(Server):
             except protocol.RemotingException as err:
                 self._on_exception(err)
         else:
-            dataprovider_log.warning(("Unexpected end_of_snapshot notify for "
-                                      "item %s"), item_name)
+            self._log.warning("Unexpected end_of_snapshot notify for item %s",
+                              item_name)
 
     def clear_snapshot(self, item_name):
         request_id = self._get_active_item(item_name)
@@ -1114,8 +1227,8 @@ class DataProviderServer(Server):
             except protocol.RemotingException as err:
                 self._on_exception(err)
         else:
-            dataprovider_log.warning("Unexpected clear_snapshot for item %s",
-                                     item_name)
+            self._log.warning("Unexpected clear_snapshot for item %s",
+                              item_name)
 
     def failure(self, exception):
         try:
@@ -1125,20 +1238,19 @@ class DataProviderServer(Server):
             self._on_exception(err)
 
     def _handle_ioexception(self, ioexception):
-        log.fatal(("Exception caught while reading/writing from/to "
-                   "network: <%s>, aborting..."), str(ioexception))
+        self._log.fatal(("Exception caught while reading/writing from/to "
+                         "network: <%s>, aborting..."), str(ioexception))
         super(DataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
-        dataprovider_log.error(("Caught exception: %s, trying to notify a "
-                                "failure..."), str(exception))
+        self._log.error("Caught exception: %s, trying to notify a failure...",
+                        str(exception))
         try:
             res = data_protocol.write_failure(exception)
             self._send_notify(res)
         except Exception:
-            dataprovider_log.exception(("Caught second-level exception while "
-                                        "trying to notify a first-level "
-                                        "exception"))
+            self._log.exception(("Caught second-level exception while trying "
+                                 "to notify a first-level exception"))
 
         return False
 
@@ -1157,8 +1269,8 @@ class DataProviderServer(Server):
 
     def close(self):
         super(DataProviderServer, self).close()
-        self._notify_sender.stop()
-        dataprovider_log.info("Stopped")
+        self._notify_sender.quit()
+        self._log.info("Stopped")
 
 
 class ExceptionHandler(metaclass=ABCMeta):
