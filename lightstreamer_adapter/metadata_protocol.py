@@ -120,11 +120,14 @@ def read_get_items(data):
 
 
 def write_get_items(items=None, exception=None):
-    if items:
-        return join(Method.GIS, 'S|') + '|S|'.join([enc_str(item) for item in
-                                                    items])
-    elif exception:
+    if exception:
         return _handle_exception(exception, join(Method.GIS, 'E'), ItemsError)
+    else:
+        if items:
+            return join(Method.GIS, 'S|') + '|S|'.join([enc_str(item) for
+                                                        item in items])
+        else:
+            return join(Method.GIS)
 
 
 @remoting_exception(Method.GSC)
@@ -135,12 +138,15 @@ def read_get_schema(data):
 
 
 def write_get_schema(fields=None, exception=None):
-    if fields:
-        return join(Method.GSC, 'S|') + '|S|'.join([enc_str(field) for field
-                                                    in fields])
-    elif exception:
+    if exception:
         return _handle_exception(exception, join(Method.GSC, 'E'), ItemsError,
                                  SchemaError)
+    else:
+        if fields:
+            return join(Method.GSC, 'S|') + '|S|'.join([enc_str(field) for
+                                                        field in fields])
+        else:
+            return join(Method.GSC)
 
 
 @remoting_exception(Method.GIT)
@@ -203,7 +209,7 @@ def _read_table(table, offset, with_selector=True):
                   'min': read(table, "I", offset + 8),
                   'max': read(table, "I", offset + 10),
                   'selector': read(table, "S", offset + 12) if with_selector
-                              else None}
+                                                                  else None}
 
     return TableInfo(table_info['winIndex'], table_info['mode'],
                      table_info['group'], table_info['schema'],
