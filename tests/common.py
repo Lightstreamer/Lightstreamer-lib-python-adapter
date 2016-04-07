@@ -20,9 +20,9 @@ class LightstreamerServerSimulator(unittest.TestCase):
         self._notify_sock, self._ntfy_client_socket = None, None
         if notify_adr is not None:
             self._notify_sock = socket.socket(socket.AF_INET,
-                                             socket.SOCK_STREAM)
+                                              socket.SOCK_STREAM)
             self._notify_sock.setsockopt(socket.SOL_SOCKET,
-                                        socket.SO_REUSEADDR, 1)
+                                         socket.SO_REUSEADDR, 1)
             self._notify_sock.bind(notify_adr)
             self._notify_sock.listen(1)
 
@@ -90,7 +90,7 @@ class LightstreamerServerSimulator(unittest.TestCase):
         return data.decode()
 
     def stop(self):
-        self._rr_client_socket.shutdown(socket.SHUT_WR)
+        self._rr_client_socket.close()
         if self._ntfy_client_socket is not None:
             self._ntfy_client_socket.shutdown(socket.SHUT_WR)
 
@@ -106,9 +106,6 @@ class RemoteAdapterBase(unittest.TestCase):
 
     def setUp(self):
         log.info("\n\nStarting new test...")
-        # Setup the exception queue, which will enqueue exceptions that
-        # the Remote Adapter may raise and caught through custom defined
-        # handle_exception function
         # Configures and starts the Lightstreamer Server simulator
         self._ls_server = LightstreamerServerSimulator(
                                                   self.get_req_reply_address(),
@@ -136,9 +133,11 @@ class RemoteAdapterBase(unittest.TestCase):
 
     def tearDown(self):
         self._remote_adapter.close()
-        # Hook to notify the Remote Adapter closing
+
+        # Invoke the hook to notify that the Remote Adapter is closing
         self.on_teardown(self._remote_adapter)
-        # Stop the Lightstreamer Server Simulator
+
+        # Stops the Lightstreamer Server Simulator
         self._ls_server.stop()
         log.info("Test completed")
 
@@ -147,12 +146,12 @@ class RemoteAdapterBase(unittest.TestCase):
         if skip_reply:
             self._ls_server.receive_reply()
 
-    def assert_reply(self, expected=None, timeout=None):
+    def assert_reply(self, expected=None, timeout=0.2):
         self._ls_server._rr_client_socket.settimeout(timeout)
         reply = self._ls_server.receive_reply()
         self.assertEqual(expected + '\r\n', reply)
 
-    def assert_not_reply(self, not_expected=None, timeout=None):
+    def assert_not_reply(self, not_expected=None, timeout=0.2):
         self._ls_server._rr_client_socket.settimeout(timeout)
         reply = self._ls_server.receive_reply()
         self.assertNotEqual(not_expected + '\r\n', reply)
