@@ -17,6 +17,7 @@ lightstreamer_adapter.server module
 .. module:: lightstreamer_adapter.server
 
 .. autoclass:: Server
+    :exclude-members: start,on_received_request,on_exception,on_ioexception
     :members:
 
 .. autoclass:: MetadataProviderServer
@@ -25,14 +26,10 @@ lightstreamer_adapter.server module
     .. automethod:: __init__
 
 .. autoclass:: DataProviderServer
+    :exclude-members: close
     :members:
     
     .. automethod:: __init__
     
 .. autoclass:: ExceptionHandler
     :members:
-
-Module contents
----------------
-
-.. automodule:: lightstreamer_adapter
