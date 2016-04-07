@@ -4,10 +4,11 @@ from lightstreamer_adapter.protocol import (join,
                                             read_token,
                                             read_seq,
                                             read_map,
-                                            remoting_exception,
+                                            remoting_exception_on_parse,
                                             encode_string as enc_str,
                                             encode_double as enc_double,
                                             encode_boolean as enc_bool,
+                                            encode_integer as enc_int,
                                             encode_modes as enc_modes,
                                             _handle_exception,
                                             RemotingException)
@@ -25,6 +26,8 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProviderError,
 
 
 class Method(Enum):
+    """Enum for representing the methods of the Metadata Provider protocol.
+    """
     MPI = 1
     NUS = 2
     NUA = 3
@@ -50,87 +53,95 @@ MPN_SUBSCRIPTION_TYPES = ["PA", "PG"]
 
 def write_init(exception=None):
     if not exception:
-        return join(Method.MPI, "V")
+        return join(str(Method.MPI), "V")
     else:
-        return _handle_exception(exception, join(Method.MPI, 'E'),
+        return _handle_exception(exception, join(str(Method.MPI), 'E'),
                                  MetadataProviderError)
 
 
-@remoting_exception(Method.MPI)
+@remoting_exception_on_parse(Method.MPI)
 def read_init(data):
     return read_map(data, 0)
 
 
-@remoting_exception(Method.NUS)
+@remoting_exception_on_parse(Method.NUS)
 def read_notify_user(data):
-    return {"user": read(data, "S", 0), "password": read(data, "S", 2),
+    return {"user": read(data, "S", 0),
+            "password": read(data, "S", 2),
             "httpHeaders": read_map(data, 4)}
 
 
 def write_notiy_user(method, allowed_max_bandwidth=None,
                      wants_tables_notification=None, exception=None):
     if not exception:
-        return join(method,
+        return join(str(method),
                     'D', enc_double(allowed_max_bandwidth),
                     'B', enc_bool(wants_tables_notification))
     else:
-        return _handle_exception(exception, join(method, 'E'), AccessError,
-                                 CreditsError)
+        return _handle_exception(exception, join(str(method), 'E'),
+                                 AccessError, CreditsError)
 
 
-@remoting_exception(Method.NUA)
+@remoting_exception_on_parse(Method.NUA)
 def read_notify_user_auth(data):
-    return {"user": read(data, "S", 0), "password": read(data, "S", 2),
+    return {"user": read(data, "S", 0),
+            "password": read(data, "S", 2),
             "clientPrincipal": read(data, "S", 4),
             "httpHeaders": read_map(data, 6)}
 
 
-@remoting_exception(Method.NNS)
+@remoting_exception_on_parse(Method.NNS)
 def read_notify_new_session(data):
-    return {"user": read(data, "S", 0), "session_id": read(data, "S", 2),
+    return {"user": read(data, "S", 0),
+            "session_id": read(data, "S", 2),
             "clientContext": read_map(data, 4)}
 
 
 def write_notify_new_session(exception=None):
+    method = str(Method.NNS)
     if not exception:
-        return join(Method.NNS, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.NNS, "E"),
+        return _handle_exception(exception, join(method, "E"),
                                  CreditsError,
                                  NotificationError)
 
 
-@remoting_exception(Method.NSC)
+@remoting_exception_on_parse(Method.NSC)
 def read_notifiy_session_close(data):
     return read(data, "S", 0)
 
 
 def write_notify_session_close(exception=None):
+    method = str(Method.NSC)
     if not exception:
-        return join(Method.NSC, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.NSC, "E"),
+        return _handle_exception(exception, join(method, "E"),
                                  NotificationError)
 
 
-@remoting_exception(Method.GIS)
+@remoting_exception_on_parse(Method.GIS)
 def read_get_items(data):
-    return {"user": read(data, "S", 0), "group": read(data, "S", 2),
+    return {"user": read(data, "S", 0),
+            "group": read(data, "S", 2),
             "session_id": read(data, "S", 4)}
 
 
 def write_get_items(items=None, exception=None):
+    method = str(Method.GIS)
     if exception:
-        return _handle_exception(exception, join(Method.GIS, 'E'), ItemsError)
+        return _handle_exception(exception, join(method, 'E'),
+                                 ItemsError)
     else:
         if items:
-            return join(Method.GIS, 'S|') + '|S|'.join([enc_str(item) for
-                                                        item in items])
+            return join(method, 'S|') + '|S|'.join([enc_str(item) for
+                                                    item in items])
         else:
-            return join(Method.GIS)
+            return join(method)
 
 
-@remoting_exception(Method.GSC)
+@remoting_exception_on_parse(Method.GSC)
 def read_get_schema(data):
     return {"user": read(data, "S", 0), "group": read(data, "S", 2),
             "schema": read(data, "S", 4),
@@ -138,67 +149,76 @@ def read_get_schema(data):
 
 
 def write_get_schema(fields=None, exception=None):
+    method = str(Method.GSC)
     if exception:
-        return _handle_exception(exception, join(Method.GSC, 'E'), ItemsError,
-                                 SchemaError)
+        return _handle_exception(exception, join(method, 'E'),
+                                 ItemsError, SchemaError)
     else:
         if fields:
-            return join(Method.GSC, 'S|') + '|S|'.join([enc_str(field) for
-                                                        field in fields])
+            return join(method, 'S|') + '|S|'.join([enc_str(field) for
+                                                    field in fields])
         else:
-            return join(Method.GSC)
+            return join(method)
 
 
-@remoting_exception(Method.GIT)
+@remoting_exception_on_parse(Method.GIT)
 def read_get_item_data(data):
     return read_seq(data, 0)
 
 
 def write_get_item_data(items_data=None, exception=None):
+    method = str(Method.GIT.name)
     if not exception:
-        encoded_items = [join('I', data["distinctSnapshotLength"],
-                              'D', enc_double(data["minSourceFrequency"]),
-                              'M', enc_modes(data["allowedModeList"]))
-                         for data in items_data]
-        if encoded_items:
-            return join(Method.GIT, append=True) + "|".join(encoded_items)
+        if items_data:
+            encoded_items = [join('I', enc_int(data["distinctSnapshotLength"]),
+                                  'D', enc_double(data["minSourceFrequency"]),
+                                  'M', enc_modes(data["allowedModeList"]))
+                             for data in items_data]
+            return join(method, append_separator=True) + \
+                "|".join(encoded_items)
         else:
-            return join(Method.GIT)
+            return join(method)
     else:
-        return _handle_exception(exception, join(Method.GIT, 'E'))
+        return _handle_exception(exception, join(method, 'E'))
 
 
-@remoting_exception(Method.GUI)
+@remoting_exception_on_parse(Method.GUI)
 def read_get_user_item_data(data):
-    return {"user": read(data, 'S', 0), "items": read_seq(data, 2)}
+    return {"user": read(data, 'S', 0),
+            "items": read_seq(data, 2)}
 
 
 def write_get_user_item_data(items_data=None, exception=None):
+    method = str(Method.GUI)
     if not exception:
-        encoded_items = [join('I', data["allowedBufferSize"],
-                              'D', enc_double(data["allowedMaxFrequency"]),
-                              'M', enc_modes(data["allowedModeList"]))
-                         for data in items_data]
-        if encoded_items:
-            return join(Method.GUI, append=True) + "|".join(encoded_items)
+        if items_data:
+            encoded_items = [join('I', enc_int(data["allowedBufferSize"]),
+                                  'D', enc_double(data["allowedMaxFrequency"]),
+                                  'M', enc_modes(data["allowedModeList"]))
+                             for data in items_data]
+
+            return join(method, append_separator=True) + \
+                "|".join(encoded_items)
         else:
-            return join(Method.GUI)
+            return join(method)
     else:
-        return _handle_exception(exception, join(Method.GUI, 'E'))
+        return _handle_exception(exception, join(method, 'E'))
 
 
-@remoting_exception(Method.NUM)
+@remoting_exception_on_parse(Method.NUM)
 def read_notify_user_message(data):
-    return {"user": read(data, 'S', 0), "session_id": read(data, 'S', 2),
+    return {"user": read(data, 'S', 0),
+            "session_id": read(data, 'S', 2),
             "message": read(data, 'S', 4)}
 
 
 def write_notify_user_message(exception=None):
+    method = str(Method.NUM)
     if not exception:
-        return join(Method.NUM, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.NUM, "E"),
-                                 CreditsError, NotificationError)
+        return _handle_exception(exception, join(method, "E"), CreditsError,
+                                 NotificationError)
 
 
 def _read_table(table, offset, with_selector=True):
@@ -208,8 +228,8 @@ def _read_table(table, offset, with_selector=True):
                   'schema': read(table, "S", offset + 6),
                   'min': read(table, "I", offset + 8),
                   'max': read(table, "I", offset + 10),
-                  'selector': read(table, "S", offset + 12) if with_selector
-                                                                  else None}
+                  'selector': (read(table, "S", offset + 12) if with_selector
+                               else None)}
 
     return TableInfo(table_info['winIndex'], table_info['mode'],
                      table_info['group'], table_info['schema'],
@@ -224,31 +244,34 @@ def _read_tables(data, offset):
     return table_infos
 
 
-@remoting_exception(Method.NNT)
+@remoting_exception_on_parse(Method.NNT)
 def read_notify_new_tables(data):
-    return {"user": read(data, "S", 0), "session_id": read(data, "S", 2),
+    return {"user": read(data, "S", 0),
+            "session_id": read(data, "S", 2),
             "tableInfos": _read_tables(data, 4)}
 
 
 def write_notify_new_tables_data(exception=None):
+    method = str(Method.NNT)
     if not exception:
-        return join(Method.NNT, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.NNT, "E"),
-                                 CreditsError, NotificationError)
+        return _handle_exception(exception, join(method, "E"), CreditsError,
+                                 NotificationError)
 
 
-@remoting_exception(Method.NTC)
+@remoting_exception_on_parse(Method.NTC)
 def read_notify_tables_close(data):
     return {"session_id": read(data, "S", 0),
             "tableInfos": _read_tables(data, 2)}
 
 
 def write_notify_tables_close(exception=None):
+    method = str(Method.NTC)
     if not exception:
-        return join(Method.NTC, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.NTC, "E"),
+        return _handle_exception(exception, join(method, "E"),
                                  NotificationError)
 
 
@@ -262,17 +285,18 @@ def _read_mpn_device_info(data, offset=0):
                          device_token)
 
 
-@remoting_exception(Method.MDA)
+@remoting_exception_on_parse(Method.MDA)
 def read_notify_device_access(data):
     return {"user": read(data, "S", 0),
             "mpnDeviceInfo": _read_mpn_device_info(data, 2)}
 
 
 def write_notify_device_acces(exception=None):
+    method = str(Method.MDA)
     if not exception:
-        return join(Method.MDA, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.MDA, "E"),
+        return _handle_exception(exception, join(method, "E"),
                                  CreditsError, NotificationError)
 
 
@@ -310,7 +334,7 @@ def _read_gcm_subscription_info(data, offset):
         time_to_live=read(data, "S", map_start_idx + map_length + 2))
 
 
-@remoting_exception(Method.MSA)
+@remoting_exception_on_parse(Method.MSA)
 def read_subscription_activation(data):
     values = dict()
 
@@ -325,19 +349,19 @@ def read_subscription_activation(data):
         values["subscription"] = _read_gcm_subscription_info(data, 17)
     else:
         raise RemotingException("Unsupported MPN subscription type")
-
     return values
 
 
 def write_subscription_activation(exception=None):
+    method = str(Method.MSA)
     if not exception:
-        return join(Method.MSA, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.MSA, "E"),
+        return _handle_exception(exception, join(method, "E"),
                                  CreditsError, NotificationError)
 
 
-@remoting_exception(Method.MDC)
+@remoting_exception_on_parse(Method.MDC)
 def read_device_token_change(data):
     return {"user": read(data, "S", 0),
             "mpnDeviceInfo": _read_mpn_device_info(data, 2),
@@ -345,8 +369,9 @@ def read_device_token_change(data):
 
 
 def write_device_token_change(exception=None):
+    method = str(Method.MDC)
     if not exception:
-        return join(Method.MDC, "V")
+        return join(method, "V")
     else:
-        return _handle_exception(exception, join(Method.MDC, "E"),
-                                 CreditsError, NotificationError)
+        return _handle_exception(exception, join(method, "E"), CreditsError,
+                                 NotificationError)
