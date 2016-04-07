@@ -44,8 +44,3 @@ lightstreamer_adapter.interfaces.metadata module
     :members:
     
      .. automethod:: __init__
-
-Module contents
----------------
-
-.. automodule:: lightstreamer_adapter.interfaces
