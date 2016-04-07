@@ -1,3 +1,7 @@
+'''
+This module contains all ABC classes and exceptions needed to create and manage
+a Remote Data Adapter.
+'''
 from abc import ABCMeta, abstractmethod
 
 __all__ = ['DataProvider', 'ItemEventListener', 'DataError',
@@ -10,9 +14,7 @@ class DataProvider(metaclass=ABCMeta):
     Remote Data Adapter is supplied to Lightstreamer through a
     :class:`lightstreamer_adapter.server.DataProviderServer` instance. After
     initialization, Lightstreamer sets itself as the Remote Data Adapter
-    listener, by calling the
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.set_listener`
-    method.
+    listener, by calling the :meth:`set_listener` method.
 
     Data Providers are used by Lightstreamer Kernel to obtain all data to be
     pushed to the Clients. Any Item requested by a Client must refer to one
@@ -20,10 +22,8 @@ class DataProvider(metaclass=ABCMeta):
 
     A Data Provider supplies data in a publish/subscribe way. Lightstreamer
     asks for data by calling the
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.subscribe` and
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe`
-    methods for various Items and the Data Adapter sends ItemEvents to its
-    listener in an asynchronous way.
+    :meth:`subscribe` and :meth:`unsubscribe` methods for various Items and
+    the Data Adapter sends ItemEvents to its listener in an asynchronous way.
 
     A Data Adapter can also support Snapshot management. Upon subscription to
     an Item, the current state of the Item data can be sent to the Server
@@ -42,8 +42,8 @@ class DataProvider(metaclass=ABCMeta):
     then the support for the Item Snapshot can be leveraged.
 
     Lightstreamer1 ensures that calls to
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.subscribe` and
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe` for
+    :meth:`.subscribe` and
+    :meth:`.unsubscribe` for
     the same Item will be interleaved, without redundant calls; whenever
     subscribe raises an exception, the corresponding unsubscribe call is not
     issued.
@@ -59,24 +59,26 @@ class DataProvider(metaclass=ABCMeta):
         ways, depending on the way the Remote Server is launched.
 
         The call must not be blocking; any polling cycle or similar must be
-         started in a different thread. Any delay in returning from this call
-         will in turn delay the Server initialization. If an exception occurs
-         in this method, Lightstreamer Server can't complete the startup and
-         must exit.
+        started in a different thread. Any delay in returning from this call
+        will in turn delay the Server initialization. If an exception occurs in
+        this method, Lightstreamer Server can't complete the startup and must
+        exit.
 
-        :param dict parameters: a dictionary object that contains key-value
+        :param dict parameters: A dictionary object that contains key-value
          pairs corresponding to the parameters elements supplied for the Data
-         Adapter configuration. Both key and values are represented as str
+         Adapter configuration. Both key and values are represented as string
          objects.
 
-         The parameters can be supplied through the ``adapter_params`` property
-         of the DataProviderServer instance. More parameters can be added by
-         leveraging the ``init_remote`` parameter in the Proxy Adapter
+         The parameters can be supplied through the
+         :meth:`lightstreamer_adapter.server.DataProviderServer.adapter_params`
+         property of the DataProviderServer instance. More parameters can be
+         added by leveraging the ``init_remote`` parameter in the Proxy Adapter
          configuration.
         :param str config_file: The path on the local disk of the Data Adapter
          configuration file.
 
-         The file path can be supplied by assigning the ``adapter_config``
+         The file path can be supplied by assigning the
+         :meth:`lightstreamer_adapter.server.DataProviderServer.adapter_config`
          property of the DataProviderServer instance used.
         :raises lightstreamer_adapter.interfaces.data.DataProviderError: in
          case an error occurs that prevents the correct behavior of the Data
@@ -91,8 +93,7 @@ class DataProvider(metaclass=ABCMeta):
         Lightstreamer Kernel. The listener is set before any subscribe is
         called and is never changed.
 
-        :param lightstreamer_adapter.interfaces.data.ItemEventListener \
-        event_listener: A listener.
+        :param ItemEventListener event_listener: A listener.
         """
         pass
 
@@ -113,18 +114,12 @@ class DataProvider(metaclass=ABCMeta):
 
         where:
 
-        * SNAP represents an
-          :meth:`lightstreamer_adapter.interfaces.data.ItemEventListener.update`
-          call with the ``issnapshot`` flag set to ``True``
-        * EOS represents an
-          :meth:`lightstreamer_adapter.interfaces.data.ItemEventListener.end_of_snapshot`
-          call
-        * UPD represents an
-          :meth:`lightstreamer_adapter.interfaces.data.ItemEventListener.update`
-          call with the ``issnapshot`` flag set to ``False``;
-          in this case, the special
-          :meth:`lightstreamer_adapter.interfaces.data.ItemEventListener.clear_snapshot`
-          call can also be issued.
+        * SNAP represents an :meth:`ItemEventListener.update` call with the
+          ``issnapshot`` flag set to ``True``
+        * EOS represents an :meth:`ItemEventListener.end_of_snapshot` call
+        * UPD represents an :meth:`ItemEventListener.update` call with the
+          ``issnapshot`` flag set to ``False``; in this case, the special
+          :meth:`clear_snapshot` call can also be issued.
 
         The composition of the snapshot depends on the Mode in which the Item
         is to be processed. In particular, for MERGE mode, the snapshot
@@ -135,22 +130,20 @@ class DataProvider(metaclass=ABCMeta):
         where a missing snapshot is considered as an empty snapshot.
 
         If an Item can be requested only in RAW mode, then
-        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.issnapshot_available`
-        should always return false; anyway, when an Item is requested in RAW
-        mode, any snapshot is discarded.
+        :meth:`DataProvider.issnapshot_available` should always return
+        ``False``; anyway, when an Item is requested in RAW mode, any snapshot
+        is discarded.
 
-        Note that calling
-        :meth:`lightstreamer_adapter.interfaces.data.ItemEventListener.end_of_snapshot`
-        is not mandatory; however, not calling it in DISTINCT or COMMAND mode
-        may cause the server to keep the snapshot and forward it to the clients
+        Note that calling :meth:`ItemEventListener.end_of_snapshot` is not
+        mandatory; however, not calling it in DISTINCT or COMMAND mode may
+        cause the server to keep the snapshot and forward it to the clients
         only after the first no-shapshot event has been received. The same
         happens for MERGE mode if neither the snapshot nor the endOfSnapshot
         call are supplied.
 
         Unexpected snapshot events are converted to non-snapshot events (but
         for RAW mode, where they are ignored); unexpected
-        :meth:`lightstreamer_adapter.interfaces.data.ItemEventListener.end_of_snapshot`
-        calls are ignored.
+        :meth:`ItemEventListener.end_of_snapshot` calls are ignored.
 
         The method can be blocking, but, as the Proxy Adapter implements
         subscribe and unsubscribe asynchronously, subsequent
@@ -219,11 +212,10 @@ class ItemEventListener(metaclass=ABCMeta):
     to receive the Item Events and any asynchronous severe error notification
     from the Data Adapter. The listener instance is supplied to the Data
     Adapter by Lightstreamer Kernel (through the Remote Server) through a
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.set_listener`
-    call. The listener can manage Item Events implemented as dictionary
-    objects, whose values can be expressed either as a string or as a bytes
-    (the special mandatory fields for COMMAND Mode named ``key`` and ``
-    command`` must be encoded as string).
+    :meth:`DataProvider.set_listener` call. The listener can manage Item Events
+    implemented as dictionary objects, whose values can be expressed either as
+    a string or as a bytes (the special mandatory fields for COMMAND Mode named
+    ``key`` and `` command`` must be encoded as string).
 
     When an Item Event instance has been sent to the listener, it is totally
     owned by Lightstreamer and it must not be anymore changed by the Data
@@ -237,13 +229,13 @@ class ItemEventListener(metaclass=ABCMeta):
         dictionary object to Lightstreamer Kernel.
 
         The Remote Adapter should ensure that, after an
-        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe()`
-        call for the Item has returned, no more Update calls are issued, until
-        requested by a new subscription for the same Item. This assures that,
-        upon a new subscription for the Item, no trailing events due to the
-        previous subscription can be received by the Remote Server. Note that
-        the method is nonblocking; moreover, it only takes locks to first order
-        mutexes; so, it can safely be called while holding a custom lock.
+        :meth:`DataProvider.unsubscribe()` call for the Item has returned, no
+        more Update calls are issued, until requested by a new subscription for
+        the same Item. This assures that, upon a new subscription for the Item,
+        no trailing events due to the previous subscription can be received by
+        the Remote Server. Note that the method is nonblocking; moreover, it
+        only takes locks to first order mutexes; so, it can safely be called
+        while holding a custom lock.
 
         :param str item_name: The name of the Item whose values are carried by
          the Item Event.
@@ -268,18 +260,17 @@ class ItemEventListener(metaclass=ABCMeta):
         completion before the arrival of the first non-snapshot event. Calling
         this function is recommended if the Item is to be subscribed in
         DISTINCT mode. In case the Data Adapter returned ``False`` to
-        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.issnapshot_available`
-        for the same Item, this function should not be called.
+        :meth:`DataProvider.issnapshot_available` for the same Item, this
+        function should not be called.
 
         The Remote Adapter should ensure that, after an
-        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe`
-        call for the Item has returned, a possible pending ``end_of_snapshot``
-        call related with the previous subscription request is no longer
-        issued. This assures that, upon a new subscription for the Item,
-        no trailing events due to the previous subscription can be received by
-        the Remote Server. Note that the method is nonblocking; moreover, it
-        only takes locks to first order mutexes; so, it can safely be called
-        while holding a custom lock.
+        :meth:`DataProvider.unsubscribe` call for the Item has returned, a
+        possible pending :meth:`DataProvider.end_of_snapshot` call related with
+        the previous subscription request is no longer issued. This assures
+        that, upon a new subscription for the Item, no trailing events due to
+        the previous subscription can be received by the Remote Server. Note
+        that the method is nonblocking; moreover, it only takes locks to first
+        order mutexes; so, it can safely be called while holding a custom lock.
 
         :param str item_name: The name of the Item whose snapshot has been
          completed
@@ -310,20 +301,18 @@ class ItemEventListener(metaclass=ABCMeta):
         Note that this is a real-time event, not a Snapshot event; hence, in
         order to issue this call, it is not needed that the Data Adapter has
         returned ``True`` to
-        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.issnapshot_available`
-        for the specified Item; moreover, if invoked while the Snapshot is
-        being supplied, the Kernel will infer that the Snapshot has been
-        completed.
+        :meth:`DataProvider.issnapshot_available` for the specified Item;
+        moreover, if invoked while the Snapshot is being supplied, the Kernel
+        will infer that the Snapshot has been completed.
 
         The Adapter should ensure that, after an
-        :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe`
-        call for the Item has returned, a possible pending ``clear_snapshot``
-        call related with the previous subscription request is no longer
-        issued. This assures that, upon a new subscription for the Item, no
-        trailing events due to the previous subscription can be received by the
-        Kernel. Note that the method is nonblocking; moreover, it only takes
-        locks to first order mutexes; so, it can safely be called while holding
-        a custom lock.
+        :meth:`DataProvider.unsubscribe` call for the Item has returned, a
+        possible pending :meth:`DataProvider.clear_snapshot` call related with
+        the previous subscription request is no longer issued. This assures
+        that, upon a new subscription for the Item, no trailing events due to
+        the previous subscription can be received by the Kernel. Note that the
+        method is nonblocking; moreover, it only takes locks to first order
+        mutexes; so, it can safely be called while holding a custom lock.
 
         :param str item_name: The name of the Item whose Snapshot has become
          empty.
@@ -342,7 +331,8 @@ class ItemEventListener(metaclass=ABCMeta):
 
 
 class DataError(Exception):
-    """Base class for all exceptions directly raised by the Data Adapter."""
+    """Base class for all exceptions directly raised by the Data Adapter.
+    """
     def __init__(self, msg):
         self._msg = msg
         super(DataError, self).__init__(msg)
@@ -357,28 +347,24 @@ class DataError(Exception):
 
 
 class DataProviderError(DataError):
-    """Raised by the
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.initialize`
-    method in DataProvider if there is some problem that prevents the correct
-    behavior of the Data Adapter. If this exception occurs, Lightstreamer
-    Kernel must give up the startup.
+    """Raised by the :meth:`DataProvider.initialize` method if there is some
+    problem that prevents the correct behavior of the Data Adapter. If this
+    exception occurs, Lightstreamer Kernel must give up the
+    startup.
     """
-    pass
 
 
 class SubscribeError(DataError):
-    """Raised by the :meth:`lightstreamer.interfaces.data.DataProvider.subscribe`
-    and :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe`
-    methods in DataProvider if the request cannot be satisfied.
+    """Raised by the :meth:`DataProvider.subscribe` and
+    :meth:`DataProvider.unsubscribe` methods if the request cannot be
+    satisfied.
     """
     pass
 
 
 class FailureError(DataError):
-    """Raised by the
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.subscribe` and
-    :meth:`lightstreamer_adapter.interfaces.data.DataProvider.unsubscribe`
-    methods in DataProvider if the method execution has caused a severe problem
-    that can compromise future operation of the Data Adapter.
+    """Raised by the :meth:`DataProvider.subscribe` and
+    :meth:`DataProvider.unsubscribe` methods if the method execution has caused
+    a severe problem that can compromise future operation of the Data Adapter.
     """
     pass
