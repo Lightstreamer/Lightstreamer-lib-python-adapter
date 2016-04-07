@@ -44,5 +44,6 @@ setup(
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Application Frameworks'
     ],
-    keywords='lightstreamer push realtime real-time'
+    keywords='lightstreamer push realtime real-time',
+    test_suite='tests'
 )
