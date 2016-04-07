@@ -7,6 +7,8 @@ import unittest
 import logging
 import queue
 
+from context import lightstreamer_adapter
+
 from common import RemoteAdapterBase
 from lightstreamer_adapter.server import (MetadataProviderServer,
                                           ExceptionHandler)
@@ -24,8 +26,8 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        TableInfo,
                                                        MpnApnsSubscriptionInfo,
                                                        MpnGcmSubscriptionInfo)
+from tests.common import LightstreamerServerSimulator
 
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
@@ -58,11 +60,21 @@ class MetadataProviderTestClass(MetadataProvider):
         if not user:
             raise ItemsError("Empty User")
 
+        if group == "no items":
+            return None
+
+        if group == "get invalid":
+            # Returning non string list to enforce raising of an exception
+            # while encoding the reply.
+            return [1, False, 2.3]
+
         return super(MetadataProviderTestClass, self).get_items(user,
                                                                 session_id,
                                                                 group)
 
     def get_allowed_max_bandwidth(self, user):
+        if user == "get invalid":
+            return "Wrong Allowed Max Bandwidth Type"
         return 12.3
 
     def wants_tables_notification(self, user):
@@ -76,7 +88,10 @@ class MetadataProviderTestClass(MetadataProvider):
             return 20
 
         if item == "item_4":
-            raise CreditsError(4, "CreditsError", "clientErrorMsg")
+            raise RuntimeError("Error for provided item")
+
+        if item == "get invalid":
+            return "Wrong Distinct Snapshot Length Type"
 
         return 0
 
@@ -87,7 +102,7 @@ class MetadataProviderTestClass(MetadataProvider):
         if item == "item_2":
             return 7.3
 
-        return 0
+        return 0.0
 
     def mode_may_be_allowed(self, item, mode):
         if item == "item_1":
@@ -107,7 +122,7 @@ class MetadataProviderTestClass(MetadataProvider):
         if item == "item_2":
             return 27.3
 
-        return 0
+        return 0.0
 
     def get_allowed_buffer_size(self, user, item):
         if item == "item_1":
@@ -115,6 +130,9 @@ class MetadataProviderTestClass(MetadataProvider):
 
         if item == "item_2":
             return 40
+
+        if item == "get invalid":
+            return "Wrong Allowed Buffer Size"
 
         return 0
 
@@ -199,6 +217,14 @@ class MetadataProviderTestClass(MetadataProvider):
 
         if schema == "shortA":
             raise SchemaError("SchemaError")
+
+        if schema == "no schema":
+            return None
+
+        if schema == "get invalid":
+            # Returning non string list to enforce raising of an exception
+            # while encoding the reply.
+            return [1, False, 2.3]
 
         return super(MetadataProviderTestClass, self).get_schema(user,
                                                                  session_id,
@@ -414,20 +440,34 @@ class MyExceptionHandler(ExceptionHandler):
         self._caught_exception_queue = queue.Queue()
 
     def handle_io_exception(self, ioexception):
-        print("Got IO Exception {}".format(ioexception))
+        print("MyExceptionHandler-> Got IO Exception {}".format(ioexception))
         return False
 
     def handle_exception(self, exception):
-        print("Caught exception: {}".format(str(exception.__cause__)))
+        print("MyExceptionHandler-> Caught exception: {}"
+              .format(str(exception)))
         self._caught_exception_queue.put(str(exception))
         self._caught_exception_queue.task_done()
         return False
 
     def get(self):
-        return self._caught_exception_queue.get()
+        return self._caught_exception_queue.get(timeout=0.3)
 
     def join(self):
         self._caught_exception_queue.join()
+
+
+class MetadataProviderServerTest(unittest.TestCase):
+
+    def test_connect(self):
+        ls_server = LightstreamerServerSimulator(RemoteAdapterBase.REQ_REPLY_ADDRESS)
+        ls_server.start()
+
+        adapter = MetadataProviderTestClass({})
+        server = MetadataProviderServer(adapter,
+                                        RemoteAdapterBase.REQ_REPLY_ADDRESS,
+                                        keep_alive=0)
+        server.start()
 
 
 class MetadataProviderTest(RemoteAdapterBase):
@@ -599,6 +639,12 @@ class MetadataProviderTest(RemoteAdapterBase):
                            "www.mycompany.com"))
         self.assert_reply("10000010c3e4d0462|NUS|E|Error+while+notifying")
 
+    def test_invalid_notify_user(self):
+        self.do_init_and_skip()
+        self.send_request("10000010c3e4d0462|NUS|S|get+invalid|S|password")
+        self.assert_caught_exception(("Not a float value: 'Wrong Allowed Max "
+                                      "Bandwidth Type'"))
+
     def test_malformed_notify_user(self):
         self.do_init_and_skip()
         # user and password are missing.
@@ -638,12 +684,12 @@ class MetadataProviderTest(RemoteAdapterBase):
                            "S|<HEADER_2>|S|<HEADER_VALUE2>"))
 
         self.assert_reply("10000010c3e4d0462|NUA|D|12.3|B|1")
-        self.assertDictEqual({"user": "userXA",
-                              "password": "password",
-                              "clientPrincipal": '<CLIENT_PRINCIPAL>',
-                              "httpHeaders": {"<HEADER_1>": "<HEADER_VALUE1>",
-                                              "<HEADER_2>": "<HEADER_VALUE2>"}
-                             }, self.collector)
+        expected_dict = {"user": "userXA",
+                         "password": "password",
+                         "clientPrincipal": '<CLIENT_PRINCIPAL>',
+                         "httpHeaders": {"<HEADER_1>": "<HEADER_VALUE1>",
+                                         "<HEADER_2>": "<HEADER_VALUE2>"}}
+        self.assertDictEqual(expected_dict, self.collector)
 
     def test_notify_user_with_auth_credits_exception(self):
         # Testing CreditsError
@@ -783,6 +829,16 @@ class MetadataProviderTest(RemoteAdapterBase):
                               "group": "nasdaq100_AA_AL abc"},
                              self.collector)
 
+    def test_get_items_with_no_returned_items(self):
+        self.do_init_and_skip()
+        self.send_request(("50000010c3e4d0462|GIS|S|user1|S|no+items|S|"
+                           "S8f3da29cfc463220T5454537"))
+        self.assert_reply("50000010c3e4d0462|GIS")
+        self.assertDictEqual({"user": "user1",
+                              "sessionId": "S8f3da29cfc463220T5454537",
+                              "group": "no items"},
+                             self.collector)
+
     def test_get_items_with_items_exception(self):
         # Testing ItemsError Error provoked by an empty user ()
         self.do_init_and_skip()
@@ -806,6 +862,12 @@ class MetadataProviderTest(RemoteAdapterBase):
                               "group": "nasdaq100_AA_AL abc"},
                              self.collector)
 
+    def test_invalid_get_items(self):
+        self.do_init_and_skip()
+        self.send_request(("50000010c3e4d0462|GIS|S|user1|S|get+invalid|S|"
+                           "S8f3da29cfc463220T5454537"))
+        self.assert_caught_exception("Unknown error while url-encoding string")
+
     def test_malformed_get_items(self):
         self.do_init_and_skip()
         self.send_request("50000010c3e4d0462|GIS|S|")
@@ -825,6 +887,17 @@ class MetadataProviderTest(RemoteAdapterBase):
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "group": "nasdaq100_AA_AL abc",
                               "schema": "short1 short2"},
+                             self.collector)
+
+    def test_get_schema_with_no_returned_schema(self):
+        self.do_init_and_skip()
+        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
+                           "abc|S|no+schema|S|S8f3da29cfc463220T5454537"))
+        self.assert_reply("70000010c3e4d0462|GSC")
+        self.assertDictEqual({"user": "user1",
+                              "sessionId": "S8f3da29cfc463220T5454537",
+                              "group": "nasdaq100_AA_AL abc",
+                              "schema": "no schema"},
                              self.collector)
 
     def test_get_schema_with_items_exception(self):
@@ -862,15 +935,30 @@ class MetadataProviderTest(RemoteAdapterBase):
                               "schema": "short1 short2"},
                              self.collector)
 
+    def test_invalid_get_schema(self):
+        self.do_init_and_skip()
+        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL|S|"
+                           "get+invalid|S|S8f3da29cfc463220T5454537"))
+        self.assert_caught_exception("Unknown error while url-encoding string")
+
     def test_malformed_get_schema(self):
         self.do_init_and_skip()
+
+        # Missing token.
         self.send_request("70000010c3e4d0462|GSC|S|")
         self.assert_caught_exception(("Token not found while parsing a GSC "
                                       "request"))
 
+        # Wrong token type.
         self.send_request("70000010c3e4d0462|GSC|S1|nasdaq100_AA_AL")
         self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
                                       " GSC request"))
+
+        # No fields specifications.
+        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
+                           "abc|S|S8f3da29cfc463220T5454537"))
+        self.assert_caught_exception(("Token not found while parsing a GSC "
+                                      "request"))
 
     def test_get_item_data(self):
         self.do_init_and_skip()
@@ -887,7 +975,13 @@ class MetadataProviderTest(RemoteAdapterBase):
         # Testing generic Error provoked by item_4
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|item_1|S|item_2|S|item_4")
-        self.assert_reply("70000010c3e4d0462|GIT|E|CreditsError")
+        self.assert_reply("70000010c3e4d0462|GIT|E|Error+for+provided+item")
+
+    def test_invalid_get_item_data(self):
+        self.do_init_and_skip()
+        self.send_request("70000010c3e4d0462|GIT|S|get+invalid")
+        self.assert_caught_exception(("Not an int value: 'Wrong Distinct "
+                                      "Snapshot Length Type'"))
 
     def test_malformed_get_item_data(self):
         self.do_init_and_skip()
@@ -917,6 +1011,12 @@ class MetadataProviderTest(RemoteAdapterBase):
         self.send_request(("70000010c3e4d0462|GUI|S|user2|S|item_1|S|item_2|S|"
                            "item_4"))
         self.assert_reply("70000010c3e4d0462|GUI|E|No+user+allowed")
+
+    def test_invalid_get_user_item_data(self):
+        self.do_init_and_skip()
+        self.send_request(("70000010c3e4d0462|GUI|S|user1|S|get+invalid"))
+        self.assert_caught_exception(("Not an int value: 'Wrong Allowed Buffer "
+                                      "Size'"))
 
     def test_malformed_get_user_item_data(self):
         self.do_init_and_skip()
@@ -993,8 +1093,8 @@ class MetadataProviderTest(RemoteAdapterBase):
                                                        schema="medium",
                                                        first_idx=4,
                                                        last_idx=3,
-                                                       selector='selector')]
-                             }, self.collector)
+                                                       selector='selector')]},
+                             self.collector)
 
     def test_notify_new_tables_with_null_mode(self):
         self.do_init_and_skip()
@@ -1087,8 +1187,8 @@ class MetadataProviderTest(RemoteAdapterBase):
                                                        group="nasdaq100_AA_AL",
                                                        schema="short",
                                                        first_idx=1,
-                                                       last_idx=5)]
-                             }, self.collector)
+                                                       last_idx=5)]},
+                             self.collector)
 
     def test_notify_tables_close_with_no_table_info(self):
         self.do_init_and_skip()
