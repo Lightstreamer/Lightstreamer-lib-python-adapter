@@ -1,90 +1,48 @@
-
+'''
+Core module of the Lightstreamer SDK for Python Adapters, containing all
+classes (public and private), needed to configure and starts the Remote
+Adapters.
+'''
 import sys
 import socket
 import queue
 import logging
 import time
-import multiprocessing
-from threading import Thread, Event, Lock, RLock
+from multiprocessing import cpu_count
+from threading import Thread, Event
+from concurrent.futures.thread import ThreadPoolExecutor
 from abc import ABCMeta, abstractmethod
-from _collections import deque
 
 import lightstreamer_adapter.protocol as protocol
 import lightstreamer_adapter.metadata_protocol as meta_protocol
 import lightstreamer_adapter.data_protocol as data_protocol
 from lightstreamer_adapter.interfaces.data import (DataProvider,
-                                                   SubscribeError)
-from lightstreamer_adapter.interfaces.metadata import Mode, MetadataProvider
-
+                                                   SubscribeError,
+                                                   DataProviderError)
+from lightstreamer_adapter.interfaces.metadata import (Mode,
+                                                       MetadataProvider,
+                                                       MetadataProviderError)
 from lightstreamer_adapter.protocol import RemotingException
-
+from lightstreamer_adapter.subscription import SubscriptionManager, ItemTask
+from . import DATA_PROVIDER_LOGGER as DATA_LOGGER
+from . import METADATA_PROVIDER_LOGGER as METADATA_LOGGER
 
 __all__ = ['Server', 'DataProviderServer', 'MetadataProviderServer',
            'ExceptionHandler']
 
 
-class _Worker(Thread):
-    """Thread executing tasks from a given tasks queue"""
-    def __init__(self, name, tasks):
-        super(_Worker, self).__init__(name=name)
-        self.tasks = tasks
-        self.daemon = False
-        self._executing = Event()
-        self.start()
-        # log.debug("Started Worker %s", name)
-
-    def run(self):
-        while True:
-            if self._executing.isSet():
-                break
-            task = self.tasks.get()
-            try:
-                if task == "END":
-                    # print("Terminated %s", self.name)
-                    break
-                # print("Running from %s", self.name)
-                task()  # func(*args, **kargs)
-            except Exception as err:
-                # print(err)
-                pass
-            finally:
-                self.tasks.task_done()
-
-    def shutdown(self):
-        self._executing.set()
-
-
-class _ThreadPool:
-
-    def __init__(self, num_of_threads=4):
-        self.pool = queue.Queue(num_of_threads)
-        self.workers = []
-        for i in range(0, num_of_threads):
-            self.workers.append(_Worker("Worker " + str(i), self.pool))
-
-    def submit(self, func, *args, **kargs):
-        # self.pool.put((func, args, kargs))
-        def task():
-            func(*args, **kargs)
-
-        self.pool.put(task)
-
-    def join(self):
-        dismissed = []
-        for worker in self.workers:
-            self.pool.put("END")
-            dismissed.append(worker)
-
-        for worker in dismissed:
-            worker.join()
-
-        self.pool.join()
-
-
 def notify(function):
-    def wrap(obj, reply):
+    """Decorator function which add timestamp information to each notification
+    sent to the Proxy Adapter.
+    """
+    def wrap(obj, notification):
+        """"Add the timestamp to the supplied notification, in the following
+        format:
+
+        <timestamp>|<notification>.
+        """
         timestamp = int(round(time.time() * 1000))
-        notification = "|".join([str(timestamp), reply])
+        notification = "|".join([str(timestamp), notification])
         function(obj, notification)
 
     return wrap
@@ -92,102 +50,90 @@ def notify(function):
 
 class _Sender(object):
     """Helper class which manages the communications from the Remote Adapter to
-    the ProxyAdapter, sending data over the unidirectional "replies" or
+    the ProxyAdapter, sending data over the "request/replies" or
     "notifications" channels.
     sender.
     """
-
-    STOP_WAITING_PILL = "STOP_WAITING_PILL"
-
-    def __init__(self, sock, name, keep_alive, log):
-        self.sock = sock
-        self.name = name
-        self.keep_alive = keep_alive
-        self.log = log
-        self.keep_alive_log = logging.getLogger(log.name + ".keep_alives")
-        self.queue = None
-        self.send_thread = None
+    def __init__(self, sock, server, log):
+        self._sock = sock
+        self._server = server
+        self._log = log
+        self._keep_alive_log = logging.getLogger(log.name + ".keep_alives")
+        self._send_queue = None
+        self._send_thread = None
 
     def start(self):
-        """Starts the management of unidirectional communications from the
-        Remote Adapter to the Proxy Adapter.
+        """Starts the management of communications from the Remote Adapter to
+        the Proxy Adapter.
         """
-        # Creates a queue to enqueue reading incoming replies/notifications to
-        # be sent to the ProxyAdapter.
-        self.queue = queue.Queue()
+        # Creates a queue to append incoming replies/notifications to be sent
+        # to the ProxyAdapter.
+        self._send_queue = queue.Queue()
 
         # Starts new thread for dequeuing replies/notifications and then
         # sending to the ProxyAdapter.
-        self.send_thread = Thread(target=self.do_run, name="Sender-Thread-{}"
-                                  .format(self.name))
-        self.send_thread.start()
+        self._send_thread = Thread(target=self._do_run, name="Sender-Thread-{}"
+                                   .format(self._server.name))
+        self._send_thread.start()
 
-    def send(self, ntfy):
+    def send(self, notification):
         """Enqueues a reply or notification to be sent to the Proxy Adapter.
         """
-        self.queue.put(ntfy)
+        self._send_queue.put(notification)
 
-    def do_run(self):
-        """Target method for the Sender-Thread-XXX, started in the
-        'start' method."""
-        self.log.info("'%s' starting", self.name)
+    def _do_run(self):
+        """Target method for the Sender-Thread-XXX, started in the start'
+        method."""
+        self._log.info("'%s' starting", self._server.name)
+        keep_alive = self._server.keep_alive
         while True:
             try:
-                notification = None
-                if self.keep_alive > 0:
+                to_send = None
+                if keep_alive > 0:
                     try:
-                        notification = self.queue.get(timeout=self.keep_alive)
-                        self.queue.task_done()
+                        to_send = self._send_queue.get(timeout=keep_alive)
                     except queue.Empty:
-                        self.keep_alive_log.debug("Keep alive triggered...")
+                        # Keepalive Timeout triggered.
+                        to_send = protocol.METHOD_KEEP_ALIVE
+                        self._keep_alive_log.debug("line: %s", to_send)
                 else:
-                    notification = self.queue.get()
-                    self.queue.task_done()
-                if notification == _Sender.STOP_WAITING_PILL:
+                    to_send = self._send_queue.get()
+                    self._log.debug("line: %s", to_send)
+                if to_send is None:
                     # Request of stopping dequeuing, thread termination.
                     break
-
-                if notification is None:
-                    # Keepalive Timeout triggered.
-                    notification = protocol.METHOD_KEEP_ALIVE
-                    self.keep_alive_log.debug("line: %s", notification)
-                else:
-                    self.log.debug("line: %s", notification)
-
-                # Sends notification over the network.
-                self.sock.sendall(bytes(notification + '\r\n', 'utf-8'))
-            finally:
-                pass
-
-        self.log.info("'%s' stopped", self.name)
+                # Sends to_send over the network.
+                self._sock.sendall(bytes(to_send + '\r\n', 'utf-8'))
+            except OSError as err:
+                self._server.on_io_exception(err)
+                break
+        self._log.info("'%s' stopped", self._server.name)
 
     def quit(self):
-        """Terminates the unidirectional communications with the Proxy Adapter.
+        """Terminates the communications with the Proxy Adapter.
         """
-        # Enqueues the STOP_WAITING_PILL to notify the Sender-Thread of
-        # stopping dequeuing of incoming replies/notifications.
-        self.queue.put(_Sender.STOP_WAITING_PILL)
-        self.queue.join()
-        self.send_thread.join()
+        # Enqueues a None item to notify the Sender-Thread-XXX of stopping
+        # dequeuing of incoming replies/notifications.
+        self._send_queue.put(None)
+        self._send_thread.join()
 
 
 class _RequestReceiver():
-    """Helper class which manages the communications with the Proxy Adpater
-    counterpart.
+    """Helper class which manages the bi-directional communications with the
+    Proxy Adpater counterpart over the "request/replies" channel.
     """
 
     def __init__(self, sock, server):
-        self.log = logging.getLogger(("lightstreamer-adapter.requestreply"
-                                      ".requests"))
-        self.sock = sock
-        self.server = server
+        self._log = logging.getLogger(("lightstreamer-adapter.requestreply"
+                                       ".requests"))
+        self._sock = sock
+        self._server = server
         reply_sender_log = logging.getLogger(("lightstreamer-adapter."
                                               "requestreply.replies."
                                               "ReplySender"))
-        self.reply_sender = _Sender(sock=sock, name=server.name,
-                                    keep_alive=server.keep_alive,
-                                    log=reply_sender_log)
-        self.stop_request = Event()
+        self._reply_sender = _Sender(sock=sock, server=self._server,
+                                     log=reply_sender_log)
+        self._stop_request = Event()
 
     def start(self):
         """Starts the management of bidirectional communications with the Proxy
@@ -195,64 +141,64 @@ class _RequestReceiver():
         coming from the Remote Adapters.
         """
         # Starts new thread for reading data from the socket.
-        thread = Thread(target=self.do_run,
+        thread = Thread(target=self._do_run,
                         name="RequestReceiver-Thread-{}"
-                        .format(self.server.name),
-                        args=(self.sock,))
+                        .format(self._server.name),
+                        args=(self._sock,))
         thread.start()
 
         # Starts the reply sender.
-        self.reply_sender.start()
+        self._reply_sender.start()
 
-    def do_run(self, sock):
+    def _do_run(self, sock):
         """Target method for the RequestReceiver-Thread-XXX, started in the
-        'start' method."""
-        self.log.info("Request receiver '%s' starting...", self.server.name)
-        while not self.stop_request.is_set():
+        'start' method.
+        """
+        self._log.info("Request receiver '%s' starting...", self._server.name)
+        while not self._stop_request.is_set():
             request = None
             try:
                 data = b''
                 while True:
-                    self.log.debug("Reading from socket...")
+                    self._log.debug("Reading from socket...")
                     more = sock.recv(1024)
-                    self.log.debug("Received %d data", len(more))
+                    self._log.debug("Received %d data", len(more))
                     if not more:
                         raise EOFError('Socket connection broken')
                     data += more
                     if data.endswith(b'\n'):
                         break
                 request = data.decode()
-                self.log.debug("Request line: %s", request)
-            except Exception as err:
-                if self.stop_request.is_set():
-                    self.log.debug(("Error raised because of explicitly "
-                                    "closed socket, no issue"))
+                self._log.debug("Request line: %s", request)
+            except (OSError, EOFError) as err:
+                if self._stop_request.is_set():
+                    self._log.debug(("Error raised because of explicitly "
+                                     "closed socket, no issue"))
                     break
-                # An exception has been raised, due to some issue
-                # in the network communication.
-                self.log.exception(("Exception while consuming data from the "
-                                    "socket"))
-                self.server._on_ioexception(err)
+                # An exception has been raised, due to some issue in the
+                # network communication.
+                self._server.on_ioexception(err)
                 break
 
-            self.server._on_received_request(request)
+            self._server.on_received_request(request)
 
-        self.log.info("Request receiver '%s' stopped", self.server.name)
+        self._log.info("Request receiver '%s' stopped", self._server.name)
 
     def send_reply(self, request_id, response):
-        """Sends a response to the Proxy Adapter."""
+        """Sends a reply to the Proxy Adapter.
+        """
         reply = '|'.join((request_id, response))
-        self.reply_sender.send(reply)
+        self._reply_sender.send(reply)
 
     def quit(self):
         """Terminates the communications with the Proxy Adapter.
         """
         # Issues a request to terminate the 'RequestReceiver-Thread-XXX'
         # thread.
-        self.stop_request.set()
+        self._stop_request.set()
 
-        # Issues a request to terminate the reply sender.
-        self.reply_sender.quit()
+        # Issues a request to terminate the associated reply sender.
+        self._reply_sender.quit()
 
 
 class Server(metaclass=ABCMeta):
@@ -263,7 +209,7 @@ class Server(metaclass=ABCMeta):
     An instance of a Server's subclass should be provided with a suitable
     Adapter instance and with suitable initialization parameters and
     established connections, then activated through its own ``start`` and
-    finally disposed through its own ``close``. Further reuse of the same
+    finally disposed through its own :meth:`close`. Further reuse of the same
     instance is not supported.
     """
 
@@ -287,12 +233,13 @@ class Server(metaclass=ABCMeta):
         pool = max(0, thread_pool_size) if thread_pool_size is not None else 0
         if pool == 0:
             try:
-                self._config['thread_pool_size'] = multiprocessing.cpu_count()
+                self._config['thread_pool_size'] = cpu_count()
             except NotImplementedError:
                 self._config['thread_pool_size'] = Server._DEFAULT_POOL_SIZE
         else:
             self._config['thread_pool_size'] = pool
-        self.thread_pool = None
+
+        self._executor = ThreadPoolExecutor(self._config['thread_pool_size'])
         self._server_sock = None
         self._request_receiver = None
 
@@ -333,6 +280,10 @@ class Server(metaclass=ABCMeta):
 
     @abstractmethod
     def start(self):
+        """Starts the Remote Adapter. A connection to the Proxy Adapter is
+        performed (as soon as one is available). Then, requests issued by
+        the Proxy Adapter are received and forwarded to the Remote Adapter.
+        """
         if self.keep_alive > 0:
             self._log.info("Keepalive time for %s set to %f milliseconds",
                            self.name, self.keep_alive)
@@ -342,10 +293,7 @@ class Server(metaclass=ABCMeta):
         self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_sock.connect(self._config['address'])
 
-        # Start the Thread Pool
-        self.thread_pool = _ThreadPool(self._config['thread_pool_size'])
-
-        # Setup and start the Request Receiver.
+        # Creates and starts the Request Receiver.
         self._request_receiver = _RequestReceiver(sock=self._server_sock,
                                                   server=self)
         self._request_receiver.start()
@@ -364,11 +312,29 @@ class Server(metaclass=ABCMeta):
         accessing the supplied Adapter instance directly and calling custom
         methods.
         """
-        self._server_sock.close()
         self._request_receiver.quit()
-        self.thread_pool.join()
+        self._executor.shutdown()
+        self._server_sock.close()
 
-    def _on_received_request(self, request):
+    def on_received_request(self, request):
+        """Invoked when the RequestReciver gets a new request coming from the
+        Proxy Adapter.
+
+        This method takes the responsibility to proceed with a first
+        coarse-grained parsing, to identify the three main components of the
+        packet structure, as follows:
+
+        <ID>|<method>|<data>
+         |      |       |
+         |      |     The arguments to be passed to the method
+         |      |
+         |   The method to invoke on the Remote Adapter
+         |
+        The Request Id
+
+        Once parsed, the request is then dispatched to the subclass for later
+        management.
+        """
         try:
             parsed_request = protocol.parse_request(request)
             if parsed_request is None:
@@ -376,32 +342,43 @@ class Server(metaclass=ABCMeta):
                 return
 
             request_id = parsed_request["id"]
-            method = parsed_request["method"]
-            data = parsed_request["test_data"]
-            self._handle_request(request_id, data, method)
-        except Exception as err:
-            self._log.exception("Exception while handling a request")
-            self._on_exception(err)
+            method_name = parsed_request["method"]
+            data = parsed_request["data"]
+            self._handle_request(request_id, data, method_name)
+        except RemotingException as err:
+            self.on_exception(err)
 
     def _send_reply(self, request_id, response):
         self._log.debug("Processing request: %s", request_id)
         self._request_receiver.send_reply(request_id, response)
 
-    def _on_ioexception(self, ioexception):
+    def on_ioexception(self, ioexception):
+        """Called by the Remote Server upon a read or write operation failure.
+
+        See documentation from the ExceptionHandler.handle_io exception method
+        for further details.
+        """
         if self._exception_handler is not None:
-            # Enable default handling in case of False
             self._log.info(("Caught exception: %s, notifying the "
                             "application..."), str(ioexception))
+            # Enable default handling in case the exception handler
+            # returns False.
             if not self._exception_handler.handle_ioexception(ioexception):
                 return
 
         self._handle_ioexception(ioexception)
 
-    def _on_exception(self, exception):
+    def on_exception(self, exception):
+        """Called by the Remote Server upon an unexpected error.
+
+        See documentation from the ExceptionHandler.handle_exception method for
+        further details.
+        """
         if self._exception_handler is not None:
-            # Enable default handling in case of False
             self._log.info(("Caught exception: %s, notifying the "
                             "application..."), str(exception))
+            # Enable default handling in case the exception handler
+            # returns False.
             if not self._exception_handler.handle_exception(exception):
                 return
 
@@ -417,13 +394,15 @@ class Server(metaclass=ABCMeta):
 
     @abstractmethod
     def _on_request_receiver_started(self):
-        """Method intended to be overridden by subclasses. This method is an
-        hook to notify the subclass that the Request Receiver  has been started.
+        """Hook method to notify the subclass that the Request Receiver has
+        been started.
+
+        This method is intended to be overridden by subclasses.
         """
         pass
 
     @abstractmethod
-    def _handle_request(self, request_id, data, method):
+    def _handle_request(self, request_id, data, method_name):
         """Intended to be overridden by subclasses, invoked for handling the
         received request, already splitted into the supplied parameters.
         """
@@ -436,9 +415,8 @@ class MetadataProviderServer(Server):
 
     The object should be provided with a MetadataProvider instance and with
     suitable initialization parameters and established connections,
-    then activated through
-    :meth:`lightstreamer_adapter.server.MetadataProviderServer.start` and
-    finally disposed through :meth:`lightstreamer_adapter.server.Server.close`.
+    then activated through :meth:`MetadataProviderServer.start` and finally
+    disposed through :meth:`Server.close`.
     Further reuse of the same instance is not supported.
 
     The server will take care of sending keepalive packets on the connections
@@ -448,23 +426,24 @@ class MetadataProviderServer(Server):
 
     By default, the invocations to the Metadata Adapter methods will be done in
     a limited thread pool with a size determined by the number of detected cpu
-    cores. The size be specified through the provided ``thread_pool_size``
+    cores. The size can be specified through the provided ``thread_pool_size``
     parameter. A size of 1 enforces strictly sequential invocations and can be
     used if parallelization of the calls is not supported by the Metadata
     Adapter. A value of 0, negative or ``None`` also implies the default
     behaviour as stated above.
 
-    Note that requests with an implicit ordering, like ``notify_new_session``
-    and ``notify_session_closes`` for the same session, are always guaranteed
-    to be and sequentialized in the right way, although they may not occur in
-    the same thread.
+    Note that requests with an implicit ordering, like
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_new_session`
+    and
+    :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.notify_session_close`
+    for the same session, are always guaranteed to be and sequentialized in the
+    right way, although they may not occur in the same thread.
     """
     def __init__(self, adapter, address, name=None, keep_alive=1,
                  thread_pool_size=0):
         """Creates a server with the supplied configuration parameters. The
         :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.initialize`
-        method of the Remote Adapter will be invoked only upon a Proxy Adapter
-        request.
+        method will be invoked only upon a Proxy Adapter request.
 
         :param lightstreamer_adapter.interfaces.metadata.MetadataProvider \
         adapter: the Remote Metadata Adapter instance to be run.
@@ -483,57 +462,62 @@ class MetadataProviderServer(Server):
             raise TypeError(("The provided adapter is not a subclass of "
                              "lightstreamer_adapter.interfaces."
                              "MetadatadataProvider"))
-        self._log = logging.getLogger(("lightstreamer-adapter.server."
-                                       "MetadataProviderServer"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
         self.init_expected = True
 
     def _on_request_receiver_started(self):
-        """Method intended to be overridden by subclasses. This method is an
-        hook to notify the subclass that the Request Receiver has been started.
+        """Invoked to notify this subclass the the Request Receiver has been
+        started.
+
         This class has a void implementation.
         """
         pass
 
-    def _handle_request(self, request_id, data, method):
-        init_request = method == meta_protocol.Method.MPI.name
+    def _handle_request(self, request_id, data, method_name):
+        init_request = method_name == str(meta_protocol.Method.MPI)
         if init_request and not self.init_expected:
             raise RemotingException("Unexpected late {} request"
                                     .format(str(meta_protocol.Method.MPI)))
         elif not init_request and self.init_expected:
             raise RemotingException(("Unexpected request {} while waiting for "
                                      "a {} request")
-                                    .format(method, meta_protocol.Method.MPI))
+                                    .format(method_name,
+                                            meta_protocol.Method.MPI))
         if init_request:
             self.init_expected = False
             res = self._on_mpi(data)
             self._send_reply(request_id, res)
             return
 
-        # Builds the name of the method do be invoked, starting from the
-        # protocol method name.
-        on_method = "_on_" + method.lower()
-
-        # Invokes the method and gets the returned asynchronous function to be
-        # executed through the thread pool.
+        # Builds the name of the method_name do be invoked, starting from the
+        # protocol method_name name, and retrieves such method_name.
+        on_method_name = "_on_" + method_name.lower()
         try:
-            async_func = getattr(self, on_method)(data)
-        except AttributeError as err:
-            self._log.warning("Discarding unknown request: %s", method);
+            on_method = getattr(self, on_method_name)
+        except AttributeError:
+            METADATA_LOGGER.warning("Discarding unknown request: %s",
+                                    method_name)
             return
 
-        # Task wrapping execution of the returned async_func and
-        # successive reply.
+        # Invokes the retrieved method, which in turn returns an asynchronous
+        # function to be executed through the executor-
+        async_func = on_method(data)
+
+        # Define a task function to wrap the execution of the returned
+        # async_func and the sending of the gotten reply.
         def execute_and_reply():
             try:
-                response = async_func()
-                self._send_reply(request_id, response)
-            except Exception as err:
-                self._on_exception(err)
+                # async_func may raise again a RemotingExcption, which need
+                # to be caught and forwarded to the ExceptionHandler.
+                reply = async_func()
+                self._send_reply(request_id, reply)
+            except RemotingException as err:
+                self.on_exception(err)
 
-        self.thread_pool.submit(execute_and_reply)
+        # Submits the task to the executor for asynchronous execution.
+        self._executor.submit(execute_and_reply)
 
     def _on_mpi(self, data):
         parsed_data = meta_protocol.read_init(data)
@@ -633,11 +617,13 @@ class MetadataProviderServer(Server):
             try:
                 items = self._adapter.get_items(user, session_id, group)
                 if not items:
-                    self._log.warning(("None or empty field list from "
-                                       "get_items for group '%s'"), group)
-                res = meta_protocol.write_get_items(items)
+                    METADATA_LOGGER.warning(("None or empty field list from "
+                                             "get_items for group '%s'"),
+                                            group)
             except Exception as err:
                 res = meta_protocol.write_get_items(exception=err)
+            else:
+                res = meta_protocol.write_get_items(items)
             return res
         return execute
 
@@ -653,13 +639,13 @@ class MetadataProviderServer(Server):
                 fields = self._adapter.get_schema(user, session_id, group,
                                                   schema)
                 if not fields:
-                    self._log.warning(("None or empty field list from "
-                                       "get_schema for schema '%s' in group "
-                                       "'%s'"), schema, group)
-                res = meta_protocol.write_get_schema(fields)
+                    METADATA_LOGGER.warning(("None or empty field list from "
+                                             "get_schema for schema '%s' in "
+                                             "group '%s'"), schema, group)
             except Exception as err:
                 res = meta_protocol.write_get_schema(exception=err)
-
+            else:
+                res = meta_protocol.write_get_schema(fields)
             return res
         return execute
 
@@ -668,8 +654,7 @@ class MetadataProviderServer(Server):
 
         def execute():
             try:
-                items = [{"item": item,
-                          "allowedModeList":
+                items = [{"allowedModeList":
                           [mode for mode in list(Mode)
                            if self._adapter.mode_may_be_allowed(item, mode)],
                           "distinctSnapshotLength":
@@ -691,8 +676,7 @@ class MetadataProviderServer(Server):
 
         def execute():
             try:
-                items = [{"item": item,
-                          "allowedModeList":
+                items = [{"allowedModeList":
                           [mode for mode in list(Mode)
                            if self._adapter.ismode_allowed(user, item, mode)],
                           "allowedBufferSize":
@@ -762,7 +746,6 @@ class MetadataProviderServer(Server):
 
         def execute():
             try:
-
                 self._adapter.notify_mpn_device_access(user, mpn_device_info)
             except Exception as err:
                 res = meta_protocol.write_notify_device_acces(err)
@@ -810,12 +793,13 @@ class MetadataProviderServer(Server):
         return execute
 
     def _handle_ioexception(self, ioexception):
-        self._log.fatal(("Exception caught while reading/writing from/to "
-                         "network: <%s>, aborting..."), str(ioexception))
+        METADATA_LOGGER.fatal(("Exception caught while reading/writing from/to"
+                               " network: <%s>, aborting..."),
+                              str(ioexception))
         super(MetadataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
-        self._log.error("Caught exception: %s", str(exception))
+        METADATA_LOGGER.error("Caught exception: %s", str(exception))
         return False
 
     @property
@@ -839,7 +823,7 @@ class MetadataProviderServer(Server):
     def adapter_params(self):
         """A dictionary object to be passed to the
         :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.initialize`
-        method of the Remote Metadata Adapter, to supply optional parameters.
+        method, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters
         :Setter: Sets the dictionary object of optional parameters
@@ -861,108 +845,14 @@ class MetadataProviderServer(Server):
         lightstreamer_adapter.interfaces.metadata.MetadataProviderError: If an
          error occurred in the initialization phase. The adapter was not
          started.
-        :raises Exception: if an error occurred in the initialization phase.
-         The adapter was not started.
         """
-        self._log.info("Managing Metadata Adapter %s a thread pool size of %s",
-                       self.name, self.thread_pool_size)
-        super(MetadataProviderServer, self).start()
-
-
-class _ItemTask():
-
-    def __init__(self, request_id, issubscribe, do_task, do_late_task):
-        self._request_id = request_id
-        self._issubscribe = issubscribe
-        self._do_task = do_task
-        self._do_late_task = do_late_task
-
-    def do_task(self):
-        return self._do_task()
-
-    def do_late_task(self):
-        self._do_late_task()
-
-    @property
-    def code(self):
-        return self._request_id
-
-    @property
-    def issubscribe(self):
-        return self._issubscribe
-
-
-class _ItemManager():
-
-    def __init__(self, item_name, server, thread_pool):
-        self.item_name = item_name
-        self.tasks = deque()
-        self.thread_pool = thread_pool
-        self._code = None
-        self._isrunning = False
-        self._lock = Lock()
-        self.queued = 0
-        self._last_subscribe_outcome = False
-        self._server = server
-
-    @property
-    def code(self):
-        return self._code
-
-    def add_task(self, task):
-        with self._lock:
-            self.tasks.append(task)
-            if not self._isrunning:
-                self._isrunning = True
-                self.thread_pool.submit(self.deque)
-
-    def deque(self):
-        dequeued = 0
-        last_subscribe_outcome = True
-        while True:
-            with self._lock:
-                if dequeued == 0:
-                    last_subscribe_outcome = self._last_subscribe_outcome
-                if len(self.tasks) == 0:
-                    self._isrunning = False
-                    self._last_subscribe_outcome = last_subscribe_outcome
-                    break
-                # Deque next _ItemTask
-                item_task = self.tasks.popleft()
-                islast = len(self.tasks) == 0
-                dequeued += 1
-            try:
-                if item_task.issubscribe:
-                    # Task is a Subscription
-                    if not islast:
-                        item_task.do_late_task()
-                        last_subscribe_outcome = False
-                    else:
-                        with self._server.items_lock:
-                            self._code = item_task.code
-                        last_subscribe_outcome = item_task.do_task()
-                else:
-                    # Task is an Unsubscription
-                    if last_subscribe_outcome:
-                        item_task.do_task()
-                    else:
-                        item_task.do_late_task()
-                    with self._server.items_lock:
-                        self._code = None
-            except Exception:
-                # self._log.exception("Caught an exception")
-                pass
-
-        with self._server.items_lock:
-            self.queued -= dequeued
-            if not self._code and self.queued == 0:
-                item_manager = self._server.active_items.get(self.item_name)
-                if not item_manager:
-                    pass
-                elif item_manager != self:
-                    pass
-                else:
-                    del self._server.active_items[self.item_name]
+        METADATA_LOGGER.info(("Managing Metadata Adapter %s with a thread pool"
+                              " size of %d"), self.name, self.thread_pool_size)
+        try:
+            super(MetadataProviderServer, self).start()
+        except (TypeError, OSError) as err:
+            raise MetadataProviderError(("Caught an error during the "
+                                         "initialization phase")) from err
 
 
 class DataProviderServer(Server):
@@ -971,10 +861,8 @@ class DataProviderServer(Server):
 
     The object should be provided with a DataProvider instance and with
     suitable initialization parameters and established connections, then
-    activated through
-    :meth:`lightstreamer_adapter.server.DataProviderServer.start()`
-    and finally disposed through
-    :meth:`lightstreamer_adapter.server.Server.close()`.
+    activated through :meth:`DataProviderServer.start()` and finally disposed
+    through :meth:`Server.close()`.
     Further reuse of the same instance is not supported.
 
     The server will take care of sending keepalive packets on the connections
@@ -984,13 +872,13 @@ class DataProviderServer(Server):
 
     By default, the invocations to the Data Adapter methods will be done in
     a limited thread pool with a size determined by the number of detected cpu
-    cores. The size size can be specified through the provided
+    cores. The size can be specified through the provided
     ``thread_pool_size`` parameter. A size of 1 enforces strictly sequential
     invocations and can be used if parallelization of the calls is not
     supported by the Metadata Adapter. A value of 0, negative or ``None`` also
     implies the default behaviour as stated above.
 
-    Note that Subscribe and Unsubscribe invocations for the same item are
+    Note that :meth;Subscribe and Unsubscribe invocations for the same item are
     always guaranteed to be sequentialized in the right way, although they may
     not occur in the same thread.
     """
@@ -1025,37 +913,35 @@ class DataProviderServer(Server):
         if not isinstance(adapter, DataProvider):
             raise TypeError(("The provided adapter is not a subclass of "
                              "lightstreamer_adapter.interfaces.DataProvider"))
-        self._log = logging.getLogger(("lightstreamer-adapter.server."
-                                       "dataproviderserver"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
+        self._subscription_mgr = SubscriptionManager(self._executor)
         self.init_expected = True
-        self.active_items = {}
-        self.items_lock = RLock()
         self._notify_sender = None
         self.notify_address = (address[0], address[2])
         self._notify_sock = None
 
-    def _handle_request(self, request_id, data, method):
-        init_request = method == data_protocol.Method.DPI.name
+    def _handle_request(self, request_id, data, method_name):
+        init_request = method_name == str(data_protocol.Method.DPI)
         if init_request and not self.init_expected:
             raise RemotingException("Unexpected late {} request"
                                     .format(str(data_protocol.Method.DPI)))
         elif not init_request and self.init_expected:
             raise RemotingException(("Unexpected request {} while waiting for "
                                      "a {} request")
-                                    .format(method, data_protocol.Method.DPI))
+                                    .format(method_name,
+                                            data_protocol.Method.DPI))
         if init_request:
             self.init_expected = False
             res = self._on_dpi(data)
             self._send_reply(request_id, res)
-        elif method == "SUB":
+        elif method_name == "SUB":
             self._on_sub(request_id, data)
-        elif method == "USB":
+        elif method_name == "USB":
             self._on_usb(request_id, data)
         else:
-            self._log.warning("Discarding unknown request: %s", method)
+            DATA_LOGGER.warning("Discarding unknown request: %s", method_name)
 
     @property
     def adapter_config(self):
@@ -1078,7 +964,7 @@ class DataProviderServer(Server):
     def adapter_params(self):
         """A dictionary object to be passed to the
         :meth:`lightstreamer_adapter.interfaces.data.DataProvider.initialize`
-        method of the Remote Data Adapter, to supply optional parameters.
+        method, to supply optional parameters.
 
         :Getter: Returns the dictionary object of optional parameters
         :Setter: Sets the dictionary object of optional parameters
@@ -1091,27 +977,21 @@ class DataProviderServer(Server):
         self._params = value
 
     def _on_request_receiver_started(self):
-        """Method intended to be overridden by subclasses. This method is an
-        hook to notify the subclass that the Request Receiver has been started.
-        This class creates an additional socket to enable the unidirectional
-        communication from the Remote Data Adapter to the Proxy Adapter, in
-        order to send data over the notification channel.
+        """Invoked to notify this subclass the the Request Receiver has been
+        started.
+
+        This class creates an additional socket to enable the communication
+        from the Remote Data Adapter to the Proxy Adapter, in order to send
+        data over the notification channel.
         """
         self._notify_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._notify_sock.connect(self.notify_address)
         notify_sender_log = logging.getLogger(("lightstreamer-adapter."
                                                "requestreply.notifications."
                                                "NotifySender"))
-        self._notify_sender = _Sender(sock=self._notify_sock, name=self.name,
-                                      keep_alive=self.keep_alive,
+        self._notify_sender = _Sender(sock=self._notify_sock, server=self,
                                       log=notify_sender_log)
         self._notify_sender.start()
-
-    def _get_active_item(self, item_name):
-        with self.items_lock:
-            if item_name in self.active_items:
-                item_manager = self.active_items[item_name]
-                return item_manager.code
 
     def _on_dpi(self, data):
         parsed_data = data_protocol.read_init(data)
@@ -1129,15 +1009,16 @@ class DataProviderServer(Server):
         return res
 
     def _on_sub(self, request_id, data):
-        item = data_protocol.read_sub(data)
+        item_name = data_protocol.read_sub(data)
 
         def do_task():
+            DATA_LOGGER.debug("Processing request: %s", request_id)
             success = False
             try:
-                snapshot_available = self._adapter.issnapshot_available(item)
-                if snapshot_available:
-                    self.end_of_snapshot(item)
-                self._adapter.subscribe(item)
+                snpt_available = self._adapter.issnapshot_available(item_name)
+                if snpt_available:
+                    self.end_of_snapshot(item_name)
+                self._adapter.subscribe(item_name)
                 success = True
             except Exception as err:
                 res = data_protocol.write_sub(err)
@@ -1147,24 +1028,19 @@ class DataProviderServer(Server):
             return success
 
         def do_late_task():
-            self._log.info("Skipping request: %s", request_id)
+            DATA_LOGGER.info("Skipping request: %s", request_id)
             subscribe_err = SubscribeError("Subscribe request come too late")
             res = data_protocol.write_sub(subscribe_err)
             return res
 
-        sub_task = _ItemTask(request_id, True, do_task, do_late_task)
-        with self.items_lock:
-            if item not in self.active_items:
-                self.active_items[item] = _ItemManager(item, self,
-                                                       self.thread_pool)
-            item_manager = self.active_items[item]
-            item_manager.queued += 1
-        item_manager.add_task(sub_task)
+        sub_task = ItemTask(request_id, True, do_task, do_late_task)
+        self._subscription_mgr.do_subscription(item_name, sub_task)
 
     def _on_usb(self, request_id, data):
         item_name = data_protocol.read_usub(data)
 
         def do_task():
+            DATA_LOGGER.debug("Processing request: %s", request_id)
             success = False
             try:
                 self._adapter.unsubscribe(item_name)
@@ -1177,80 +1053,74 @@ class DataProviderServer(Server):
             return success
 
         def do_late_task():
-            self._log.info("Skipping request: %s", request_id)
+            DATA_LOGGER.info("Skipping request: %s", request_id)
             res = data_protocol.write_unsub()
             self._send_reply(request_id, res)
 
-        unsub_task = _ItemTask(request_id, False, do_task, do_late_task)
-        with self.items_lock:
-            if item_name not in self.active_items:
-                self._log.error("Task list expected for item %s", item_name)
-                return
-            item_manager = self.active_items[item_name]
-            item_manager.queued += 1
-        item_manager.add_task(unsub_task)
+        unsub_task = ItemTask(request_id, False, do_task, do_late_task)
+        self._subscription_mgr.do_unsubscription(item_name, unsub_task)
 
     @notify
     def _send_notify(self, ntfy):
         self._notify_sender.send(ntfy)
 
     def update(self, item_name, events_map, issnapshot):
-        request_id = self._get_active_item(item_name)
+        request_id = self._subscription_mgr.get_active_item(item_name)
         if request_id:
             try:
                 res = data_protocol.write_update_map(item_name, request_id,
                                                      issnapshot, events_map)
                 self._send_notify(res)
-            except protocol.RemotingException as err:
-                self._on_exception(err)
+            except RemotingException as err:
+                self.on_exception(err)
         else:
-            self._log.warning("Unexpected update for item %s", item_name)
+            DATA_LOGGER.warning("Unexpected update for item %s", item_name)
 
     def end_of_snapshot(self, item_name):
-        request_id = self._get_active_item(item_name)
+        request_id = self._subscription_mgr.get_active_item(item_name)
         if request_id:
             try:
                 res = data_protocol.write_eos(item_name, request_id)
                 self._send_notify(res)
-            except protocol.RemotingException as err:
-                self._on_exception(err)
+            except RemotingException as err:
+                self.on_exception(err)
         else:
-            self._log.warning("Unexpected end_of_snapshot notify for item %s",
-                              item_name)
+            DATA_LOGGER.warning(("Unexpected end_of_snapshot notify for item "
+                                 "%s"), item_name)
 
     def clear_snapshot(self, item_name):
-        request_id = self._get_active_item(item_name)
+        request_id = self._subscription_mgr.get_active_item(item_name)
         if request_id:
             try:
                 res = data_protocol.write_cls(item_name, request_id)
                 self._send_notify(res)
-            except protocol.RemotingException as err:
-                self._on_exception(err)
+            except RemotingException as err:
+                self.on_exception(err)
         else:
-            self._log.warning("Unexpected clear_snapshot for item %s",
-                              item_name)
+            DATA_LOGGER.warning(("Unexpected clear_snapshot for item %s"),
+                                item_name)
 
     def failure(self, exception):
         try:
             res = data_protocol.write_failure(exception)
             self._send_notify(res)
-        except protocol.RemotingException as err:
-            self._on_exception(err)
+        except RemotingException as err:
+            self.on_exception(err)
 
     def _handle_ioexception(self, ioexception):
-        self._log.fatal(("Exception caught while reading/writing from/to "
-                         "network: <%s>, aborting..."), str(ioexception))
+        DATA_LOGGER.fatal(("Exception caught while reading/writing from/to "
+                           "network: <%s>, aborting..."), str(ioexception))
         super(DataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
-        self._log.error("Caught exception: %s, trying to notify a failure...",
-                        str(exception))
+        DATA_LOGGER.error(("Caught exception: %s, trying to notify a failure.."
+                           "."), str(exception))
         try:
             res = data_protocol.write_failure(exception)
             self._send_notify(res)
-        except Exception:
-            self._log.exception(("Caught second-level exception while trying "
-                                 "to notify a first-level exception"))
+        except RemotingException:
+            DATA_LOGGER.exception(("Caught second-level exception while trying"
+                                   " to notify a first-level exception"))
 
         return False
 
@@ -1262,15 +1132,24 @@ class DataProviderServer(Server):
         :raises lightstreamer_adapter.interfaces.data.DataProviderError: If an
          error occurred in the initialization phase. The adapter was not
          started.
-        :raises Exception: if an error occurred in the initialization phase.
-         The adapter was not started.
         """
-        super(DataProviderServer, self).start()
+        DATA_LOGGER.info(("Managing Data Adapter %s with a thread pool size of"
+                          " %d"), self.name, self.thread_pool_size)
+        try:
+            super(DataProviderServer, self).start()
+        except (TypeError, OSError) as err:
+            raise DataProviderError(("Caught an error during the "
+                                     "initialization phase")) from err
 
     def close(self):
+        """Stops the management of the Remote Data Adapter attached to this
+        Server object.
+        The method first invokes the inherited Server.close() and then closes
+        the Notify Sender object.
+        """
         super(DataProviderServer, self).close()
+        self._notify_sock.close()
         self._notify_sender.quit()
-        self._log.info("Stopped")
 
 
 class ExceptionHandler(metaclass=ABCMeta):
