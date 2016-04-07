@@ -1,5 +1,4 @@
 import base64
-import logging
 from urllib import parse
 from collections import OrderedDict
 
@@ -16,8 +15,6 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    SubscribeError,
                                                    FailureError)
 
-log = logging.getLogger(__name__)
-
 EMPTY_VALUE = "$"
 NULL_VALUE = "#"
 METHOD_KEEP_ALIVE = "KEEPALIVE"
@@ -26,9 +23,7 @@ MODES = OrderedDict([("RAW", "R"),
                      ("DISTINCT", "D"),
                      ("COMMAND", "C")])
 
-_reverse_modes = {v: k for k, v in MODES.items()}
-
-_exceptions_map = {str(MetadataProviderError): 'M',
+_EXCEPTIONS_MAP = {str(MetadataProviderError): 'M',
                    str(NotificationError): 'N',
                    str(AccessError): 'A',
                    str(ItemsError): 'I',
@@ -46,13 +41,13 @@ class RemotingException(Exception):
     """
 
 
-def join(*args, append=False, dec=str):
-    members = [dec(i) for i in args]
-    suffix = "|" if append else ''
+def join(*args, append_separator=False):
+    members = [i for i in args]
+    suffix = "|" if append_separator else ''
     return "|".join(members) + suffix
 
 
-def remoting_exception(method):
+def remoting_exception_on_parse(method):
     def wrap(protocol_func):
         def _wrap(*args, **kwargs):
             try:
@@ -60,71 +55,58 @@ def remoting_exception(method):
             except RemotingException as err:
                 msg = "{} while parsing a {} request".format(str(err),
                                                              str(method))
-                raise Exception(msg) from err
+                raise RemotingException(msg)
             except Exception as err:
                 msg = ("An unexpected exception caught while parsing a {} "
                        "request")
                 raise RemotingException(msg.format(str(method))) from err
-
-        return _wrap
-    return wrap
-
-
-def encoding_exception(arg1):
-    def wrap(protocol_func):
-        def _wrap(*args, **kwargs):
-            try:
-                return protocol_func(*args, **kwargs)
-            except RemotingException as err:
-                msg = "{} while parsing a {} request".format(str(err), arg1)
-                raise Exception(msg) from err
-            except Exception as err:
-                msg = ("An unexpected exception caught while parsing a {} "
-                       "request")
-                raise Exception(msg.format(arg1)) from err
-
         return _wrap
     return wrap
 
 
 def parse_request(request):
-    log.debug("Received request %s", request)
-    tokens = request.rstrip().split('|')
-    not_empty_tokens = [t for t in tokens if t.rstrip()]
+    packet = request.rstrip().split('|')
+    not_empty_tokens = [t for t in packet if t.rstrip()]
     if len(not_empty_tokens) <= 1:
         return None
-    method_id = tokens[0]
-    return dict([("id", method_id),
-                 ("method", not_empty_tokens[1]),
-                 ("test_data", not_empty_tokens[2:])])
+    method_id = packet[0]
+    return {"id": method_id,
+            "method": not_empty_tokens[1],
+            "data": not_empty_tokens[2:]}
 
 
-def read_token(tokens, index):
+def read_token(packet, index):
+    """Reads a the token at the specified index of the provided packet.
+    """
     try:
-        return tokens[index]
+        return packet[index]
     except IndexError as err:
         raise RemotingException("Token not found") from err
 
 
-def read(tokens, token_type, index):
-    current_token_type = read_token(tokens, index)
+def read(packet, data_type, index):
+    """Reads and decode a single sequence of '<type>|<segment>', located at
+    the specified index in the provided packet, where:
 
-    if current_token_type == token_type:
-        current_token = read_token(tokens, index + 1)
-        if current_token_type == 'S':
+    type is the native type of the segment and must match the
+    provided data_type;
+    segment is the content of a field or argument of a method.
+    """
+    current_data_type = read_token(packet, index)
+
+    if current_data_type == data_type:
+        current_token = read_token(packet, index + 1)
+        if current_data_type == 'S':
             return decode_string(current_token)
-        elif current_token_type == 'M':
+        elif current_data_type == 'M':
             return decode_modes(current_token)
-        elif current_token_type == "I":
+        elif current_data_type == "I":
             return int(current_token)
-        elif current_token_type == "P":
+        elif current_data_type == "P":
             return decode_nobile_platform_type(current_token)
-        else:
-            # Never happens (hoping!)
-            raise RemotingException("Unknown type!")
     else:
         raise RemotingException("Unknown type '{}' found".
-                                format(current_token_type))
+                                format(current_data_type))
 
 
 def read_map(tokens, start, length=None):
@@ -163,16 +145,27 @@ def encode_string(string):
 
     try:
         return parse.quote_plus(string)
-    except Exception as err:
-        raise RemotingException("Unknown error while quoting string") from err
+    except TypeError as err:
+        raise RemotingException("Unknown error while url-encoding string") \
+            from err
 
 
 def encode_boolean(boolean):
-    return str(int(boolean))
+    if isinstance(boolean, bool):
+        return str(int(boolean))
+    raise RemotingException("Not a bool value: '{}'".format(str(boolean)))
+
+
+def encode_integer(integer):
+    if isinstance(integer, int) and not isinstance(integer, bool):
+        return str(integer)
+    raise RemotingException("Not an int value: '{}'".format(str(integer)))
 
 
 def encode_double(double):
-    return float(double)
+    if isinstance(double, float):
+        return str(float(double))
+    raise RemotingException("Not a float value: '{}'".format(str(double)))
 
 
 def encode_modes(modes):
@@ -191,13 +184,6 @@ def encode_byte(byte_str):
         return base64.b64encode(byte_str).decode('utf-8')
     except Exception as err:
         raise RemotingException("Error while base64-encoding bytes") from err
-
-
-def encode_value(value):
-    if value is None or isinstance(value, str):
-        return "S|" + encode_string(value)
-    elif isinstance(value, bytes):
-        return "Y|" + encode_byte(value)
 
 
 def decode_modes(modes):
@@ -234,15 +220,15 @@ def _append_exceptions(response, error, subtype=True):
     tokens = []
     error_type = str(type(error))
     error_id = None
-    if subtype and error_type in _exceptions_map:
-        error_id = _exceptions_map[error_type]
+    if subtype and error_type in _EXCEPTIONS_MAP:
+        error_id = _EXCEPTIONS_MAP[error_type]
         tokens.append(error_id)
     else:
         response += '|'
 
     tokens.append(encode_string(str(error)))
 
-    # Handle ConflictingSessionError as sub-case of CreditsError
+    # Handles ConflictingSessionError as sub-case of CreditsError.
     if error_id in ['C', 'X']:
         tokens.append(str(error.client_error_code))
         tokens.append(encode_string(error.client_user_msg))
