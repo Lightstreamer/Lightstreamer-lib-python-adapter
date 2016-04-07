@@ -3,20 +3,21 @@ import sys
 import time
 import unittest
 import logging
+import queue
+from collections import OrderedDict
 from common import RemoteAdapterBase
+
+from context import lightstreamer_adapter
+
 from lightstreamer_adapter.server import DataProviderServer
 from lightstreamer_adapter.interfaces.data import (DataProviderError,
-                                           SubscribeError,
-                                           FailureError,
-                                           DataProvider)
-from collections import OrderedDict
-import queue
+                                                   SubscribeError,
+                                                   FailureError,
+                                                   DataProvider)
+from lightstreamer_adapter.interfaces.metadata import MetadataProviderError
+from tests.common import LightstreamerServerSimulator
 
-testdir = os.path.dirname(__file__)
-srcdir = '../python_adapter'
-sys.path.insert(0, os.path.join(testdir, srcdir))
 
-logging.basicConfig(dateFmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
@@ -38,7 +39,7 @@ class DataProviderTestClass(DataProvider):
         self.collector['params'] = parameters
 
     def set_listener(self, event_listener):
-        self._listener = event_listener
+        self.listener = event_listener
 
     def issnapshot_available(self, item):
         return False
@@ -69,6 +70,19 @@ class DataProviderTestClass(DataProvider):
 
 class DataProviderInitializationTest(unittest.TestCase):
 
+    def test_start_with_error(self):
+        server = DataProviderServer(DataProviderTestClass({}),
+                                    (RemoteAdapterBase.HOST,
+                                     RemoteAdapterBase.REQ_REPLY_PORT,
+                                     RemoteAdapterBase.NOTIFY_PORT))
+        with self.assertRaises(Exception) as err:
+            server.start()
+
+        the_exception = err.exception
+        self.assertIsInstance(the_exception, DataProviderError)
+        self.assertEqual(str(the_exception),
+                         "Caught an error during the initialization phase")
+
     def test_not_right_adapter(self):
         with self.assertRaises(TypeError) as te:
             DataProviderServer({},
@@ -82,16 +96,16 @@ class DataProviderInitializationTest(unittest.TestCase):
                          ("The provided adapter is not a subclass of "
                           "lightstreamer_adapter.interfaces.DataProvider"))
 
-    def test_properties(self):
+    def test_default_properties(self):
         # Test default properties
         server = DataProviderServer(DataProviderTestClass({}),
                                     (RemoteAdapterBase.HOST,
                                      RemoteAdapterBase.REQ_REPLY_PORT,
                                      RemoteAdapterBase.NOTIFY_PORT))
 
-        self.assertEquals('#', server.name[0])
-        self.assertEquals(1, server.keep_alive)
-        self.assertEquals(4, server.thread_pool_size)
+        self.assertEqual('#', server.name[0])
+        self.assertEqual(1, server.keep_alive)
+        self.assertEqual(4, server.thread_pool_size)
 
     def test_thread_pool_size(self):
         # Test non default properties
@@ -101,7 +115,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=2)
 
-        self.assertEquals(2, server.thread_pool_size)
+        self.assertEqual(2, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -109,7 +123,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=0)
 
-        self.assertEquals(4, server.thread_pool_size)
+        self.assertEqual(4, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -117,7 +131,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=-2)
 
-        self.assertEquals(4, server.thread_pool_size)
+        self.assertEqual(4, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -125,7 +139,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=None)
 
-        self.assertEquals(4, server.thread_pool_size)
+        self.assertEqual(4, server.thread_pool_size)
 
     def test_keep_alive_value(self):
         # Test non default properties
@@ -135,7 +149,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=2)
 
-        self.assertEquals(2, server.keep_alive)
+        self.assertEqual(2, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -143,7 +157,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=0)
 
-        self.assertEquals(0, server.keep_alive)
+        self.assertEqual(0, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -151,7 +165,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=-2)
 
-        self.assertEquals(0, server.keep_alive)
+        self.assertEqual(0, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -159,7 +173,7 @@ class DataProviderInitializationTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=None)
 
-        self.assertEquals(0, server.keep_alive)
+        self.assertEqual(0, server.keep_alive)
 
     def atest_default_keep_alive(self):
         # Receive a KEEPALIVE message because no requests have been issued
@@ -169,21 +183,23 @@ class DataProviderInitializationTest(unittest.TestCase):
             end = time.time()
             self.assertGreaterEqual(end - start, 1)
 
-
 class DataProviderTest(RemoteAdapterBase):
 
-    def on_setup(self):
+    def __init__(self, method_name):
+        super(DataProviderTest, self).__init__(method_name)
+        self.adapter = None
         self.collector = {}
+
+    def on_setup(self):
         # Configuring and starting MetadataProviderServer
         self.adapter = DataProviderTestClass(self.collector)
-        remote_adapter_server = DataProviderServer(
-                                    adapter=self.adapter,
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
-                                    keep_alive=1,
-                                    name="DataProviderTest")
-        # Leave default behaviour for exception handling
+        address = (RemoteAdapterBase.HOST,
+                   RemoteAdapterBase.REQ_REPLY_PORT,
+                   RemoteAdapterBase.NOTIFY_PORT)
+        remote_adapter_server = DataProviderServer(adapter=self.adapter,
+                                                   address=address,
+                                                   keep_alive=1,
+                                                   name="DataProviderTest")
         return remote_adapter_server
 
     def get_notify_address(self):
@@ -192,8 +208,8 @@ class DataProviderTest(RemoteAdapterBase):
     def on_teardown(self, server):
         log.info("DataProviderTest completed")
 
-    def do_subscription(self, item):
-        self.send_request("10000010c3e4d0462|SUB|S|" + item)
+    def do_subscription(self, item_name):
+        self.send_request("10000010c3e4d0462|SUB|S|" + item_name)
 
     def do_subscription_and_skip(self, item):
         self.send_request("10000010c3e4d0462|SUB|S|" + item, True)
@@ -224,15 +240,16 @@ class DataProviderTest(RemoteAdapterBase):
             time.sleep(0.5)
             self.do_subscription(item)
             self.assert_not_reply("KEEPALIVE")
+
         # As no more requests have been issued, a period longer than 1 second
         # must have been elapsed, therefore we expect a KEEPALIVE message
-        self.assert_reply("KEEPALIVE")
+        self.assert_reply("KEEPALIVE", timeout=2)
 
     def test_init(self):
         self.do_init()
         self.assert_reply("10000010c3e4d0462|DPI|V")
         self.assertDictEqual({}, self.collector['params'])
-        self.assertIsNotNone(self.adapter._listener)
+        self.assertIsNotNone(self.adapter.listener)
 
     def test_init_with_adapter_config(self):
         self.remote_adapter.adapter_config = "config.file"
@@ -390,16 +407,16 @@ class DataProviderTest(RemoteAdapterBase):
         self.send_request("10000010c3e4d0462|USB|S||")
         self.assert_notify("FAL|E|Token+not+found+while+parsing+a+USB+request")
 
-    def test_EOS(self):
+    def test_eos(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
-        self.adapter._listener.end_of_snapshot("aapl_")
+        self.adapter.listener.end_of_snapshot("aapl_")
         self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
 
-    def test_CLS(self):
+    def test_cls(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
-        self.adapter._listener.clear_snapshot("aapl_")
+        self.adapter.listener.clear_snapshot("aapl_")
         self.assert_notify("CLS|S|aapl_|S|10000010c3e4d0462")
 
     def test_update_with_str_value(self):
@@ -410,7 +427,7 @@ class DataProviderTest(RemoteAdapterBase):
         # expressed in the assert statement.
         events_map = OrderedDict([("field1", "value1"),
                                   ("field2", "value2")])
-        self.adapter._listener.update("item1", events_map, False)
+        self.adapter.listener.update("item1", events_map, False)
 
         self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
                             "|value1|S|field2|S|value2"))
@@ -423,7 +440,7 @@ class DataProviderTest(RemoteAdapterBase):
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", b'12:48:24')])
-        self.adapter._listener.update('aapl', events_map, True)
+        self.adapter.listener.update('aapl', events_map, True)
         self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
                             "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|Y|"
                             "MTI6NDg6MjQ="))
@@ -436,7 +453,7 @@ class DataProviderTest(RemoteAdapterBase):
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", None)])
-        self.adapter._listener.update('aapl', events_map, True)
+        self.adapter.listener.update('aapl', events_map, True)
         self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
                             "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|S|#"))
 
@@ -448,14 +465,13 @@ class DataProviderTest(RemoteAdapterBase):
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", "")])
-        self.adapter._listener.update('aapl', events_map, True)
+        self.adapter.listener.update('aapl', events_map, True)
         self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
                             "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|S|$"))
 
-
     def test_failure(self):
         self.do_init_and_skip()
-        self.adapter._listener.failure(Exception("Generic exception"))
+        self.adapter.listener.failure(Exception("Generic exception"))
         self.assert_notify("FAL|E|Generic+exception")
 
 if __name__ == "__main__":
