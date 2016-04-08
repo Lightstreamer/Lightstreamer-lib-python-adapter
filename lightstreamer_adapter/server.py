@@ -3,11 +3,11 @@ Core module of the Lightstreamer SDK for Python Adapters, containing all
 classes (public and private), needed to configure and starts the Remote
 Adapters.
 """
-import sys
 import socket
 import queue
 import logging
 import time
+import os
 from multiprocessing import cpu_count
 from threading import Thread, Event
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -26,7 +26,6 @@ from lightstreamer_adapter.protocol import RemotingException
 from lightstreamer_adapter.subscription import SubscriptionManager, ItemTask
 from . import DATA_PROVIDER_LOGGER as DATA_LOGGER
 from . import METADATA_PROVIDER_LOGGER as METADATA_LOGGER
-import os
 
 __all__ = ['Server', 'DataProviderServer', 'MetadataProviderServer',
            'ExceptionHandler']
@@ -356,7 +355,6 @@ class Server(metaclass=ABCMeta):
         See documentation from the ExceptionHandler.handle_io exception method
         for further details.
         """
-        # try:
         if self._exception_handler is not None:
             self._log.info(("Caught exception: %s, notifying the "
                             "application..."), str(ioexception))
@@ -366,9 +364,6 @@ class Server(metaclass=ABCMeta):
                 return
 
         self._handle_ioexception(ioexception)
-        # except BaseException as err:
-        #    print("ERROR ON_IOEXCEPTION {}".format(str(err)))
-
 
     def on_exception(self, exception):
         """Called by the Remote Server upon an unexpected error.
