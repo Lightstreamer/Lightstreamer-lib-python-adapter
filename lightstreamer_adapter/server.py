@@ -1,8 +1,8 @@
-'''
+"""
 Core module of the Lightstreamer SDK for Python Adapters, containing all
 classes (public and private), needed to configure and starts the Remote
 Adapters.
-'''
+"""
 import sys
 import socket
 import queue
@@ -52,7 +52,6 @@ class _Sender(object):
     """Helper class which manages the communications from the Remote Adapter to
     the ProxyAdapter, sending data over the "request/replies" or
     "notifications" channels.
-    sender.
     """
     def __init__(self, sock, server, log):
         self._sock = sock
@@ -77,8 +76,7 @@ class _Sender(object):
         self._send_thread.start()
 
     def send(self, notification):
-        """Enqueues a reply or notification to be sent to the Proxy Adapter.
-        """
+        """Enqueues a reply or notification to be sent to the Proxy Adapter."""
         self._send_queue.put(notification)
 
     def _do_run(self):
@@ -110,8 +108,7 @@ class _Sender(object):
         self._log.info("'%s' stopped", self._server.name)
 
     def quit(self):
-        """Terminates the communications with the Proxy Adapter.
-        """
+        """Terminates the communications with the Proxy Adapter."""
         # Enqueues a None item to notify the Sender-Thread-XXX of stopping
         # dequeuing of incoming replies/notifications.
         self._send_queue.put(None)
@@ -718,9 +715,9 @@ class MetadataProviderServer(Server):
             try:
                 self._adapter.notify_new_tables(user, session_id, table_infos)
             except Exception as err:
-                res = meta_protocol.write_notify_new_tables_data(err)
+                res = meta_protocol.write_notify_new_tables(err)
             else:
-                res = meta_protocol.write_notify_new_tables_data()
+                res = meta_protocol.write_notify_new_tables()
             return res
         return execute
 

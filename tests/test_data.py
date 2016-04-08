@@ -1,5 +1,3 @@
-import os
-import sys
 import time
 import unittest
 import logging
@@ -15,7 +13,6 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    FailureError,
                                                    DataProvider)
 from lightstreamer_adapter.interfaces.metadata import MetadataProviderError
-from tests.common import LightstreamerServerSimulator
 
 
 log = logging.getLogger(__name__)
@@ -227,9 +224,9 @@ class DataProviderTest(RemoteAdapterBase):
         # Receive a KEEPALIVE message because no requests have been issued
         for _ in range(0, 3):
             start = time.time()
-            self.assert_reply("KEEPALIVE")
+            self.assert_reply("KEEPALIVE", timeout=1.1)
             end = time.time()
-            self.assertGreaterEqual(end - start, 1)
+            self.assertGreaterEqual(end - start, 0.99)
 
     def test_no_keep_alive(self):
         self.do_init_and_skip()
