@@ -309,7 +309,7 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** Always returns a zero value.
         """
-        return 0
+        return 0.0
 
     def get_allowed_max_item_frequency(self, user, item):
         """Called by Lightstreamer Kernel through the Remote Server to ask for
@@ -347,7 +347,7 @@ class MetadataProvider():
         limit. This also enables unfiltered dispatching for Items subscribed
         in MERGE or DISTINCT mode.
         """
-        return 0
+        return 0.0
 
     def get_allowed_buffer_size(self, user, item):
         """Called by Lightstreamer Kernel through the Remote Server to ask for
@@ -462,7 +462,7 @@ class MetadataProvider():
         subscribed in MERGE or DISTINCT mode. Therefore the method always
         returns zero, to mean that incoming ItemEvents must not be prefiltered.
         """
-        return 0
+        return 0.0
 
     def get_distinct_snapshot_length(self, item):
         """Called by Lightstreamer Kernel through the Remote Server to ask for
