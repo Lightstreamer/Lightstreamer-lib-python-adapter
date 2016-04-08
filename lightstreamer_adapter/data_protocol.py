@@ -1,3 +1,4 @@
+"""Functionalities implementing the Data Provider Protocol."""
 from enum import Enum
 from lightstreamer_adapter.protocol import (join,
                                             encode_string as enc_str,
@@ -15,8 +16,7 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
 
 
 class Method(Enum):
-    """Enum for representing the methods of the Data Provider protocol.
-    """
+    """Enum for representing the methods of the Data Provider Protocol."""
     DPI = 1
     SUB = 2
     USB = 3
@@ -29,7 +29,14 @@ class Method(Enum):
         return self.name
 
 
+@remoting_exception_on_parse(Method.DPI)
+def read_init(data):
+    """Reads and parses a DPI ('Data Init') request."""
+    return read_map(data, 0)
+
+
 def write_init(exception=None):
+    """Encodes and returns a DPI ('Data Init') response."""
     if not exception:
         return join(str(Method.DPI), "V")
     else:
@@ -37,17 +44,14 @@ def write_init(exception=None):
                                  DataProviderError)
 
 
-@remoting_exception_on_parse(Method.DPI)
-def read_init(data):
-    return read_map(data, 0)
-
-
 @remoting_exception_on_parse(Method.SUB)
 def read_sub(data):
+    """Reads and parses a SUB ('Subscribe') request."""
     return read(data, "S", 0)
 
 
 def write_sub(exception=None):
+    """Encodes and returns a SUB ('Subscribe') response."""
     if not exception:
         return join(str(Method.SUB), "V")
     else:
@@ -58,10 +62,12 @@ def write_sub(exception=None):
 
 @remoting_exception_on_parse(Method.USB)
 def read_usub(data):
+    """Reads and parses a USB ('Unsubscribe') request."""
     return read(data, "S", 0)
 
 
 def write_unsub(exception=None):
+    """Encodes and returns a USB ('Unsubscribe') response."""
     if not exception:
         return join(str(Method.USB), 'V')
     else:
@@ -70,7 +76,9 @@ def write_unsub(exception=None):
                                  FailureError)
 
 
-def encode_value(value):
+def _encode_value(value):
+    """Encodes a value passed in an update map to be write in ad UD3 response.
+    """
     if value is None or isinstance(value, str):
         return "S|" + enc_str(value)
     elif isinstance(value, bytes):
@@ -82,13 +90,14 @@ def encode_value(value):
 
 
 def write_update_map(item_name, request_id, issnapshot, events_map):
+    """Encodes and returns a UD3 ('Update By Map') response."""
     update = join(str(Method.UD3),
                   'S', enc_str(item_name),
                   'S', enc_str(request_id),
                   'B', enc_bool(issnapshot),
-               append_separator=events_map)
+                  append_separator=events_map)
     if events_map:
-        tokens = [join('S', enc_str(field), encode_value(value))
+        tokens = [join('S', enc_str(field), _encode_value(value))
                   for field, value in events_map.items()]
         return update + "|".join(tokens)
     else:
@@ -96,12 +105,15 @@ def write_update_map(item_name, request_id, issnapshot, events_map):
 
 
 def write_eos(item, request_id):
+    """Encodes and returns an EOS ('End Of Snapshot') response."""
     return join(str(Method.EOS), "S", enc_str(item), "S", enc_str(request_id))
 
 
 def write_cls(item, request_id):
+    """Encodes and returns a CLS ('Clear Snapshot') response string."""
     return join(str(Method.CLS), "S", enc_str(item), "S", enc_str(request_id))
 
 
 def write_failure(exception):
+    """Encodes and returns a FAL ('Failure') response string."""
     return join(str(Method.FAL), 'E', enc_str(str(exception)))

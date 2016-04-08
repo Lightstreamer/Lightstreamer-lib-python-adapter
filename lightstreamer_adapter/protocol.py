@@ -1,3 +1,4 @@
+"""Commons functionalities implementing the ARI Protocol."""
 import base64
 from urllib import parse
 from collections import OrderedDict

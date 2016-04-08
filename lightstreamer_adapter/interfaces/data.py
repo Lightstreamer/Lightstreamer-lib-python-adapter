@@ -331,8 +331,7 @@ class ItemEventListener(metaclass=ABCMeta):
 
 
 class DataError(Exception):
-    """Base class for all exceptions directly raised by the Data Adapter.
-    """
+    """Base class for all exceptions directly raised by the Data Adapter."""
     def __init__(self, msg):
         self._msg = msg
         super(DataError, self).__init__(msg)
