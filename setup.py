@@ -22,7 +22,7 @@ packages = ['lightstreamer_adapter',
 
 setup(
     name='lightstreamer_adapter',
-    version='1.0.0a26',
+    version='1.0.0a1',
     description='Lightstreamer SDK for Python Adapters',
     long_description=readme + '\n\n' + history,
     url='https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter',
