@@ -1,4 +1,4 @@
-"""Functionalities implementing the Data Provider Protocol."""
+"""Metadata Provider Protocol implementation."""
 from enum import Enum
 from lightstreamer_adapter.protocol import (join,
                                             read,
