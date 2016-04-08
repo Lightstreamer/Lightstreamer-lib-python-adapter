@@ -65,7 +65,7 @@ class DataProviderTestClass(DataProvider):
         self.collector.update({'itemName': item})
 
 
-class DataProviderInitializationTest(unittest.TestCase):
+class DataProviderServerInitTest(unittest.TestCase):
 
     def test_start_with_error(self):
         server = DataProviderServer(DataProviderTestClass({}),
@@ -180,10 +180,11 @@ class DataProviderInitializationTest(unittest.TestCase):
             end = time.time()
             self.assertGreaterEqual(end - start, 1)
 
-class DataProviderTest(RemoteAdapterBase):
+
+class DataProviderServerTest(RemoteAdapterBase):
 
     def __init__(self, method_name):
-        super(DataProviderTest, self).__init__(method_name)
+        super(DataProviderServerTest, self).__init__(method_name)
         self.adapter = None
         self.collector = {}
 

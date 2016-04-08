@@ -109,29 +109,33 @@ class MetadataProtocolTest(unittest.TestCase):
                                                  wants_tables_notification)
         self.assertEqual("NUA|D|1.45|B|1", res)
 
-    def test_nus_missing_values(self):
-        """Tests the response to a NUS request in case of a
-        RemotingException because of missing values.
+    def test_nus_wrong_max_bandwidth(self):
+        """Tests the response to a NUS request in case of the Allowed Max
+        Bandwidth is of a wrong type.
         """
-        allowed_max_bandwidth = None
-        wants_tables_notification = False
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_notiy_user(metadata_protocol.Method.NUS,
-                                               allowed_max_bandwidth,
-                                               wants_tables_notification)
-        self.assertEqual("Not a float value: 'None'", str(err.exception))
+        method = metadata_protocol.Method.NUS
+        allowed_max_bandwidth_values = [None, 4, "str", False]
+        for band_width in allowed_max_bandwidth_values:
+            with self.assertRaises(RemotingException) as err:
+                metadata_protocol.write_notiy_user(method,
+                                                   band_width,
+                                                   True)
+            self.assertEqual("Not a float value: '{}'".format(band_width),
+                             str(err.exception))
 
-    def test_nus_wrong_bool_type(self):
-        """Tests the response to a NUS request in case of a
-        RemotingException because of error type when a bool is expected.
+    def test_nus_wrong_wants_tab_notif(self):
+        """Tests the response to a NUS request in case of the Wants Table
+        Notification is of a wrong type.
         """
-        allowed_max_bandwidth = 1.45
-        wants_tables_notification = 1
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_notiy_user(metadata_protocol.Method.NUS,
-                                               allowed_max_bandwidth,
-                                               wants_tables_notification)
-        self.assertEqual("Not a bool value: '1'", str(err.exception))
+        method = metadata_protocol.Method.NUS
+        wants_table_notification_values = [None, 4, "str", 4.5]
+        for wants_notif in wants_table_notification_values:
+            with self.assertRaises(RemotingException) as err:
+                metadata_protocol.write_notiy_user(method,
+                                                   4.5,
+                                                   wants_notif)
+            self.assertEqual("Not a bool value: '{}'".format(wants_notif),
+                             str(err.exception))
 
     def test_nus_access_error(self):
         """Tests the response to a NNS request in case of a AccessError."""
@@ -229,7 +233,7 @@ class MetadataProtocolTest(unittest.TestCase):
         res = metadata_protocol.write_get_items(items)
         self.assertEqual("GIS|S|a+long+item+name", res)
 
-    def test_gis_to_be_quoted_symbol(self):
+    def test_gis_tobe_quoted_symbol(self):
         """Tests the response to a GIS request with a single item whose name
         contains the symbol '£'.
         """
@@ -303,52 +307,32 @@ class MetadataProtocolTest(unittest.TestCase):
         res = metadata_protocol.write_get_item_data(items)
         self.assertEqual("GIT|I|3|D|4.5|M|CRM", res)
 
-    def test_git_missing_value(self):
+    def test_git_wrong_dist_snap_length(self):
         """Tests the response to a GIT request with an item for which the
-        Distinct Snapshot Length is not specified (None).
+        Distinct Snapshot Length is of a wrong type.
         """
-        items = [build_test_git_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
-                                     None, 4.5)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_item_data(items)
+        wrong_snapshot_length_values = [None, "str", 4.5, True]
+        for length in wrong_snapshot_length_values:
+            items = [build_test_git_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
+                                         length, 4.5)]
+            with self.assertRaises(RemotingException) as err:
+                metadata_protocol.write_get_item_data(items)
+            self.assertEqual("Not an int value: '{}'".format(length),
+                             str(err.exception))
 
-        self.assertEqual("Not an int value: 'None'", str(err.exception))
-
-    def test_git_wrong_int_type(self):
-        """Tests the response to a GIT request with an item for which the
-        Distinct Snapshot Length is of a wrong type (str).
-        """
-        items = [build_test_git_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
-                                     'A String', 4.5)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_item_data(items)
-
-        self.assertEqual("Not an int value: 'A String'",
-                         str(err.exception))
-
-    def test_git_wrong_int_type_as_bool(self):
-        """Tests the response to a GIT request with an item for which the
-        Distinct Snapshot Length is of a wrong type (bool).
-        """
-        items = [build_test_git_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
-                                     True, 4.5)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_item_data(items)
-
-        self.assertEqual("Not an int value: 'True'",
-                         str(err.exception))
-
-    def test_git_wrong_float_type(self):
+    def test_git_wrong_min_source_freq(self):
         """Tests the response to a GITS request with an item for which the
-        Min Source Frequency is of a wrong type (int).
+        Min Source Frequency is of a wrong type.
         """
         # Min Source Frequency as a int (not as a float)
-        items = [build_test_git_item([Mode.COMMAND, Mode.RAW, Mode.MERGE], 3,
-                                     4)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_item_data(items)
-
-        self.assertEqual("Not a float value: '4'", str(err.exception))
+        wrong_freq_values = [4, "str", True]
+        for freq in wrong_freq_values:
+            items = [build_test_git_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
+                                         3, freq)]
+            with self.assertRaises(RemotingException) as err:
+                metadata_protocol.write_get_item_data(items)
+            self.assertEqual("Not a float value: '{}'".format(freq),
+                             str(err.exception))
 
     def test_git_generic_error(self):
         """Tests the response to a GIT request in case of a generic exception.
@@ -470,52 +454,31 @@ class MetadataProtocolTest(unittest.TestCase):
         res = metadata_protocol.write_get_user_item_data(items)
         self.assertEqual("GUI|I|31|D|24.5|M|CRM", res)
 
-    def test_gui_missing_value(self):
+    def test_gui_wrong_buffer_size(self):
         """Tests the response to a GUI request with an item for which the
-        Allowed Buffer Size is not specified (None).
+        Allowed Buffer Size is of wrong type.
         """
-        items = [build_test_gui_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
-                                     None, 24.5)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_user_item_data(items)
+        allowed_buffer_size_values = [None, 4.5, "str", True]
+        for buffer_size in allowed_buffer_size_values:
+            items = [build_test_gui_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
+                                         buffer_size, 24.5)]
+            with self.assertRaises(RemotingException) as err:
+                metadata_protocol.write_get_user_item_data(items)
+            self.assertEqual("Not an int value: '{}'".format(buffer_size),
+                             str(err.exception))
 
-        self.assertEqual("Not an int value: 'None'", str(err.exception))
-
-    def test_gui_wrong_int_type(self):
-        """Tests the response to a GUI request with an item for which the
-        Allowed Buffer Size is of wrong type (str).
-        """
-        items = [build_test_gui_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
-                                     'A String', 24.5)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_user_item_data(items)
-
-        self.assertEqual("Not an int value: 'A String'",
-                         str(err.exception))
-
-    def test_gui_wrong_int_type_as_bool(self):
-        """Tests the response to a GUI request with an item for which the
-        Allowed Buffer Size is of wrong type (bool).
-        """
-        items = [build_test_gui_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
-                                     True, 24.5)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_user_item_data(items)
-
-        self.assertEqual("Not an int value: 'True'",
-                         str(err.exception))
-
-    def test_gui_wrong_float_type(self):
+    def test_gui_wrong_max_allowed_freq(self):
         """Tests the response to a GUI request with an item for which the Max
-        Allowed Frequency is of wrong type (int).
+        Allowed Frequency is of wrong type.
         """
-        # Min Source Frequency as a int (not as a float)
-        items = [build_test_gui_item([Mode.COMMAND, Mode.RAW, Mode.MERGE], 31,
-                                     40)]
-        with self.assertRaises(RemotingException) as err:
-            metadata_protocol.write_get_user_item_data(items)
-
-        self.assertEqual("Not a float value: '40'", str(err.exception))
+        max_allowed_freq_values = [None, 4, "str", False]
+        for freq in max_allowed_freq_values:
+            items = [build_test_gui_item([Mode.COMMAND, Mode.RAW, Mode.MERGE],
+                                         31, freq)]
+            with self.assertRaises(RemotingException) as err:
+                metadata_protocol.write_get_user_item_data(items)
+            self.assertEqual("Not a float value: '{}'".format(freq),
+                             str(err.exception))
 
     def test_gui_generic_error(self):
         """Tests the response to a GUI request in case of a generic exception.

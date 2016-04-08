@@ -457,29 +457,83 @@ class MyExceptionHandler(ExceptionHandler):
         self._caught_exception_queue.join()
 
 
-class MetadataProviderServerTest(unittest.TestCase):
+class MetadataProviderTest(unittest.TestCase):
 
-    def test_connect(self):
-        ls_server = LightstreamerServerSimulator(RemoteAdapterBase.REQ_REPLY_ADDRESS)
-        ls_server.start()
+    def setUp(self):
+        self.provider = MetadataProvider()
 
-        adapter = MetadataProviderTestClass({})
-        server = MetadataProviderServer(adapter,
-                                        RemoteAdapterBase.REQ_REPLY_ADDRESS,
-                                        keep_alive=0)
-        server.start()
+    def test_allowed_buffer_size(self):
+        buffer_size = self.provider.get_allowed_buffer_size("", "")
+        self.assertIsInstance(buffer_size, int)
+        self.assertEqual(0, buffer_size)
+
+    def test_allowed_max_bandwidth(self):
+        max_bandwidth = self.provider.get_allowed_max_bandwidth("user")
+        self.assertIsInstance(max_bandwidth, float)
+        self.assertEqual(0, max_bandwidth)
+
+    def test_allowed_max_item_frequency(self):
+        max_frequency = self.provider.get_allowed_max_item_frequency("user",
+                                                                     "item1")
+        self.assertIsInstance(max_frequency, float)
+        self.assertEqual(0, max_frequency)
+
+    def test_distinct_snapshot_length(self):
+        snapshot_length = self.provider.get_distinct_snapshot_length("item1")
+        self.assertIsInstance(snapshot_length, int)
+        self.assertEqual(0, snapshot_length)
+
+    def test_min_source_frequency(self):
+        min_frequency = self.provider.get_min_source_frequency("item1")
+        self.assertIsInstance(min_frequency, float)
+        self.assertEqual(0, min_frequency)
+
+    def test_items(self):
+        items = self.provider.get_items("", "", "item1 item2")
+        self.assertEqual(["item1", "item2"], items)
+
+        items = self.provider.get_items("", "", "item1")
+        self.assertEqual(["item1"], items)
+
+        items = self.provider.get_items("", "", "")
+        self.assertEqual([''], items)
+
+    def test_schema(self):
+        fields = self.provider.get_schema("", "", "item1", "field1 field2")
+        self.assertEqual(["field1", "field2"], fields)
+
+        fields = self.provider.get_schema("", "", "item1", "field1")
+        self.assertEqual(["field1"], fields)
+
+        fields = self.provider.get_schema("", "", "item1", "")
+        self.assertEqual([""], fields)
+
+    def test_ismode_allowed(self):
+        ismode_allowed = self.provider.ismode_allowed("", "", None)
+        self.assertIsInstance(ismode_allowed, bool)
+        self.assertTrue(ismode_allowed)
+
+    def test_mode_mabye_allowed(self):
+        mode_maybe_allowed = self.provider.mode_may_be_allowed("", None)
+        self.assertIsInstance(mode_maybe_allowed, bool)
+        self.assertTrue(mode_maybe_allowed)
+
+    def test_wants_table_notification(self):
+        mode_maybe_allowed = self.provider.wants_tables_notification("")
+        self.assertIsInstance(mode_maybe_allowed, bool)
+        self.assertFalse(mode_maybe_allowed)
 
 
-class MetadataProviderTest(RemoteAdapterBase):
+class MetadataProviderServerTest(RemoteAdapterBase):
 
     def __init__(self, method_name):
-        super(MetadataProviderTest, self).__init__(method_name)
+        super(MetadataProviderServerTest, self).__init__(method_name)
         self.adapter = None
         self.exception_handler = None
         self.collector = {}
 
     def on_setup(self):
-        # Configuring and starting MetadataProviderServer
+        # Configuring and starting MetadataProviderServer.
         self.adapter = MetadataProviderTestClass(self.collector)
         server = MetadataProviderServer(self.adapter,
                                         self.get_req_reply_address(),
@@ -1015,8 +1069,8 @@ class MetadataProviderTest(RemoteAdapterBase):
     def test_invalid_get_user_item_data(self):
         self.do_init_and_skip()
         self.send_request(("70000010c3e4d0462|GUI|S|user1|S|get+invalid"))
-        self.assert_caught_exception(("Not an int value: 'Wrong Allowed Buffer "
-                                      "Size'"))
+        self.assert_caught_exception(("Not an int value: 'Wrong Allowed Buffer"
+                                      " Size'"))
 
     def test_malformed_get_user_item_data(self):
         self.do_init_and_skip()
