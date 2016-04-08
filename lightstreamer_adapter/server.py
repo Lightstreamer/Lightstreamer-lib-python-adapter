@@ -26,6 +26,7 @@ from lightstreamer_adapter.protocol import RemotingException
 from lightstreamer_adapter.subscription import SubscriptionManager, ItemTask
 from . import DATA_PROVIDER_LOGGER as DATA_LOGGER
 from . import METADATA_PROVIDER_LOGGER as METADATA_LOGGER
+import os
 
 __all__ = ['Server', 'DataProviderServer', 'MetadataProviderServer',
            'ExceptionHandler']
@@ -103,7 +104,7 @@ class _Sender(object):
                 # Sends to_send over the network.
                 self._sock.sendall(bytes(to_send + '\r\n', 'utf-8'))
             except OSError as err:
-                self._server.on_io_exception(err)
+                self._server.on_ioexception(err)
                 break
         self._log.info("'%s' stopped", self._server.name)
 
@@ -355,6 +356,7 @@ class Server(metaclass=ABCMeta):
         See documentation from the ExceptionHandler.handle_io exception method
         for further details.
         """
+        # try:
         if self._exception_handler is not None:
             self._log.info(("Caught exception: %s, notifying the "
                             "application..."), str(ioexception))
@@ -364,6 +366,9 @@ class Server(metaclass=ABCMeta):
                 return
 
         self._handle_ioexception(ioexception)
+        # except BaseException as err:
+        #    print("ERROR ON_IOEXCEPTION {}".format(str(err)))
+
 
     def on_exception(self, exception):
         """Called by the Remote Server upon an unexpected error.
@@ -383,7 +388,7 @@ class Server(metaclass=ABCMeta):
 
     @abstractmethod
     def _handle_ioexception(self, ioexception):
-        sys.exit(1)
+        os._exit(1)
         return False
 
     def _handle_exception(self, ioexception):
