@@ -458,7 +458,7 @@ class MetadataProviderServer(Server):
         if not isinstance(adapter, MetadataProvider):
             raise TypeError(("The provided adapter is not a subclass of "
                              "lightstreamer_adapter.interfaces."
-                             "MetadatadataProvider"))
+                             "MetadataProvider"))
         self._config_file = None
         self._params = None
         self._adapter = adapter
