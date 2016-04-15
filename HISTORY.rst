@@ -3,6 +3,22 @@
 Release History
 ---------------
 
+1.0.0b1 (2016-04-15)
++++++++++++++++++++++
+
+**Bug Fixes**
+
+Fix docstringss
+
+Fix typo in some Exceptions' message
+
+Fix unit tests 
+
+**Lightstreamer Compatibility Notes**
+
+Compatible with Adapter Remoting Infrastructure since 1.7
+
+
 1.0.0a2 (2016-04-08)
 +++++++++++++++++++++
 
