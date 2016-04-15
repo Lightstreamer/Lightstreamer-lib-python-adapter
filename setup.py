@@ -22,7 +22,7 @@ packages = ['lightstreamer_adapter',
 
 setup(
     name='lightstreamer_adapter',
-    version='1.0.0a2',
+    version='1.0.0b1',
     description='Lightstreamer SDK for Python Adapters',
     long_description=readme + '\n\n' + history,
     url='https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter',
@@ -45,4 +45,5 @@ setup(
         'Topic :: Software Development :: Libraries :: Application Frameworks'
     ],
     keywords='lightstreamer push realtime real-time',
+    test_suite='tests'
 )
