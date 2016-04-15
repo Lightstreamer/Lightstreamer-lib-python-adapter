@@ -7,9 +7,7 @@ import unittest
 import logging
 import queue
 
-from context import lightstreamer_adapter
-
-from common import RemoteAdapterBase
+from .common import RemoteAdapterBase
 from lightstreamer_adapter.server import (MetadataProviderServer,
                                           ExceptionHandler)
 from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
@@ -26,7 +24,6 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        TableInfo,
                                                        MpnApnsSubscriptionInfo,
                                                        MpnGcmSubscriptionInfo)
-from tests.common import LightstreamerServerSimulator
 
 log = logging.getLogger(__name__)
 
@@ -522,6 +519,103 @@ class MetadataProviderTest(unittest.TestCase):
         mode_maybe_allowed = self.provider.wants_tables_notification("")
         self.assertIsInstance(mode_maybe_allowed, bool)
         self.assertFalse(mode_maybe_allowed)
+
+
+class MetadataProviderServerInitTest(unittest.TestCase):
+
+    def test_start_with_error(self):
+        server = MetadataProviderServer(MetadataProviderTestClass({}),
+                                        (RemoteAdapterBase.HOST,
+                                         RemoteAdapterBase.REQ_REPLY_PORT,
+                                         RemoteAdapterBase.NOTIFY_PORT))
+        with self.assertRaises(Exception) as err:
+            server.start()
+
+        the_exception = err.exception
+        self.assertIsInstance(the_exception, MetadataProviderError)
+        self.assertEqual(str(the_exception),
+                         "Caught an error during the initialization phase")
+
+    def test_not_right_adapter(self):
+        with self.assertRaises(TypeError) as te:
+            MetadataProviderServer({},
+                                   (RemoteAdapterBase.HOST,
+                                    RemoteAdapterBase.REQ_REPLY_PORT))
+
+        the_exception = te.exception
+        self.assertIsInstance(the_exception, TypeError)
+        self.assertEqual(str(the_exception),
+                         ("The provided adapter is not a subclass of "
+                          "lightstreamer_adapter.interfaces.MetadataProvider"))
+
+    def test_default_properties(self):
+        # Test default properties
+        server = MetadataProviderServer(MetadataProviderTestClass({}),
+                                        (RemoteAdapterBase.HOST,
+                                         RemoteAdapterBase.REQ_REPLY_PORT))
+        self.assertEqual('#', server.name[0])
+        self.assertEqual(1, server.keep_alive)
+        self.assertEqual(4, server.thread_pool_size)
+
+    def test_thread_pool_size(self):
+        # Test non default properties
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            thread_pool_size=2)
+        self.assertEqual(2, server.thread_pool_size)
+
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            thread_pool_size=0)
+        self.assertEqual(4, server.thread_pool_size)
+
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            thread_pool_size=-2)
+        self.assertEqual(4, server.thread_pool_size)
+
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            thread_pool_size=None)
+        self.assertEqual(4, server.thread_pool_size)
+
+    def test_keep_alive_value(self):
+        # Test non default properties
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            keep_alive=2)
+        self.assertEqual(2, server.keep_alive)
+
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            keep_alive=0)
+        self.assertEqual(0, server.keep_alive)
+
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            keep_alive=-2)
+        self.assertEqual(0, server.keep_alive)
+
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=(RemoteAdapterBase.HOST,
+                     RemoteAdapterBase.REQ_REPLY_PORT),
+            keep_alive=None)
+        self.assertEqual(0, server.keep_alive)
 
 
 class MetadataProviderServerTest(RemoteAdapterBase):

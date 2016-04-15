@@ -3,17 +3,13 @@ import unittest
 import logging
 import queue
 from collections import OrderedDict
-from common import RemoteAdapterBase
-
-from context import lightstreamer_adapter
+from .common import RemoteAdapterBase
 
 from lightstreamer_adapter.server import DataProviderServer
 from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    SubscribeError,
                                                    FailureError,
                                                    DataProvider)
-from lightstreamer_adapter.interfaces.metadata import MetadataProviderError
-
 
 log = logging.getLogger(__name__)
 
@@ -145,7 +141,6 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.REQ_REPLY_PORT,
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=2)
-
         self.assertEqual(2, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
@@ -153,7 +148,6 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.REQ_REPLY_PORT,
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=0)
-
         self.assertEqual(0, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
@@ -161,7 +155,6 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.REQ_REPLY_PORT,
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=-2)
-
         self.assertEqual(0, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
@@ -169,16 +162,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.REQ_REPLY_PORT,
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     keep_alive=None)
-
         self.assertEqual(0, server.keep_alive)
-
-    def atest_default_keep_alive(self):
-        # Receive a KEEPALIVE message because no requests have been issued
-        for _ in range(0, 3):
-            start = time.time()
-            self.assert_reply("KEEPALIVE")
-            end = time.time()
-            self.assertGreaterEqual(end - start, 1)
 
 
 class DataProviderServerTest(RemoteAdapterBase):
