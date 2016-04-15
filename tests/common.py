@@ -10,7 +10,7 @@ log = logging.getLogger("lightstreamer-test_server")
 class LightstreamerServerSimulator(unittest.TestCase):
 
     def __init__(self, req_reply_adr, notify_adr=None):
-        # Request-Reply Sockett
+        # Request-Reply Socket
         self._rr_sock = socket.socket(socket.AF_INET,
                                       socket.SOCK_STREAM)
         self._rr_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -119,6 +119,9 @@ class RemoteAdapterBase(unittest.TestCase):
         log.info("setUp completed\n\n")
 
     def on_setup(self):
+        pass
+
+    def on_teardown(self, remote_adapter):
         pass
 
     @property
