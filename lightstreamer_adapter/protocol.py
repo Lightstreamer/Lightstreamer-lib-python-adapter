@@ -37,18 +37,24 @@ _EXCEPTIONS_MAP = {str(MetadataProviderError): 'M',
 
 
 class RemotingException(Exception):
-    """
-    Issued by the Remote Server upon an unexpected error
+    """Issued by the Remote Server upon an unexpected error
     """
 
 
 def join(*args, append_separator=False):
+    """Returns a string which is a concatenation of all arguments, separated by
+    a '|'.
+    """
     members = [i for i in args]
     suffix = "|" if append_separator else ''
     return "|".join(members) + suffix
 
 
 def remoting_exception_on_parse(method):
+    """Decorator function which executes the provided method and may raise a
+    RemotingException with a detailed message about the current parsing
+    operation.
+    """
     def wrap(protocol_func):
         def _wrap(*args, **kwargs):
             try:
@@ -66,6 +72,12 @@ def remoting_exception_on_parse(method):
 
 
 def parse_request(request):
+    """Operates a first-level parsing, retrieving the following three required
+    components:
+      id: the request id
+      method the method to invoke on the Remote Adapter
+      data: the arguments for the method
+    """
     packet = request.rstrip().split('|')
     not_empty_tokens = [t for t in packet if t.rstrip()]
     if len(not_empty_tokens) <= 1:
@@ -89,8 +101,8 @@ def read(packet, data_type, index):
     """Reads and decode a single sequence of '<type>|<segment>', located at
     the specified index in the provided packet, where:
 
-    type is the native type of the segment and must match the
-    provided data_type;
+    type is the native type of the segment and must match the provided
+    data_type;
     segment is the content of a field or argument of a method.
     """
     current_data_type = read_token(packet, index)
@@ -111,6 +123,10 @@ def read(packet, data_type, index):
 
 
 def read_map(tokens, start, length=None):
+    """Reads and decodes <length> sequences of '|S|<key>|S|<value>' from the
+    provided tokens, starting at <start> index, and returns a dict made up of
+    <length> key:value pairs.
+    """
     stop = start + length if length else None
     data = tokens[start:stop]
     if len(data) % 2 != 0:
@@ -121,6 +137,9 @@ def read_map(tokens, start, length=None):
 
 
 def read_seq(tokens, offset, length=None):
+    """Reads and decodes '|S|value' from the provided tokens, starting at
+    <offset> index, and returns a list of <length> values.
+    """
     stop = offset + length if length else None
     data = tokens[offset:stop]
     sequence = [read(data, 'S', i) for i in range(0, len(data), 2)]
@@ -128,6 +147,12 @@ def read_seq(tokens, offset, length=None):
 
 
 def decode_string(string):
+    """Decodes the provided URL-encoded string.
+
+    The method also handles special cases as follows:
+    returns None in case of '#' (a null value)
+    returns an empty string in case of '$' (an empty value)
+    """
     if string == NULL_VALUE:
         return None
 
@@ -138,6 +163,12 @@ def decode_string(string):
 
 
 def encode_string(string):
+    """Returns the URL-encoding of the provided string.
+
+    The method also handles the special cases:
+    returns '#' in case of None;
+    returns '$' in case of empty string.
+    """
     if string is None:
         return NULL_VALUE
 
@@ -152,24 +183,30 @@ def encode_string(string):
 
 
 def encode_boolean(boolean):
+    """Returns a string representation of the provided boolean value."""
     if isinstance(boolean, bool):
         return str(int(boolean))
     raise RemotingException("Not a bool value: '{}'".format(str(boolean)))
 
 
 def encode_integer(integer):
+    """Returns a string representation of the provided integer value."""
     if isinstance(integer, int) and not isinstance(integer, bool):
         return str(integer)
     raise RemotingException("Not an int value: '{}'".format(str(integer)))
 
 
 def encode_double(double):
+    """Returns a string representation of the provided float value."""
     if isinstance(double, float):
         return str(float(double))
     raise RemotingException("Not a float value: '{}'".format(str(double)))
 
 
 def encode_modes(modes):
+    """Returns a string which is a concatenation of the Modes in the provided
+    list.
+    """
     if modes is None:
         return NULL_VALUE
 
@@ -181,6 +218,7 @@ def encode_modes(modes):
 
 
 def encode_byte(byte_str):
+    """Returns the Base 64 encoding of the provide byte string."""
     try:
         return base64.b64encode(byte_str).decode('utf-8')
     except Exception as err:
