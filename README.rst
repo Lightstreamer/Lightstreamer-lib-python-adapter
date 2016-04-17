@@ -7,6 +7,8 @@ The adapters will run in a separate process, communicating with the Server throu
 
 .. _Lightstreamer Server: http://www.lightstreamer.com
 
+.. image:: architecture.png
+
 Use
 ===
 Install the package:
