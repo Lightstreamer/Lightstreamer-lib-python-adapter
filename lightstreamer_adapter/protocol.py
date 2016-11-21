@@ -15,7 +15,6 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProviderError,
 from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    SubscribeError,
                                                    FailureError)
-
 EMPTY_VALUE = "$"
 NULL_VALUE = "#"
 METHOD_KEEP_ALIVE = "KEEPALIVE"
