@@ -1,7 +1,7 @@
-'''
+"""
 This module contains all classes, enums and exceptions needed to create and
 manage a Remote Metadata Adapter.
-'''
+"""
 
 from enum import Enum
 
