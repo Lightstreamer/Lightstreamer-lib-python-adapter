@@ -1,8 +1,3 @@
-'''
-Created on 20 gen 2016
-
-@author: Gianluca
-'''
 import unittest
 import logging
 import queue

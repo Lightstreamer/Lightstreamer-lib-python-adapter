@@ -1,7 +1,7 @@
-'''
+"""
 Module for testing the ARI Data Provider protocol implemented in the
 Lightstreamer SDK for Python Adapters.
-'''
+"""
 import unittest
 import base64
 from collections import OrderedDict
