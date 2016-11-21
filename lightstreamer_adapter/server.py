@@ -1,6 +1,6 @@
 """
 Core module of the Lightstreamer SDK for Python Adapters, containing all
-classes (public and private), needed to configure and starts the Remote
+classes (public and private), needed to configure and start the Remote
 Adapters.
 """
 import socket
@@ -77,7 +77,17 @@ class _Sender(object):
 
     def send(self, notification):
         """Enqueues a reply or notification to be sent to the Proxy Adapter."""
+        self._log.debug("Enqueing line: %s", notification)
         self._send_queue.put(notification)
+
+    def direct_send(self, notification):
+        try:
+            current_log = self._log
+            # Send to_send over the network.
+            current_log.debug("Sending line: %s", notification)
+            self._sock.sendall(bytes(notification + '\r\n', 'utf-8'))
+        except OSError as err:
+            self._server.on_ioexception(err)
 
     def _do_run(self):
         """Target method for the Sender-Thread-XXX, started in the start'
@@ -87,20 +97,23 @@ class _Sender(object):
         while True:
             try:
                 to_send = None
+                current_log = self._log
+                current_log.debug("Waiting for a line to send...")
                 if keep_alive > 0:
                     try:
                         to_send = self._send_queue.get(timeout=keep_alive)
                     except queue.Empty:
                         # Keepalive Timeout triggered.
                         to_send = protocol.METHOD_KEEP_ALIVE
-                        self._keep_alive_log.debug("line: %s", to_send)
+                        current_log = self._keep_alive_log
                 else:
                     to_send = self._send_queue.get()
-                    self._log.debug("line: %s", to_send)
+
                 if to_send is None:
                     # Request of stopping dequeuing, thread termination.
                     break
-                # Sends to_send over the network.
+                # Send to_send over the network.
+                current_log.debug("Sending line: %s", to_send)
                 self._sock.sendall(bytes(to_send + '\r\n', 'utf-8'))
             except OSError as err:
                 self._server.on_ioexception(err)
@@ -159,7 +172,7 @@ class _RequestReceiver():
                 while True:
                     self._log.debug("Reading from socket...")
                     more = sock.recv(1024)
-                    self._log.debug("Received %d data", len(more))
+                    self._log.debug("Received %d bytes of data", len(more))
                     if not more:
                         raise EOFError('Socket connection broken')
                     data += more
@@ -346,7 +359,7 @@ class Server(metaclass=ABCMeta):
             self.on_exception(err)
 
     def _send_reply(self, request_id, response):
-        self._log.debug("Processing request: %s", request_id)
+        self._log.debug("Sending reply for request: %s", request_id)
         self._request_receiver.send_reply(request_id, response)
 
     def on_ioexception(self, ioexception):
@@ -449,6 +462,10 @@ class MetadataProviderServer(Server):
 
          * host: a string representing the hostname or the IP address
          * request_reply_port: an int representing the request/reply port
+        :param str name: the name associated to the Server instance.
+        :param float keep_alive: the keepalive interval expressed in seconds
+         (or fractions)
+        :param int thread_pool_size: the thread pool size
         :raises TypeError: if the supplied Remote Adapter is not an instance of
          a subclass of
          :class:`lightstreamer_adapter.interfaces.metadata.MetadataProvider`.
@@ -1009,11 +1026,11 @@ class DataProviderServer(Server):
         item_name = data_protocol.read_sub(data)
 
         def do_task():
-            DATA_LOGGER.debug("Processing request: %s", request_id)
+            DATA_LOGGER.debug("Processing SUB request: %s", request_id)
             success = False
             try:
                 snpt_available = self._adapter.issnapshot_available(item_name)
-                if snpt_available:
+                if snpt_available is False:
                     self.end_of_snapshot(item_name)
                 self._adapter.subscribe(item_name)
                 success = True
@@ -1037,7 +1054,7 @@ class DataProviderServer(Server):
         item_name = data_protocol.read_usub(data)
 
         def do_task():
-            DATA_LOGGER.debug("Processing request: %s", request_id)
+            DATA_LOGGER.debug("Processing USB request: %s", request_id)
             success = False
             try:
                 self._adapter.unsubscribe(item_name)
