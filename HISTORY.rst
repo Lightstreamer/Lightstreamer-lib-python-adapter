@@ -3,6 +3,23 @@
 Release History
 ---------------
 
+1.0.0 (2016-11-22)
+
++++++++++++++++++++++
+
+**Bug Fixes**
+
+Fix notification of End Of Snaphsot in case of not availability of the snapshot.
+  
+Fix docstringss
+
+Fix unit tests
+
+**Lightstreamer Compatibility Notes**
+
+Compatible with Adapter Remoting Infrastructure since 1.7
+
+
 1.0.0b1 (2016-04-15)
 +++++++++++++++++++++
 

@@ -17,7 +17,7 @@ class _ItemTaskManager():
     are dequeued by a single thread, which is submitted to the Executor
     configured by the Data Provider Server and then propagated to the
     Subscription Manager. The single thread ensures that each unique task is
-    is executed in a sequentialized way, in order to avoid any synchronization
+    is executed in a sequentialized way, in order to avoid any synchronisation
     issue that may affect the Item consistency.
     """
     def __init__(self, item_name, subscription_mgr):
@@ -167,7 +167,7 @@ class ItemTask():
 class SubscriptionManager():
     """Helper class for the subscription management.
 
-    This class hides the complexity related with the syncrhonization required
+    This class hides the complexity related with the synchronization required
     to handle in a properly way the subscription and unsubscription operations
     for the items.
 

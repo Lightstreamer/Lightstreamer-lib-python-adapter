@@ -1,7 +1,7 @@
-'''
+"""
 Module for testing the ARI Metadata Provider protocol implemented in the
 Lightstreamer SDK for Python Adapters.
-'''
+"""
 import unittest
 from lightstreamer_adapter import metadata_protocol
 from lightstreamer_adapter.protocol import RemotingException

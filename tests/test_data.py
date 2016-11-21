@@ -318,6 +318,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.do_subscription('aapl%5F')
         self.assert_reply("10000010c3e4d0462|SUB|V")
+        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
         item = self.adapter.subscribed.get()
         self.adapter.subscribed.task_done()
         self.assertEqual(item, "aapl_")
@@ -392,18 +393,29 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_eos(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
+        # As snapshot is not available, an EOS is expected on the notify
+        # channel
+        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
+
         self.adapter.listener.end_of_snapshot("aapl_")
         self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
 
     def test_cls(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
+        # As snapshot is not available, an EOS is expected on the notify
+        # channel
+        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
+
         self.adapter.listener.clear_snapshot("aapl_")
         self.assert_notify("CLS|S|aapl_|S|10000010c3e4d0462")
 
     def test_update_with_str_value(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip("item1")
+        # As snapshot is not available, an EOS is expected on the notify
+        # channel
+        self.assert_notify("EOS|S|item1|S|10000010c3e4d0462")
 
         # Usage of OrderdDict with the only purpose to respect the order
         # expressed in the assert statement.
@@ -414,15 +426,36 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
                             "|value1|S|field2|S|value2"))
 
+    def test_massive_update(self):
+        self.do_init_and_skip()
+        self.do_subscription_and_skip("item1")
+
+        # Usage of OrderdDict with the only purpose to respect the order
+        # expressed in the assert statement.
+
+        for i in range(0, 1000):
+            events_map = OrderedDict([("field1", "value1"),
+                                      ("field2", str(i))])
+
+            self.adapter.listener.update("item1", events_map, False)
+            self.receive_notify()
+            # self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
+            #                    "|value1|S|field2|S|{}".format(i)))
+
     def test_update_with_byte_value(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip("aapl")
+        # As snapshot is not available, an EOS is expected on the notify
+        # channel
+        self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
+
         # Usage of OrderdDict with the only purpose to respect the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", b'12:48:24')])
         self.adapter.listener.update('aapl', events_map, True)
+
         self.assert_notify(("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
                             "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|Y|"
                             "MTI6NDg6MjQ="))
@@ -430,6 +463,10 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_update_with_none_value(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip("aapl")
+        # As snapshot is not available, an EOS is expected on the notify
+        # channel
+        self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
+
         # Usage of OrderdDict with the only purpose to respect the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
@@ -442,6 +479,10 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_update_with_empty_value(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip("aapl")
+        # As snapshot is not available, an EOS is expected on the notify
+        # channel
+        self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
+
         # Usage of OrderdDict with the only purpose to respect the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),

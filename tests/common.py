@@ -149,6 +149,9 @@ class RemoteAdapterBase(unittest.TestCase):
         if skip_reply:
             self._ls_server.receive_reply()
 
+    def receive_notify(self):
+        return self._ls_server.receive_notify()
+
     def assert_reply(self, expected=None, timeout=0.2):
         self._ls_server._rr_client_socket.settimeout(timeout)
         reply = self._ls_server.receive_reply()
@@ -161,6 +164,6 @@ class RemoteAdapterBase(unittest.TestCase):
 
     def assert_notify(self, expected=None, timeout=0.5):
         self._ls_server._ntfy_client_socket.settimeout(timeout)
-        notify = self._ls_server.receive_notify()
+        notify = self.receive_notify()
         stripped_notify = '|'.join(notify.split("|")[1:])
         self.assertEqual(expected + '\r\n', stripped_notify)

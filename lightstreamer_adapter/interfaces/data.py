@@ -1,7 +1,7 @@
-'''
+"""
 This module contains all ABC classes and exceptions needed to create and manage
 a Remote Data Adapter.
-'''
+"""
 from abc import ABCMeta, abstractmethod
 
 __all__ = ['DataProvider', 'ItemEventListener', 'DataError',
@@ -215,7 +215,7 @@ class ItemEventListener(metaclass=ABCMeta):
     :meth:`DataProvider.set_listener` call. The listener can manage Item Events
     implemented as dictionary objects, whose values can be expressed either as
     a string or as a bytes (the special mandatory fields for COMMAND Mode named
-    ``key`` and `` command`` must be encoded as string).
+    ``key`` and ``command`` must be encoded as string).
 
     When an Item Event instance has been sent to the listener, it is totally
     owned by Lightstreamer and it must not be anymore changed by the Data
