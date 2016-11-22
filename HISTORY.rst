@@ -44,15 +44,15 @@ Release History
 
 **Bug Fixes**
 
-Fixed return values in *lightstreamer_adapter.interfaces.metadata.MetadataProvider* class.
+- Fixed return values in *lightstreamer_adapter.interfaces.metadata.MetadataProvider* class.
 
-Fixed default handling of I/O related errors.
+- Fixed default handling of I/O related errors.
 
-Fixed docstrings in modules *lightstreamer_adapter/data_protocol.py* and *lightstreamer_adapter/metadata_protocol.py*.
+- Fixed docstrings in modules *lightstreamer_adapter/data_protocol.py* and *lightstreamer_adapter/metadata_protocol.py*.
 
 **Lightstreamer Compatibility Notes**
 
-Compatible with Adapter Remoting Infrastructure since 1.7
+- Compatible with Adapter Remoting Infrastructure since 1.7.
 
 
 1.0.0a1 (2016-04-08)
@@ -62,5 +62,5 @@ Compatible with Adapter Remoting Infrastructure since 1.7
 
 **Lightstreamer Compatibility Notes**
 
-Compatible with Adapter Remoting Infrastructure since 1.7
+- Compatible with Adapter Remoting Infrastructure since 1.7.
 
