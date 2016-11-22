@@ -15,7 +15,7 @@ Install the package:
 
 .. code-block:: bash
 
-   $ pip install --pre lightstreamer-adapter
+   $ pip install lightstreamer-adapter
 
 Configure Lightstreamer
 -----------------------
