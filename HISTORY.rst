@@ -3,6 +3,11 @@
 Release History
 ---------------
 
+1.0.0.post1 (2016-11-22)
+++++++++++++++++++++++++
+
+- Finishing touches on the package documentation visible from the PyPi repository   
+
 1.0.0 (2016-11-22)
 +++++++++++++++++++
 
