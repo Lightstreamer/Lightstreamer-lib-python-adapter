@@ -6,17 +6,21 @@ Release History
 1.0.0 (2016-11-22)
 +++++++++++++++++++++
 
+**Improvements**
+
+- Updated logging messages.		
+
 **Bug Fixes**
 
-Fix notification of End Of Snaphsot in case of not availability of the snapshot.
+- Fixed notification of End Of Snaphsot in case of not availability of the snapshot.
   
-Fix docstringss
+- Fixed docstrings in modules *lightstreamer_adapter/server.py* and *lightstreamer_adapter/subscription.py*.
 
-Fix unit tests
+- Fixed unit tests.
 
 **Lightstreamer Compatibility Notes**
 
-Compatible with Adapter Remoting Infrastructure since 1.7
+- Compatible with Adapter Remoting Infrastructure since 1.7.
 
 
 1.0.0b1 (2016-04-15)
@@ -24,15 +28,15 @@ Compatible with Adapter Remoting Infrastructure since 1.7
 
 **Bug Fixes**
 
-Fix docstringss
+- Fixed docstrings.
 
-Fix typo in some Exceptions' message
+- Fixed typo in some Exceptions' message.
 
-Fix unit tests 
+- Fixed unit tests. 
 
 **Lightstreamer Compatibility Notes**
 
-Compatible with Adapter Remoting Infrastructure since 1.7
+- Compatible with Adapter Remoting Infrastructure since 1.7.
 
 
 1.0.0a2 (2016-04-08)
@@ -40,11 +44,11 @@ Compatible with Adapter Remoting Infrastructure since 1.7
 
 **Bug Fixes**
 
-Fix return values in *lightstreamer_adapter.interfaces.metadata.MetadataProvider* class.
+Fixed return values in *lightstreamer_adapter.interfaces.metadata.MetadataProvider* class.
 
-Fix default handling of I/O related errors.
+Fixed default handling of I/O related errors.
 
-Fix docstrings in modules *lightstreamer_adapter/data_protocol.py* and *lightstreamer_adapter/metadata_protocol.py*.
+Fixed docstrings in modules *lightstreamer_adapter/data_protocol.py* and *lightstreamer_adapter/metadata_protocol.py*.
 
 **Lightstreamer Compatibility Notes**
 
