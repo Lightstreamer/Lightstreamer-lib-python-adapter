@@ -180,4 +180,4 @@ See Also
 Lightstreamer Compatibility Notes
 =================================
 
-Compatible with Adapter Remoting Infrastructure since 1.7
+Compatible with Adapter Remoting Infrastructure version 1.7.x
