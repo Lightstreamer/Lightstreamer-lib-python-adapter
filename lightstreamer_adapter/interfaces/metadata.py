@@ -156,7 +156,7 @@ class MetadataProvider():
         :meth:`notify_user` for other notes.
 
         :Edition Note: https is an optional feature, available depending
-		 on Edition and License Type.
+         on Edition and License Type.
         :param str user: A User name.
         :param str password: A password optionally required to validate the
          User.
