@@ -17,11 +17,9 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MetadataProviderError,
                                                        MpnPlatformType,
                                                        TableInfo,
-                                                       MpnApnsSubscriptionInfo,
-                                                       MpnGcmSubscriptionInfo)
+                                                       MpnSubscriptionInfo)
 
 log = logging.getLogger(__name__)
-
 
 class MetadataProviderTestClass(MetadataProvider):
 
@@ -261,7 +259,7 @@ class MetadataProviderTestClass(MetadataProvider):
         self.collector.update({'sessionId': session_id,
                                'tableInfos': tables})
 
-    def notify_mpn_device_access(self, user, device):
+    def notify_mpn_device_access(self, user, sessionID, device):
         if user is None:
             raise NotificationError("NotificationError")
 
@@ -272,6 +270,7 @@ class MetadataProviderTestClass(MetadataProvider):
             raise RuntimeError("Exception")
 
         self.collector.update({"user": user,
+                               "sessionId": sessionID,
                                "mpnDeviceInfo": device})
 
     def notify_mpn_subscription_activation(self, user, sessionID, table,
@@ -290,7 +289,8 @@ class MetadataProviderTestClass(MetadataProvider):
                                "table": table,
                                "mpn_subscription": mpn_subscription})
 
-    def notify_mpn_device_token_change(self, user, device, new_device_token):
+    def notify_mpn_device_token_change(self, user, sessionID, device,
+                                       new_device_token):
         if user is None:
             raise NotificationError("NotificationError")
 
@@ -300,6 +300,7 @@ class MetadataProviderTestClass(MetadataProvider):
         if user == "user2":
             raise RuntimeError("Exception")
         self.collector.update({"user": user,
+                               "sessionId": sessionID,
                                "mpnDeviceInfo": device,
                                "newDeviceToken": new_device_token})
 
@@ -359,32 +360,32 @@ class TableInfoTest(unittest.TestCase):
 class MpnDeviceInfoTest(unittest.TestCase):
 
     def test_properties(self):
-        device_info_1 = MpnDeviceInfo(MpnPlatformType.APNS, "applicationId",
+        device_info_1 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                       "deviceToken")
 
-        self.assertEqual(MpnPlatformType.APNS, device_info_1.mpn_platform_type)
+        self.assertEqual(MpnPlatformType.APPLE, device_info_1.mpn_platform_type)
         self.assertEqual("applicationId", device_info_1.application_id)
         self.assertEqual("deviceToken", device_info_1.device_token)
 
     def test_equality(self):
-        device_info_1 = MpnDeviceInfo(MpnPlatformType.MPNS, "applicationId",
+        device_info_1 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                       "deviceToken")
-        device_info_2 = MpnDeviceInfo(MpnPlatformType.MPNS, "applicationId",
+        device_info_2 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                       "deviceToken")
         self.assertEqual(device_info_1, device_info_2)
 
     def test_not_equality(self):
-        device_info_1 = MpnDeviceInfo(MpnPlatformType.APNS, "applicationId",
+        device_info_1 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                       "deviceToken")
-        device_info_2 = MpnDeviceInfo(MpnPlatformType.MPNS, "applicationId",
-                                      "deviceToken")
-        self.assertNotEqual(device_info_1, device_info_2)
-
-        device_info_2 = MpnDeviceInfo(MpnPlatformType.APNS, "applicationId2",
+        device_info_2 = MpnDeviceInfo(MpnPlatformType.GOOGLE, "applicationId",
                                       "deviceToken")
         self.assertNotEqual(device_info_1, device_info_2)
 
-        device_info_2 = MpnDeviceInfo(MpnPlatformType.APNS, "applicationId",
+        device_info_2 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId2",
+                                      "deviceToken")
+        self.assertNotEqual(device_info_1, device_info_2)
+
+        device_info_2 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                       "deviceToken2")
         self.assertNotEqual(device_info_1, device_info_2)
 
@@ -392,38 +393,22 @@ class MpnDeviceInfoTest(unittest.TestCase):
 class MpnSubscriptionTest(unittest.TestCase):
 
     def test_properties(self):
-        device = MpnDeviceInfo(MpnPlatformType.APNS, "applicationId",
+        device = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                "deviceToken")
-        subscription = MpnApnsSubscriptionInfo(
+        subscription = MpnSubscriptionInfo(
             device=device,
-            trigger="Double.parseDouble(${last_price}) > 1000.0",
-            sound="Default",
-            badge="AUTO",
-            launch_image=None,
-            txt_format=None,
-            localized_action_key="MARKET VIEW",
-            localized_format_key="MARKET UPDATE",
-            arguments=['${stock_name}', '${last_price}'],
-            custom_data={'customKey1': '123456',
-                         'customKey2': '7890',
-                         'customKey3': None,
-                         'customKey4': ''})
+            notification_format=("{\"aps\":{\"alert\":\"${message}\","
+                                 "\"badge\":\"AUTO\"},\"acme2\":"
+                                 "[\"${tag1}\",\"${tag2}\"]}"),
+            trigger="Double.parseDouble(${last_price}) > 1000.0")
 
         self.assertEqual(device, subscription.device)
         self.assertEqual("Double.parseDouble(${last_price}) > 1000.0",
                          subscription.trigger)
-        self.assertEqual("Default", subscription.sound)
-        self.assertEqual("AUTO", subscription.badge)
-        self.assertIsNone(subscription.launch_image)
-        self.assertIsNone(subscription.format)
-        self.assertEqual("MARKET VIEW", subscription.localized_action_key)
-        self.assertEqual("MARKET UPDATE", subscription.localized_format_key)
-        self.assertTupleEqual(('${stock_name}', '${last_price}'),
-                              subscription.arguments)
-        self.assertDictEqual({'customKey1': '123456',
-                              'customKey2': '7890',
-                              'customKey3': None,
-                              'customKey4': ''}, subscription.custom_data)
+        self.assertEqual(("{\"aps\":{\"alert\":\"${message}\","
+                          "\"badge\":\"AUTO\"},\"acme2\":"
+                          "[\"${tag1}\",\"${tag2}\"]}"),
+                         subscription.notification_format)
 
 
 class MyExceptionHandler(ExceptionHandler):
@@ -694,28 +679,28 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_malformed_init_for_unkown_token_type(self):
         self.send_request('10000010c3e4d0462|MPI|S|adapters_conf.id|S1|DEMO')
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
         self.send_request('10000010c3e4d0462|MPI|S|')
-        self.assert_caught_exception(("Invalid number of tokens while parsing "
-                                      "a MPI request"))
+        self.assert_caught_exception(("Invalid number of tokens while parsing"
+                                      " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
         self.send_request('10000010c3e4d0462|MPI|S||')
-        self.assert_caught_exception(("Invalid number of tokens while parsing "
-                                      "a MPI request"))
+        self.assert_caught_exception(("Invalid number of tokens while parsing"
+                                      " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
         self.send_request('10000010c3e4d0462|MPI|S|  |')
-        self.assert_caught_exception(("Invalid number of tokens while parsing "
-                                      "a MPI request"))
+        self.assert_caught_exception(("Invalid number of tokens while parsing"
+                                      " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
         self.send_request('10000010c3e4d0462|MPI|S|id|S')
         self.assert_caught_exception(("Invalid number of tokens while parsing "
-                                      "a MPI request"))
+                                      "MPI request"))
 
     def test_init_init(self):
         # Test error when more than one MPI request is issued
@@ -729,7 +714,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                            "www.mycompany.com"))
 
         self.assert_caught_exception(("Unexpected request NUS while waiting "
-                                      "for a MPI request"))
+                                      "for MPI request"))
 
     def test_notify_user(self):
         self.do_init_and_skip()
@@ -792,32 +777,32 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         # user and password are missing.
         self.send_request("10000010c3e4d0462|NUS")
-        self.assert_caught_exception(("Token not found while parsing a NUS "
+        self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
         # user and password are missing.
         self.send_request("10000010c3e4d0462|NUS|S|")
-        self.assert_caught_exception(("Token not found while parsing a NUS "
+        self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
         # Wrong token type for user.
         self.send_request("10000010c3e4d0462|NUS|S1|user")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NUS request"))
 
         # password is missing
         self.send_request("10000010c3e4d0462|NUS|S|user")
-        self.assert_caught_exception(("Token not found while parsing a NUS "
+        self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
         # password is missing
         self.send_request("10000010c3e4d0462|NUS|S|user|S")
-        self.assert_caught_exception(("Token not found while parsing a NUS "
+        self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
         # Wrong token type for password.
         self.send_request("10000010c3e4d0462|NUS|S|user|S2")
-        self.assert_caught_exception(("Unknown type 'S2' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S2' found while parsing"
                                       " NUS request"))
 
     def test_notify_user_auth(self):
@@ -864,11 +849,11 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_notify_user_auth(self):
         self.do_init_and_skip()
         self.send_request("10000010c3e4d0462|NUA|S|")
-        self.assert_caught_exception(("Token not found while parsing a NUA "
+        self.assert_caught_exception(("Token not found while parsing NUA "
                                       "request"))
 
         self.send_request("10000010c3e4d0462|NUA|S1|user")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NUA request"))
 
     def test_notify_new_session(self):
@@ -924,12 +909,12 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_notify_new_session(self):
         self.do_init_and_skip()
         self.send_request("10000020b3e6d0462|NNS|S|")
-        self.assert_caught_exception(("Token not found while parsing a NNS "
+        self.assert_caught_exception(("Token not found while parsing NNS "
                                       "request"))
 
         self.send_request("10000020b3e6d0462|NNS|S1|user4")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
-                                      " NNS request"))
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing "
+                                      "NNS request"))
 
     def test_notify_session_close(self):
         self.do_init_and_skip()
@@ -955,11 +940,11 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_notify_session_close(self):
         self.do_init_and_skip()
         self.send_request("20000010c3e4d0462|NSC|S|")
-        self.assert_caught_exception(("Token not found while parsing a NSC "
+        self.assert_caught_exception(("Token not found while parsing NSC "
                                       "request"))
 
         self.send_request("20000010c3e4d0462|NSC|S1|user4")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NSC request"))
 
     def test_get_items(self):
@@ -1014,11 +999,11 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_get_items(self):
         self.do_init_and_skip()
         self.send_request("50000010c3e4d0462|GIS|S|")
-        self.assert_caught_exception(("Token not found while parsing a GIS "
+        self.assert_caught_exception(("Token not found while parsing GIS "
                                       "request"))
 
         self.send_request("50000010c3e4d0462|GIS|S1|nasdaq100_AA_AL")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " GIS request"))
 
     def test_get_schema(self):
@@ -1089,18 +1074,18 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
         # Missing token.
         self.send_request("70000010c3e4d0462|GSC|S|")
-        self.assert_caught_exception(("Token not found while parsing a GSC "
+        self.assert_caught_exception(("Token not found while parsing GSC "
                                       "request"))
 
         # Wrong token type.
         self.send_request("70000010c3e4d0462|GSC|S1|nasdaq100_AA_AL")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " GSC request"))
 
         # No fields specifications.
         self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
                            "abc|S|S8f3da29cfc463220T5454537"))
-        self.assert_caught_exception(("Token not found while parsing a GSC "
+        self.assert_caught_exception(("Token not found while parsing GSC "
                                       "request"))
 
     def test_get_item_data(self):
@@ -1129,11 +1114,11 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_get_item_data(self):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|")
-        self.assert_caught_exception(("Token not found while parsing a GIT "
+        self.assert_caught_exception(("Token not found while parsing GIT "
                                       "request"))
 
         self.send_request("70000010c3e4d0462|GIT|S1|item")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " GIT request"))
 
     def test_get_user_item_data(self):
@@ -1164,15 +1149,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_get_user_item_data(self):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GUI")
-        self.assert_caught_exception(("Token not found while parsing a GUI "
+        self.assert_caught_exception(("Token not found while parsing GUI "
                                       "request"))
 
         self.send_request("70000010c3e4d0462|GUI|S|")
-        self.assert_caught_exception(("Token not found while parsing a GUI "
+        self.assert_caught_exception(("Token not found while parsing GUI "
                                       "request"))
 
         self.send_request("70000010c3e4d0462|GUI|S1|user2")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " GUI request"))
 
     def test_notify_user_message(self):
@@ -1207,11 +1192,11 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_notify_user_message(self):
         self.do_init_and_skip()
         self.send_request("d0000010c3e4d0462|NUM|S|")
-        self.assert_caught_exception(("Token not found while parsing a NUM "
+        self.assert_caught_exception(("Token not found while parsing NUM "
                                       "request"))
 
         self.send_request("d0000010c3e4d0462|NUM|S1|user4")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NUM request"))
 
     def test_notify_new_tables(self):
@@ -1312,12 +1297,12 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_notify_new_tables(self):
         self.do_init_and_skip()
         self.send_request("f0000010c3e4d0462|NNT|S|#|S")
-        self.assert_caught_exception(("Token not found while parsing a NNT "
+        self.assert_caught_exception(("Token not found while parsing NNT "
                                       "request"))
 
         self.send_request("f0000010c3e4d0462|NNT|S1|#")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
-                                      " NNT request"))
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing "
+                                      "NNT request"))
 
     def test_notify_tables_close(self):
         self.do_init_and_skip()
@@ -1357,24 +1342,26 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         # A "S" token type is expected.
         self.send_request("f0000010c3e4d0462|NTC|S1|#")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NTC request"))
 
         # A "I" token type is expected.
         self.send_request("f0000010c3e4d0462|NTC|S|#|S1")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NTC request"))
 
     def test_notify_device_access(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|user1|P|A|S|"
+        self.send_request(("b00000147c9bc4c74|MDA|S|user1"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1"))
         self.assert_reply("b00000147c9bc4c74|MDA|V")
         self.assertDictEqual({"user": "user1",
+                              "sessionId": "S8f3da29cfc463220T5454537",
                               "mpnDeviceInfo":
-                              MpnDeviceInfo(platform_type=MpnPlatformType.APNS,
+                              MpnDeviceInfo(platform_type=MpnPlatformType.APPLE,
                                             application_id=("com.lightstreamer"
                                                             ".demo.ios."
                                                             "stocklistdemo"),
@@ -1386,7 +1373,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_device_access_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|#|P|A|S|"
+        self.send_request(("b00000147c9bc4c74|MDA|S|#"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1"))
@@ -1394,7 +1382,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_device_access_with_credits_exception(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|$|P|A|S|"
+        self.send_request(("b00000147c9bc4c74|MDA|S|$"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1"))
@@ -1403,21 +1392,25 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_malformed_notify_device_access(self):
         self.do_init_and_skip()
-        self.send_request("b00000147c9bc4c74|MDA|S|#|P")
-        self.assert_caught_exception(("Token not found while parsing a MDA "
+        self.send_request(("b00000147c9bc4c74|MDA|S|#"
+                           "|S|S8f3da29cfc463220T5454537|P"))
+        self.assert_caught_exception(("Token not found while parsing MDA "
                                       "request"))
 
-        self.send_request("b00000147c9bc4c74|MDA|S1|#|P")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing a"
+        self.send_request(("b00000147c9bc4c74|MDA|S1|#"
+                           "|S|S8f3da29cfc463220T5454537|P"))
+        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " MDA request"))
 
-        self.send_request("b00000147c9bc4c74|MDA|S|#|P|Q")
+        self.send_request(("b00000147c9bc4c74|MDA|S|#"
+                           "|S|S8f3da29cfc463220T5454537|P|Q"))
         self.assert_caught_exception(("Unknown platform type 'Q' while parsing"
-                                      " a MDA request"))
+                                      " MDA request"))
 
     def test_notify_device_access_with_generic_exception(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|user2|P|A|S|"
+        self.send_request(("b00000147c9bc4c74|MDA|S|user2"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1"))
@@ -1431,48 +1424,31 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
                    # I|<first item idx.>|I|<last item idx.>|
                    "I|1|I|2|"
-                   # PA|<num. of arguments>|<num. of custom test_data>|
-                   "PA|2|4|"
                    # P|A|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|A|S|com.lightstreamer.demo.ios.stocklistdemo|S|"
                    "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9eeccca1f24"
                    "c5aaf1|S|"
                    "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+1000.0|"
-                   # S|<sound name>|S|<icon badge>|S|<loc. action key>|
-                   "S|Default|S|AUTO|S|MARKET+VIEW|"
-                   # S|<launch image name>|S|<format>|S|<loc. format key>|
-                   "S|#|S|#|S|MARKET+UPDATE|"
-                   # S|<arg. 1>|S|<arg. 2>|...|S|<arg. N>|
-                   "S|%24%7Bstock_name%7D|S|%24%7Blast_price%7D|"
-                   # S|<custom test_data key 1>|S|<custom value key 1>|...|
-                   "S|customKey1|S|123456|"
-                   "S|customKey2|S|7890|"
-                   "S|customKey3|S|#|"
-                   "S|customKey4|S|$")
+                   # S|<notification_format
+                   "S|%7B%22aps%22%3A%7B%22alert%22%3A%22%24%7Bmessage%7D%22"
+                   "%2C%22badge%22%3A%22AUTO%22%7D%2C%22acme2%22%3A%5B%22"
+                   "%24%7Btag1%7D%22%2C%22%24%7Btag2%7D%22%5D%7D")
 
         self.send_request(request)
         self.assert_reply("c00000147c9bc4c74|MSA|V")
 
         device = MpnDeviceInfo(
-            platform_type=MpnPlatformType.APNS,
+            platform_type=MpnPlatformType.APPLE,
             application_id="com.lightstreamer.demo.ios.stocklistdemo",
             device_token=("f74d8ffc5ee7cb31749a329a8f9202867c0a9906e8"
                           "0ee7f9eeccca1f24c5aaf1"))
 
-        subscription = MpnApnsSubscriptionInfo(
+        subscription = MpnSubscriptionInfo(
             device=device,
-            trigger="Double.parseDouble(${last_price}) > 1000.0",
-            sound="Default",
-            badge="AUTO",
-            launch_image=None,
-            txt_format=None,
-            localized_action_key="MARKET VIEW",
-            localized_format_key="MARKET UPDATE",
-            arguments=['${stock_name}', '${last_price}'],
-            custom_data={'customKey1': '123456',
-                         'customKey2': '7890',
-                         'customKey3': None,
-                         'customKey4': ''})
+            notification_format=("{\"aps\":{\"alert\":\"${message}\","
+                                 "\"badge\":\"AUTO\"},\"acme2\":"
+                                 "[\"${tag1}\",\"${tag2}\"]}"),
+            trigger="Double.parseDouble(${last_price}) > 1000.0")
 
         table_info = TableInfo(win_index=1, mode=Mode.MERGE,
                                group="item4 item19",
@@ -1492,14 +1468,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.send_request(("c00000147c9bc4c74|MSA|S|#|S|"
                            "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
-                           "S|stock_name+last_price+time|I|1|I|2|PA|2|1|P|A|S|"
+                           "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
                            "ccca1f24c5aaf1|S|"
                            "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|Default|S|AUTO|S|MARKET+VIEW|S|#|S|#|S|"
-                           "MARKET+UPDATE|S|%24%7Bstock_name%7D|S|"
-                           "%24%7Blast_price%7D|S|customKey1|S|123456"))
+                           "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
+                           "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
+                           "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
+                           "%24%7Btag2%7D%22%5D%7D"))
         self.assert_reply("c00000147c9bc4c74|MSA|EN|NotificationError")
 
     def test_notify_mpn_subscription_activation_APN_with_ce_exception(self):
@@ -1508,14 +1485,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.send_request(("c00000147c9bc4c74|MSA|S|$|S|"
                            "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
-                           "S|stock_name+last_price+time|I|1|I|2|PA|2|1|P|A|S|"
+                           "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
                            "ccca1f24c5aaf1|S|"
                            "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|Default|S|AUTO|S|MARKET+VIEW|S|#|S|#|S|"
-                           "MARKET+UPDATE|S|%24%7Bstock_name%7D|S|"
-                           "%24%7Blast_price%7D|S|customKey1|S|123456"))
+                           "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
+                           "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
+                           "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
+                           "%24%7Btag2%7D%22%5D%7D"))
         self.assert_reply(("c00000147c9bc4c74|MSA|EC|CreditsError|10|"
                            "clientErrorMsg"))
 
@@ -1525,14 +1503,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.send_request(("c00000147c9bc4c74|MSA|S|user2|S|"
                            "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
-                           "S|stock_name+last_price+time|I|1|I|2|PA|2|1|P|A|S|"
+                           "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
                            "ccca1f24c5aaf1|S|"
                            "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|Default|S|AUTO|S|MARKET+VIEW|S|#|S|#|S|"
-                           "MARKET+UPDATE|S|%24%7Bstock_name%7D|S|"
-                           "%24%7Blast_price%7D|S|customKey1|S|123456"))
+                           "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
+                           "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
+                           "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
+                           "%24%7Btag2%7D%22%5D%7D"))
         self.assert_reply("c00000147c9bc4c74|MSA|E|Exception")
 
     def test_notify_mpn_subscription_activation_GCM(self):
@@ -1543,20 +1522,13 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
                    # I|<first item idx.>|I|<last item idx.>|
                    "I|1|I|2|"
-                   # PG|<num. of test_data>|
-                   "PG|3|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|G|S|com.lightstreamer.demo.android.stocklistdemo|S|"
                    "2082055669|S|"
                    "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+1000.0|"
-                   # S|<collapse key>|
-                   "S|Stock+update|"
-                   # S|<test_data key 1>|S|<value key 1>|...|S|
-                   # <test_data key N>|S|<value key N>|
-                   "S|time|S|%24%7Btime%7D|S|last_price|S|"
-                   "%24%7Blast_price%7D|S|stock_name|S|%24%7Bstock_name%7D|"
-                   # S|<delay while idle>|S|<time to live>
-                   "S|false|S|30")
+                   # S|notification_format
+                   "S|%7B%22data%22%3A%7B%22score%22%3A%22%24%7Bscore%7D%22"
+                   "%2C%22time%22%3A%22%24%7Btime%7D%22%7D%7D")
         self.send_request(request)
         self.assert_reply("c00000147c9bc4c74|MSA|V")
 
@@ -1565,18 +1537,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                                schema="stock_name last_price time",
                                first_idx=1, last_idx=2)
         device = MpnDeviceInfo(
-            platform_type=MpnPlatformType.GCM,
+            platform_type=MpnPlatformType.GOOGLE,
             application_id="com.lightstreamer.demo.android.stocklistdemo",
             device_token="2082055669")
 
-        subscription = MpnGcmSubscriptionInfo(
+        subscription = MpnSubscriptionInfo(
             device=device,
-            trigger="Double.parseDouble(${last_price}) > 1000.0",
-            collapse_key='Stock update',
-            delay_while_idle='false',
-            time_to_live='30',
-            data={'time': '${time}', 'last_price': '${last_price}',
-                  'stock_name': '${stock_name}'})
+            notification_format=("{\"data\":{\"score\":\"${score}\","
+                                 "\"time\":\"${time}\"}}"),
+            trigger="Double.parseDouble(${last_price}) > 1000.0")
 
         expected_dict = {"user": "user1",
                          "sessionId": "Sc4a1769b6bb83a4aT2852044",
@@ -1584,98 +1553,87 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                          "mpn_subscription": subscription}
         self.assertDictEqual(expected_dict, self.collector)
 
-    def test_notify_mpn_subscription_activation_GCM_with_ne_exception(self):
+    def test_notify_mpn_subscription_activation_Google_with_ne_exception(self):
         self.do_init_and_skip()
         self.send_request(("c00000147cac69643|MSA|S|#|S|"
                            "S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19|S|"
-                           "stock_name+last_price+time|I|1|I|2|PG|3|P|G|S|"
+                           "stock_name+last_price+time|I|1|I|2|P|G|S|"
                            "com.lightstreamer.demo.android.stocklistdemo|S|"
-                           "2082055669|S|Double.parseDouble%28%24%7Blast_price"
-                           "%7D%29+%3E+1000.0|S|Stock+update|S|time|S|"
-                           "%24%7Btime%7D|S|last_price|S|%24%7Blast_price%7D|"
-                           "S|stock_name|S|%24%7Bstock_name%7D|S|false|S|30"))
+                           "2082055669|S|"
+                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                           "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
+                           "%24%7Bscore%7D%22%2C%22time%22%3A%22"
+                           "%24%7Btime%7D%22%7D%7D"))
         self.assert_reply("c00000147cac69643|MSA|EN|NotificationError")
 
-    def test_notify_mpn_subscription_activation_GCM_with_ce_exception(self):
+    def test_notify_mpn_subscription_activation_Google_with_ce_exception(self):
         self.do_init_and_skip()
         self.send_request(("c00000147cac69643|MSA|S|$|S|"
                            "S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19|S|"
-                           "stock_name+last_price+time|I|1|I|2|PG|3|P|G|S|"
+                           "stock_name+last_price+time|I|1|I|2|P|G|S|"
                            "com.lightstreamer.demo.android.stocklistdemo|S|"
                            "2082055669|S|"
                            "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|Stock+update|S|time|S|%24%7Btime%7D|S|"
-                           "last_price|S|%24%7Blast_price%7D|S|stock_name|S|"
-                           "%24%7Bstock_name%7D|S|false|S|30"))
+                           "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
+                           "%24%7Bscore%7D%22%2C%22time%22%3A%22"
+                           "%24%7Btime%7D%22%7D%7D"))
         self.assert_reply(("c00000147cac69643|MSA|EC|CreditsError|10|"
                            "clientErrorMsg"))
 
-    def test_notify_mpn_subscription_activation_GCM_with_exception(self):
+    def test_notify_mpn_subscription_activation_Google_with_exception(self):
         self.do_init_and_skip()
         self.send_request(("c00000147cac69643|MSA|S|user2|S"
                            "|S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19"
-                           "|S|stock_name+last_price+time|I|1|I|2|PG|3|P|G|S|"
+                           "|S|stock_name+last_price+time|I|1|I|2|P|G|S|"
                            "com.lightstreamer.demo.android.stocklistdemo|S|"
                            "2082055669|S|"
                            "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|Stock+update|S|time|S|%24%7Btime%7D|S|"
-                           "last_price|S|%24%7Blast_price%7D|S|stock_name|S|"
-                           "%24%7Bstock_name%7D|S|false|S|30"))
+                           "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
+                           "%24%7Bscore%7D%22%2C%22time%22%3A%22"
+                           "%24%7Btime%7D%22%7D%7D"))
         self.assert_reply("c00000147cac69643|MSA|E|Exception")
 
     def test_malformed_mpn_subscription_activation(self):
         self.do_init_and_skip()
-        # Invalid "PH" token as mpn subcription type
-        request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
-                   # <field schema>|
-                   "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
-                   "I|1|I|2|"
-                   # PG|<num. of test_data>|
-                   "PH|3")
-        self.send_request(request)
-        self.assert_caught_exception(("Unsupported MPN subscription type while"
-                                      " parsing a MSA request"))
+        # Invalid "P" token as mpn platform type
 
-        # Missing next token to PG
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
                    # I|<win. index>|M|<pub. mode>|S|<item group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
                    # I|<first item idx.>|I|<last item idx.>|
                    "I|1|I|2|"
-                   # PG|<num. of test_data>|
-                   "PG|")
+                   # P|G|S|<application ID>|S|<device token>|S|<trigger>|
+                   "P|R|")
         self.send_request(request)
-        self.assert_caught_exception(("Token not found while parsing a MSA "
+        self.assert_caught_exception(("Unknown platform type 'R' while"
+                                      " parsing MSA request"))
+
+        # Missing next token to P
+        request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
+                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # <field schema>|
+                   "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
+                   # I|<first item idx.>|I|<last item idx.>|
+                   "I|1|I|2|"
+                   # P|G|S|<application ID>|S|<device token>|S|<trigger>|
+                   "P|")
+        self.send_request(request)
+        self.assert_caught_exception(("Token not found while parsing MSA "
                                       "request"))
 
-        # Missing next token to PA
+        # Invalid next literal token to "P"
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
                    # I|<win. index>|M|<pub. mode>|S|<item group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
                    # I|<first item idx.>|I|<last item idx.>|
-                   "I|1|I|2|"
-                   # PG|<num. of test_data>|
-                   "PA|")
-        self.send_request(request)
-        self.assert_caught_exception(("Token not found while parsing a MSA "
-                                      "request"))
-
-        # Invalid next literal token to "PA"
-        request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
-                   # <field schema>|
-                   "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
-                   "I|1|I|2|"
-                   # PG|<num. of test_data>|
-                   "PA|s")
+                   "I|1|I|R|"
+                   # P|G|S|<application ID>|S|<device token>|S|<trigger>|
+                   "P|G")
         self.send_request(request)
         self.assert_caught_exception(("An unexpected exception caught while "
-                                      "parsing a MSA request"))
+                                      "parsing MSA request"))
 
         # Invalid "H" token as mode type
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
@@ -1684,39 +1642,34 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                    "I|1|M|H|S|item4+item19|S|stock_name+last_price+time|"
                    # I|<first item idx.>|I|<last item idx.>|
                    "I|1|I|2|"
-                   # PG|<num. of test_data>|
-                   "PG|3|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|G|S|com.lightstreamer.demo.android.stocklistdemo|S|"
                    "2082055669|S|"
                    "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+1000.0|"
-                   # S|<collapse key>|
-                   "S|Stock+update|"
-                   # S|<test_data key 1>|S|<value key 1>|...|S|
-                   # <test_data key N>|S|<value key N>|
-                   "S|time|S|%24%7Btime%7D|S|last_price|S|%24%7Blast_price%7D|"
-                   "S|stock_name|S|%24%7Bstock_name%7D|"
-                   # S|<delay while idle>|S|<time to live>
-                   "S|false|S|30")
+                   # S|notification_format
+                   "S|%7B%22data%22%3A%7B%22score%22%3A%22%24%7Bscore%7D%22"
+                   "%2C%22time%22%3A%22%24%7Btime%7D%22%7D%7D")
         self.send_request(request)
-        self.assert_caught_exception(("Unknown mode 'H' found while parsing a"
+        self.assert_caught_exception(("Unknown mode 'H' found while parsing"
                                       " MSA request"))
 
     def test_notify_mpn_device_token_change(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1|P|A|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
                            "fc56635c89c566dda3c6708fd893549"))
         self.assert_reply("3700000147c9bc4c74|MDC|V")
         device = MpnDeviceInfo(
-            platform_type=MpnPlatformType.APNS,
+            platform_type=MpnPlatformType.APPLE,
             application_id="com.lightstreamer.demo.ios.stocklistdemo",
             device_token=("f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec2"
                           "4cff14a9906f1"))
 
         expected_dict = {"user": "user1",
+                         "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
                          "newDeviceToken": ("0849781a0afe0311f58bbfee1fcde031b"
                                             "fc56635c89c566dda3c6708fd893549")}
@@ -1724,7 +1677,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_mpn_device_token_change_with_null_platform_type(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1|P|#|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
+                           "|S|S8f3da29cfc463220T5454537|P|#|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
@@ -1737,6 +1691,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                                              "3a1ecce77c""09e202ec24cff14a9906"
                                              "f1"))
         expected_dict = {"user": "user1",
+                         "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
                          "newDeviceToken": ("0849781a0afe0311f58bbfee1fcde031b"
                                             "fc56635c89c566dda3c6708fd893549")}
@@ -1744,7 +1699,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_mpn_device_token_change_with_empty_platform_type(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1|P|$|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
+                           "|S|S8f3da29cfc463220T5454537|P|$|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
@@ -1758,6 +1714,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                                              "3a1ecce77c""09e202ec24cff14a9906"
                                              "f1"))
         expected_dict = {"user": "user1",
+                         "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
                          "newDeviceToken": ("0849781a0afe0311f58bbfee1fcde031b"
                                             "fc56635c89c566dda3c6708fd893549")}
@@ -1765,7 +1722,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_mpn_device_token_change_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|#|P|A|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|#"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
@@ -1774,7 +1732,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_mpn_device_token_change_with_credits_exception(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|$|P|A|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|$"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
@@ -1784,7 +1743,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_mpn_device_token_change_with_generic_exception(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user2|P|A|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|user2"
+                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
@@ -1793,14 +1753,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_malformed_notify_mpn_device_token_change(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1|P|B1|S|"
+        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
+                           "|S|S8f3da29cfc463220T5454537|P|B1|S|"
                            "com.lightstreamer.demo.ios.stocklistdemo|S|"
                            "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
                            "24cff14a9906f1|S|"
                            "0849781a0afe0311f58bbfee1fcde031bfc56635c89c566dda"
                            "3c6708fd893549"))
         self.assert_caught_exception(("Unknown platform type 'B1' while "
-                                      "parsing a MDC request"))
+                                      "parsing MDC request"))
 
 
 if __name__ == "__main__":

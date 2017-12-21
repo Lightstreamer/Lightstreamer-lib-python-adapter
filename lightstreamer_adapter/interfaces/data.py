@@ -199,8 +199,8 @@ class DataProvider(metaclass=ABCMeta):
         only be considered as empty.
 
         :param str item_name: Name of an Item.
-        :return bool: True if Snapshot information will be sent for this Item
-         before the updates.
+        :return bool: ``True`` if Snapshot information will be sent for this
+         Item before the updates.
         :raises lightstreamer_adapter.interfaces.data.SubscribeError: in case
          the Data Adapter is unable to answer to the request.
         """
@@ -265,12 +265,12 @@ class ItemEventListener(metaclass=ABCMeta):
 
         The Remote Adapter should ensure that, after an
         :meth:`DataProvider.unsubscribe` call for the Item has returned, a
-        possible pending :meth:`DataProvider.end_of_snapshot` call related with
-        the previous subscription request is no longer issued. This assures
-        that, upon a new subscription for the Item, no trailing events due to
-        the previous subscription can be received by the Remote Server. Note
-        that the method is nonblocking; moreover, it only takes locks to first
-        order mutexes; so, it can safely be called while holding a custom lock.
+        possible pending ``end_of_snapshot`` call related with the previous
+        subscription request is no longer issued. This assures that, upon a new
+        subscription for the Item, no trailing events due to the previous
+        subscription can be received by the Remote Server. Note that the method
+        is nonblocking; moreover, it only takes locks to first order mutexes;
+        so, it can safely be called while holding a custom lock.
 
         :param str item_name: The name of the Item whose snapshot has been
          completed

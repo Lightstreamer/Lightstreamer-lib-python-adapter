@@ -23,8 +23,7 @@ from lightstreamer_adapter.protocol import (MetadataProviderError,
 
 from lightstreamer_adapter.interfaces.metadata import (MpnDeviceInfo,
                                                        TableInfo,
-                                                       MpnApnsSubscriptionInfo,
-                                                       MpnGcmSubscriptionInfo)
+                                                       MpnSubscriptionInfo)
 
 
 class Method(Enum):
@@ -48,9 +47,6 @@ class Method(Enum):
 
     def __str__(self):
         return self.name
-
-
-MPN_SUBSCRIPTION_TYPES = ["PA", "PG"]
 
 
 @remoting_exception_on_parse(Method.MPI)
@@ -316,7 +312,8 @@ def _read_mpn_device_info(data, offset=0):
 def read_notify_device_access(data):
     """Reads and parses a MDA ('Notify MPN Device Access') request."""
     return {"user": read(data, "S", 0),
-            "mpnDeviceInfo": _read_mpn_device_info(data, 2)}
+            "sessionId": read(data, "S", 2),
+            "mpnDeviceInfo": _read_mpn_device_info(data, 4)}
 
 
 def write_notify_device_acces(exception=None):
@@ -329,38 +326,12 @@ def write_notify_device_acces(exception=None):
                                  CreditsError, NotificationError)
 
 
-def _read_apn_subscription_info(data, offset):
-    arg_length = int(read_token(data, offset))
-    arguments = read_seq(data, offset + 22, arg_length * 2)
-    cust_data_size = int(read_token(data, offset + 1))
-    custom_data = read_map(data, offset + 22 + arg_length * 2,
-                           cust_data_size * 4)
+def _read_subscription_info(data, offset):
 
-    return MpnApnsSubscriptionInfo(
-        device=_read_mpn_device_info(data, offset + 2),
-        trigger=read(data, "S", offset + 8),
-        sound=read(data, "S", offset + 10),
-        badge=read(data, "S", offset + 12),
-        localized_action_key=read(data, "S", offset + 14),
-        launch_image=read(data, "S", offset + 16),
-        txt_format=read(data, "S", offset + 18),
-        localized_format_key=read(data, "S", offset + 20),
-        arguments=arguments,
-        custom_data=custom_data)
-
-
-def _read_gcm_subscription_info(data, offset):
-    num_of_data = int(read_token(data, offset))
-    map_start_idx = offset + 11
-    map_length = num_of_data * 4
-
-    return MpnGcmSubscriptionInfo(
-        device=_read_mpn_device_info(data, offset + 1),
-        trigger=read(data, "S", offset + 7),
-        collapse_key=read(data, "S", offset + 9),
-        data=read_map(data, map_start_idx, map_length),
-        delay_while_idle=read(data, "S", map_start_idx + map_length),
-        time_to_live=read(data, "S", map_start_idx + map_length + 2))
+    return MpnSubscriptionInfo(
+        device=_read_mpn_device_info(data, offset),
+        trigger=read(data, "S", offset + 6),
+        notification_format=read(data, "S", offset + 8))
 
 
 @remoting_exception_on_parse(Method.MSA)
@@ -372,14 +343,7 @@ def read_subscription_activation(data):
     values["user"] = read(data, "S", 0)
     values["session_id"] = read(data, "S", 2)
     values["table"] = _read_table(data, 4, False)
-
-    subscription_type = read_token(data, 16)
-    if subscription_type == 'PA':
-        values["subscription"] = _read_apn_subscription_info(data, 17)
-    elif subscription_type == 'PG':
-        values["subscription"] = _read_gcm_subscription_info(data, 17)
-    else:
-        raise RemotingException("Unsupported MPN subscription type")
+    values["subscription"] = _read_subscription_info(data, 16)
     return values
 
 
@@ -400,8 +364,9 @@ def read_device_token_change(data):
     """Reads and parses a MDC ('Notify MPN Subscription Activation') request.
     """
     return {"user": read(data, "S", 0),
-            "mpnDeviceInfo": _read_mpn_device_info(data, 2),
-            "newDeviceToken": read(data, "S", 8)}
+            "sessionId": read(data, "S", 2),
+            "mpnDeviceInfo": _read_mpn_device_info(data, 4),
+            "newDeviceToken": read(data, "S", 10)}
 
 
 def write_device_token_change(exception=None):

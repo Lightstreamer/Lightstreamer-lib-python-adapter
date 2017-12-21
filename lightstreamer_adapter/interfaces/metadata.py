@@ -6,8 +6,7 @@ manage a Remote Metadata Adapter.
 from enum import Enum
 
 __all__ = ['MetadataProvider', 'Mode', 'MpnPlatformType', 'MpnDeviceInfo',
-           'MpnSubscriptionInfo', 'MpnApnsSubscriptionInfo',
-           'MpnGcmSubscriptionInfo', 'TableInfo', 'MetadataError',
+           'MpnSubscriptionInfo', 'TableInfo', 'MetadataError',
            'MetadataProviderError', 'NotificationError', 'AccessError',
            'ItemsError', 'SchemaError', 'CreditsError',
            'ConflictingSessionError']
@@ -81,13 +80,13 @@ class MetadataProvider():
          Metadata Adapter configuration. Both key and values are represented as
          string objects. The parameters can be supplied through the
          :meth:`lightstreamer_adapter.server.MetadataProviderServer.adapter_params`
-         property of the MetadataProviderServer instance. More parameters can
-         be added by leveraging the "init_remote" parameter in the Proxy
+         property of the ``MetadataProviderServer`` instance. More parameters
+         can be added by leveraging the ``init_remote`` parameter in the Proxy
          Adapter configuration.
         :param str config_file: The path on the local disk of the Metadata
          Adapter configuration file. The file path can be supplied through the
          :meth:`lightstreamer_adapter.server.MetadataProviderServer.adapter_config`
-         propery of the used MetadataProviderServer instance.
+         propery of the used ``MetadataProviderServer`` instance.
         :raises \
         lightstreamer_adapter.interfaces.metadata.MetadataProviderError:
          (never raised in the default implementation) in case an error occurs
@@ -156,8 +155,8 @@ class MetadataProvider():
         See
         :meth:`notify_user` for other notes.
 
-        :Edition Note: https connections are not enabled in Allegro edition.
-        :Edition Note: https connections are not enabled in Moderato edition.
+        :Edition Note: https is an optional feature, available depending
+		 on Edition and License Type.
         :param str user: A User name.
         :param str password: A password optionally required to validate the
          User.
@@ -297,10 +296,8 @@ class MetadataProvider():
 
         This method runs in the Server authentication thread pool, if defined.
 
-        * **Allegto Edition Note:** Bandwidth control is not enabled in Allegro
-          edition.
-        * **Edition Note:** Bandwidth control is not enabled in Moderato
-          edition.
+        **Edition Note:** Bandwidth Control is an optional feature,
+        available depending on Edition and License Type.
 
         :param str user: An User
         :return: The allowed bandwidth, in Kbit/sec. A zero return value means
@@ -325,17 +322,9 @@ class MetadataProvider():
         This method runs in the Server thread pool specific or the Data Adapter
         that supplies the involved items, if defined.
 
-        * **Presto Edition Note:** A further global frequency limit is imposed
-          in Presto edition; this specific limit also applies to RAW mode and
-          to unfiltered dispatching.
-
-        * **Allegro Edition Note:** A further global frequency limit is imposed
-          in Allegro edition; this specific limit also applies to RAW mode and
-          to unfiltered dispatching.
-
-        * **Moderato Edition Note:** A further global frequency limit is
-          imposed in Moderato edition; this specific limit also applies to RAW
-          mode and to unfiltered dispatching.
+        **Edition Note:** A further global frequency limit could also
+        be imposed by the Server, depending on Edition and License Type; this
+        specific limit also applies to RAW mode and to unfiltered dispatching.
 
         :param str user: An User
         :param str item: An Item name
@@ -571,7 +560,14 @@ class MetadataProvider():
         the Metadata Adapter that a push Session has been closed.
 
         This method is called by the Server asynchronously and does not consume
-        a pooled thread.
+        a pooled thread on the Server. As a consequence, it is not guaranteed
+        that no more calls related with this sessionID, like
+        ``notify_new_tables``, ``notify_tables_close``, and ``get_items`` can
+        occur after its invocation on parallel threads. Accepting them would
+        have no effect.
+        However, if the method may have side-effects on the Adapter, like
+        ``notify_user_message``, the Adapter is responsible for checking if
+        the session is still valid.
 
         :param str session_id: A Session ID.
         :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
@@ -653,7 +649,7 @@ class MetadataProvider():
         :meth:`wants_tables_notification`.
 
         This method is called by the Server asynchronously and does not consume
-        a pooled thread.
+        a pooled thread on the Server.
 
         :param str session_id: A Session ID.
         :param tables: A list of :class:`TableInfo` instance each of them
@@ -665,7 +661,7 @@ class MetadataProvider():
          if multiple objects are included, it must be the same for all of
          them).
         :type tables: list
-        :raises lightstreamer_adapter.interfacesmetadata.NotificationError: in
+        :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
          case something is wrong in the parameters, such as the ID of a Session
          that is not currently open or a Table (i.e. Subscription) that is not
          contained in the Session.
@@ -675,7 +671,7 @@ class MetadataProvider():
         """
         pass
 
-    def notify_mpn_device_access(self, user, device):
+    def notify_mpn_device_access(self, user, session_id, device):
         """Called by Lightstreamer Kernel through the Remote Server to check
         that a User is enabled to access the specified MPN device. The success
         of this method call is a prerequisite for all MPN operations, including
@@ -689,11 +685,12 @@ class MetadataProvider():
         ensure the user is entitled to the specific platform, device token and
         application ID.
 
-        **Moderato Edition Note:** Push Notifications are not supported in
-        Moderato edition.
+        **Edition Note:** Push Notifications is an optional feature,
+        available depending on Edition and License Type.
 
         :param str user:  A User name.
-        :param MpnDeviceInfo device: Specifies a MPN device.
+        :param str session_id: The ID of a Session owned by the User.
+        :param MpnDeviceInfo device: Specifies an MPN device.
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
@@ -713,8 +710,8 @@ class MetadataProvider():
         a first-line validation mechanism based on regular expression that may
         also be used for this purpose.
 
-        **Moderato Edition Note:** Push Notifications are not supported in
-        Moderato edition.
+        **Edition Note:** Push Notifications is an optional feature,
+        available depending on Edition and License Type.
 
         :param str user: User name.
         :param str session_id: The ID of a Session owned by the User. The
@@ -722,15 +719,13 @@ class MetadataProvider():
          informations, but Push Notification subscriptions are persistent and
          survive the session. Thus, any association between this Session ID and
          this Push Notification subscription should be considered temporary.
-        :param TableInfo table: A TableInfo
-         instance, containing the details of a Table (i.e.: Subscription) for
-         which Push Notification have to be activated.
+        :param TableInfo table: A ``TableInfo`` instance, containing the
+         details of a Table (i.e.: Subscription) for which Push Notification
+         have to be activated.
         :param MpnSubscriptionInfo mpn_subscription:
-         An instance of a
-         :class:`MpnSubscriptionInfo`'s subclasss (i.e
-         :class:`MpnApnsSubscriptionInfo`, etc.), containing the platform
+         A ``MpnSubscriptionInfo`` instance, containing the platform
          specific details of a PushNotification to be activated.
-        :type mpn_subscription: subclass of :class:`MpnSubscriptionInfo`
+        :type mpn_subscription: :class:`MpnSubscriptionInfo`
         :raises lightstreamer_adapter.interfaces.metadata.CreditsError: if the
          User is not allowed to activate the specified Push Notification in the
          Session.
@@ -742,20 +737,22 @@ class MetadataProvider():
         """
         pass
 
-    def notify_mpn_device_token_change(self, user, device, new_device_token):
+    def notify_mpn_device_token_change(self, user, session_id, device,
+                                       new_device_token):
         """ Called by Lightstreamer Kernel through the Remote Server to check
-        that a User is enabled to change the token of a MPN device. If the
+        that a User is enabled to change the token of an MPN device. If the
         check succeeds, this also notifies the Metadata Adapter that future
         client requests should be issued by specifying the new device token.
 
         Take particular precautions when authorizing device token changes, if
         possible ensure the user is entitled to the new device token.
 
-        **Moderato Edition Note:** Push Notifications are not supported in
-        Moderato edition.
+        **Edition Note:** Push Notifications is an optional feature,
+        available depending on Edition and License Type.
 
         :param str user: A User name.
-        :param MpnDeviceInfo device: Specifies a MPN device.
+        :param str session_id: The ID of a Session owned by the User.
+        :param MpnDeviceInfo device: Specifies an MPN device.
         :param str new_device_token: The new token being assigned to the
          device.
         :raises lightstreamer_adapter.interfaces.metadata.CreditsError: if the
@@ -790,41 +787,48 @@ class Mode(Enum):
 
 
 class MpnPlatformType(Enum):
-    """Identifies a push notifications platform type. It is used by
-    Lightstreamer to specify the platform associated with the notified client
-    requests
+    """Identifies a Push Notifications platform type, used with MPN-related
+    requests of the MetadataProvider. It is used by Lightstreamer to specify
+    the platform associated with the notified client requests
 
-    Some of the available constants may refer to platform types that are not
-    supported yet; only constants for supported platforms will ever be
-    received.
+    The available constants refer to the platform types currently supported.
 
-    **Moderato Edition Note:** Push Notifications are not supported in Moderato
-    edition.
+    **Edition Note:** Push Notifications is an optional feature,
+    available depending on Edition and License Type.
     """
 
-    APNS = 'A'
-    """Apple Push Notification Service platform type"""
+    APPLE = 'A'
+    """Refers to Push Notifications for APPLE platforms, such as iOS, macOS and
+    tvOS.
+    The back-end service for APPLE platforms is APNs ("APPLE Push Notification
+    service").
+    APPLE, iOS, macOS and tvOS are registered trademarks of APPLE, Inc.
+    """
 
-    BPN = 'B'
-    """Blackberry Push Notifications Service platform type"""
-
-    GCM = 'G'
-    """Google Cloud Messaging platform type"""
-
-    MPNS = 'M'
-    """Microsoft Push Notification Service platform type"""
-
-    WNS = 'W'
-    """Microsoft Windows Push Notification Service platform type"""
+    GOOGLE = 'G'
+    """Refers to Push Notifications for GOOGLE platforms, such as Android and
+    Chrome.
+    The back-end service for GOOGLE platforms is FCM ("Firebase Cloud
+    Messaging").
+    GOOGLE, Android and Chrome are registered trademarks of GOOGLE Inc.
+    """
 
 
 class MpnDeviceInfo():
-    """Specifies a target device for Push Notifications, to be specified upon
-    MPN-related methods. Note that the processing and the authorization of Push
-    Notifications is per-device and per-app, where a physical device is
-    uniquely identified by the platform _type and a platform dependent device
-    token. We refer to this combination as a MPN Device. Notification requests
-    for different MPN Devices are handled independently.
+    """Specifies a target device for Push Notifications, used with MPN-related
+    requests for the MetadataProvider. Note that the processing and the
+    authorization of Push Notifications is per-device and per-application.
+    While a physical device is uniquely identified by the platform type and a
+    platform dependent device token, Lightstreamer considers the same device
+    used by two different applications as two different MPN devices. Thus, an
+    ``MpnDeviceInfo`` instance uniquely identifies both the physical device and
+    the application for which it is being used.
+
+    An ``MpnDeviceInfo`` always provides the following identifiers:
+
+    * The platform type.
+    * The application ID.
+    * The device token.
     """
 
     def __init__(self, platform_type, application_id, device_token):
@@ -847,7 +851,8 @@ class MpnDeviceInfo():
 
     @property
     def application_id(self):
-        """The application ID, also known as the bundle ID on some platforms.
+        """The application ID, also known as the package name or bundle ID on
+        some platforms.
 
         :type: str
         """
@@ -855,7 +860,8 @@ class MpnDeviceInfo():
 
     @property
     def device_token(self):
-        """The token of the device.
+        """The token of the device, also known as the registration ID on some
+        platforms.
 
         :type: str
         """
@@ -866,7 +872,7 @@ class TableInfo():
     """Used by MetadataProvider to provide value objects to the calls to
     methods :meth:`notify_new_tables()` and :meth:`notify_tables_close()`. The
     attributes of every Table (i.e.: Subscription) to be added or removed to a
-    Session have to be written to a TableInfo instance.
+    Session have to be written to a ``TableInfo`` instance.
     """
     def __init__(self, win_index, mode, group, schema, first_idx, last_idx,
                  selector=None):
@@ -956,17 +962,19 @@ class TableInfo():
 
 
 class MpnSubscriptionInfo:
-    """Abstract class used by Lightstreamer to provide value objects to method
-    :meth:`notify_mpn_subscription_activation`.
-    The attributes of every Push Notification to be activated is provided as a
-    MpnSubscriptionInfo subclass instance. See subclasses for platform specific
-    details.
+    """Specifies a Push Notifications subscription, used with MPN-related
+    requests of the ``MetadataProvider``.
 
-    **Moderato Edition Note:** Push Notifications are not supported in Moderato
-    edition.
+    For the actual description of the subscription we rely on a generic
+    descriptor accessible via the notification_format property, where the
+    structure of the descriptor depends on the platform.
+
+    **Edition Note:** Push Notifications is an optional feature,
+    available depending on Edition and License Type.
     """
-    def __init__(self, device_info, trigger):
-        self._device = device_info
+    def __init__(self, device, notification_format, trigger):
+        self._device = device
+        self._notification_format = notification_format
         self._trigger = trigger
 
     def __eq__(self, other):
@@ -976,171 +984,29 @@ class MpnSubscriptionInfo:
 
     @property
     def device(self):
-        """MPN device of the push notifications.
+        """MPN device of this subscription.
 
         :type: :class:`MpnDeviceInfo`
         """
         return self._device
 
     @property
+    def notification_format(self):
+        """The descriptor of the push notifications format of this subscription.
+        The structure of the format descriptor depends on the platform type
+        and it is represented in json.
+
+        :type: str
+        """
+        return self._notification_format
+
+    @property
     def trigger(self):
-        """The optional expression the updates are checked against to trigger
-        the notification.
+        """The optional expression that triggers the delivery of push notification.
 
         :type: str
         """
         return self._trigger
-
-
-class MpnApnsSubscriptionInfo(MpnSubscriptionInfo):
-    """Concrete subclass of MpnSubscriptionInfo for APNS platform type. It is a
-    readonly collection of all the details of a push notifications
-    specification for Apple's APNS.
-
-    **Moderato Edition Note:** Push Notifications are not supported in Moderato
-    edition.
-    """
-    def __init__(self, device, sound, badge, localized_action_key,
-                 launch_image, txt_format, localized_format_key, arguments,
-                 custom_data, trigger):
-        super(MpnApnsSubscriptionInfo, self).__init__(device, trigger)
-        self._sound = sound
-        self._badge = badge
-        self._localized_action_key = localized_action_key
-        self._launch_image = launch_image
-        self._format = txt_format
-        self._localized_format_key = localized_format_key
-        self._arguments = arguments
-        self._custom_data = custom_data
-
-    def __eq__(self, other):
-        if type(other) is type(self):
-            return self.__dict__ == other.__dict__
-        return False
-
-    @property
-    def sound(self):
-        """The optional sound ID to be played when a push notification is
-        delivered.
-
-        :type: str
-        """
-        return self._sound
-
-    @property
-    def badge(self):
-        """The optional value for the icon badge when a push notification is
-        delivered.
-
-        :type: str
-        """
-        return self._badge
-
-    @property
-    def localized_action_key(self):
-        """The optional key of the localized text to be used as the action
-        button when a push notification is delivered.
-
-        :type: str
-        """
-        return self._localized_action_key
-
-    @property
-    def launch_image(self):
-        """The optional image name to be shown while the app is loading when the
-        action.
-
-        :type: str
-        """
-        return self._launch_image
-
-    @property
-    def format(self):
-        """The format for the push notification text when it is delivered. May
-        be ``None`` if a localized format key is supplied instead.
-
-        :type: str
-        """
-        return self._format
-
-    @property
-    def localized_format_key(self):
-        """The key of the localized text to be used as the format for the push
-        notification text when it is delivered. May be `None`` if an explicit
-        format is supplied instead.
-
-        :type: str
-        """
-        return self._localized_format_key
-
-    @property
-    def arguments(self):
-        """A tuple of optional arguments to be used with a localized format
-        key. May be empty.
-
-        :type: tuple of str
-        """
-        return tuple(self._arguments)
-
-    @property
-    def custom_data(self):
-        """The dictionary of optional custom key-value pairs to be added to the
-        push notification. May be empty.
-
-        :type: dict
-        """
-        return self._custom_data.copy()
-
-
-class MpnGcmSubscriptionInfo(MpnSubscriptionInfo):
-    """Concrete subclass of MpnSubscriptionInfo for GCM platform type. It is a
-    collection of all the details of a push notifications specification for
-    Google's GCM.
-
-    **Moderato Edition Note:** Push Notifications are not supported in Moderato
-    edition.
-    """
-    def __init__(self, device, collapse_key, data, delay_while_idle,
-                 time_to_live, trigger):
-        super(MpnGcmSubscriptionInfo, self).__init__(device, trigger)
-        self._collapse_key = collapse_key
-        self._data = data
-        self._delay_while_idle = delay_while_idle
-        self._time_to_live = time_to_live
-
-    @property
-    def collapse_key(self):
-        """The key to be use to collapse multiple push notifications.
-
-        :type: str
-        """
-        return self._collapse_key
-
-    @property
-    def data(self):
-        """The push notifications' payload.
-
-        :type: dict
-        """
-        return self._data.copy()
-
-    @property
-    def delay_while_idle(self):
-        """If "true", the delivery of push notifications is delayed if the
-        device is idle.
-
-        :type: str
-        """
-        return self._delay_while_idle
-
-    @property
-    def time_to_live(self):
-        """The expiration of push notifications, expressed as an integer number
-        of in seconds.
-
-        :type: str
-        """
-        return self._time_to_live
 
 
 class MetadataError(Exception):

@@ -22,7 +22,7 @@ packages = ['lightstreamer_adapter',
 
 setup(
     name='lightstreamer_adapter',
-    version='1.0.0post1',
+    version='1.1.0',
     description='Lightstreamer SDK for Python Adapters',
     long_description=readme + '\n\n' + history,
     url='https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter',
@@ -30,8 +30,7 @@ setup(
     author_email='support@lightstreamer.com',
     license='Apache License 2.0',
     packages=packages,
-    package_data={'': ['LICENSE', 'HISTORY.rst']},
-    package_dir={'lightstreamer_adapter':'lightstreamer_adapter'},
+    package_dir={'lightstreamer_adapter': 'lightstreamer_adapter'},
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',

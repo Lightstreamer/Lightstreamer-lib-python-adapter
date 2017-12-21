@@ -1,1 +1,3 @@
 include LICENSE HISTORY.rst architecture.png
+graft doc
+recursive-include tests *.py 

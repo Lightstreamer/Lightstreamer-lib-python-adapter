@@ -180,4 +180,5 @@ See Also
 Lightstreamer Compatibility Notes
 =================================
 
-Compatible with Adapter Remoting Infrastructure version 1.7.x
+Compatible with Adapter Remoting Infrastructure since 1.8
+- For a version of this library compatible with Adapter Remoting Infrastructure version 1.7, please refer to [this tag](https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/releases/tag/version-1.0.0post1-27).

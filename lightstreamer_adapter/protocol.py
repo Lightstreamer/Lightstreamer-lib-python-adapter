@@ -59,11 +59,11 @@ def remoting_exception_on_parse(method):
             try:
                 return protocol_func(*args, **kwargs)
             except RemotingException as err:
-                msg = "{} while parsing a {} request".format(str(err),
-                                                             str(method))
+                msg = "{} while parsing {} request".format(str(err),
+                                                           str(method))
                 raise RemotingException(msg)
             except Exception as err:
-                msg = ("An unexpected exception caught while parsing a {} "
+                msg = ("An unexpected exception caught while parsing {} "
                        "request")
                 raise RemotingException(msg.format(str(method))) from err
         return _wrap

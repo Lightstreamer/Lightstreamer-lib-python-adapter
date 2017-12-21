@@ -271,27 +271,27 @@ class DataProviderServerTest(RemoteAdapterBase):
         request = ("10000010c3e4d0462|DPI|H|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
         self.send_request(request)
-        self.assert_notify(("FAL|E|Unknown+type+%27H%27+found+while+parsing+a+"
+        self.assert_notify(("FAL|E|Unknown+type+%27H%27+found+while+parsing+"
                             "DPI+request"))
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
         self.send_request("10000010c3e4d0462|DPI|S|")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+a+"
+        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
                             "DPI+request"))
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
         self.send_request("10000010c3e4d0462|DPI|S||")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+a+"
+        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
                             "DPI+request"))
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
         self.send_request("10000010c3e4d0462|DPI|S|  |")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+a+"
+        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
                             "DPI+request"))
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
         self.send_request("10000010c3e4d0462|DPI|S|id|S")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+a+"
+        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
                             "DPI+request"))
 
     def test_init_with_data_provider_exception(self):
@@ -311,7 +311,7 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_miss(self):
         # Test error when the very first request is not a DPI request
         self.do_subscription('aapl%5F')
-        self.assert_notify(("FAL|E|Unexpected+request+SUB+while+waiting+for+a+"
+        self.assert_notify(("FAL|E|Unexpected+request+SUB+while+waiting+for+"
                             "DPI+request"))
 
     def test_subscribe(self):
@@ -341,10 +341,10 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_malformed_subscribe(self):
         self.do_init_and_skip()
         self.send_request("10000010c3e4d0462|SUB|S1|item")
-        self.assert_notify(("FAL|E|Unknown+type+%27S1%27+found+while+parsing+a"
+        self.assert_notify(("FAL|E|Unknown+type+%27S1%27+found+while+parsing"
                             "+SUB+request"))
         self.send_request("10000010c3e4d0462|SUB|S||")
-        self.assert_notify("FAL|E|Token+not+found+while+parsing+a+SUB+request")
+        self.assert_notify("FAL|E|Token+not+found+while+parsing+SUB+request")
 
     def test_unsubscribe(self):
         self.do_init_and_skip()
@@ -385,10 +385,10 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_malformed_unsubscribe(self):
         self.do_init_and_skip()
         self.send_request("10000010c3e4d0462|USB|S1|item")
-        self.assert_notify(("FAL|E|Unknown+type+%27S1%27+found+while+parsing+a"
+        self.assert_notify(("FAL|E|Unknown+type+%27S1%27+found+while+parsing"
                             "+USB+request"))
         self.send_request("10000010c3e4d0462|USB|S||")
-        self.assert_notify("FAL|E|Token+not+found+while+parsing+a+USB+request")
+        self.assert_notify("FAL|E|Token+not+found+while+parsing+USB+request")
 
     def test_eos(self):
         self.do_init_and_skip()

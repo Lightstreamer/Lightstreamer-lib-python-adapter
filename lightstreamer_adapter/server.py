@@ -218,7 +218,7 @@ class Server(metaclass=ABCMeta):
 
     An instance of a Server's subclass should be provided with a suitable
     Adapter instance and with suitable initialization parameters and
-    established connections, then activated through its own ``start`` and
+    established connections, then activated through its own :meth:`start` and
     finally disposed through its own :meth:`close`. Further reuse of the same
     instance is not supported.
     """
@@ -496,7 +496,7 @@ class MetadataProviderServer(Server):
                                     .format(str(meta_protocol.Method.MPI)))
         elif not init_request and self.init_expected:
             raise RemotingException(("Unexpected request {} while waiting for "
-                                     "a {} request")
+                                     "{} request")
                                     .format(method_name,
                                             meta_protocol.Method.MPI))
         if init_request:
@@ -756,11 +756,13 @@ class MetadataProviderServer(Server):
     def _on_mda(self, data):
         parsed_data = meta_protocol.read_notify_device_access(data)
         mpn_device_info = parsed_data["mpnDeviceInfo"]
+        session_id = parsed_data["sessionId"]
         user = parsed_data["user"]
 
         def execute():
             try:
-                self._adapter.notify_mpn_device_access(user, mpn_device_info)
+                self._adapter.notify_mpn_device_access(user, session_id,
+                                                       mpn_device_info)
             except Exception as err:
                 res = meta_protocol.write_notify_device_acces(err)
             else:
@@ -790,6 +792,7 @@ class MetadataProviderServer(Server):
 
     def _on_mdc(self, data):
         parsed_data = meta_protocol.read_device_token_change(data)
+        session_id = parsed_data["sessionId"]
         mpn_device_info = parsed_data["mpnDeviceInfo"]
         user = parsed_data["user"]
         new_device_toksn = parsed_data["newDeviceToken"]
@@ -797,6 +800,7 @@ class MetadataProviderServer(Server):
         def execute():
             try:
                 self._adapter.notify_mpn_device_token_change(user,
+                                                             session_id,
                                                              mpn_device_info,
                                                              new_device_toksn)
             except Exception as err:
@@ -943,7 +947,7 @@ class DataProviderServer(Server):
                                     .format(str(data_protocol.Method.DPI)))
         elif not init_request and self.init_expected:
             raise RemotingException(("Unexpected request {} while waiting for "
-                                     "a {} request")
+                                     "{} request")
                                     .format(method_name,
                                             data_protocol.Method.DPI))
         if init_request:
