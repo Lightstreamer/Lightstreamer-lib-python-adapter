@@ -156,7 +156,7 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-API Reference is available at `<http://pythonhosted.org/lightstreamer_adapter>`_.
+API Reference is available at `<http://lightstreamer-lib-python-adapter.readthedocs.io/>`_.
 
 You can generate it by executing the following command from the ``doc`` folder:
 
@@ -181,4 +181,6 @@ Lightstreamer Compatibility Notes
 =================================
 
 Compatible with Adapter Remoting Infrastructure since 1.8
-- For a version of this library compatible with Adapter Remoting Infrastructure version 1.7, please refer to [this tag](https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/releases/tag/version-1.0.0post1-27).
+- For a version of this library compatible with Adapter Remoting Infrastructure version 1.7, please refer to `this tag`_.
+
+.. _this tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.0.0post1-27
