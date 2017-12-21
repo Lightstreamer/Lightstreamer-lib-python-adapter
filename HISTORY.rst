@@ -4,6 +4,24 @@ Release History
 ---------------
 
 
+1.1.1 (2017-12-21)
++++++++++++++++++++
+
+**Improvements**
+
+- Moved API documentation to `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/latest/>`_.
+
+- Fixed few source code fragments to make them PEP 8 compliant. 
+
+**Bug Fixes**
+
+- Fixed Lightstreamer Compatibility Notes in the README file.
+ 
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since 1.8.
+
+
 1.1.0 (2017-12-19)
 +++++++++++++++++++
 
