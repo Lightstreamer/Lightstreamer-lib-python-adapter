@@ -21,6 +21,7 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
 
 log = logging.getLogger(__name__)
 
+
 class MetadataProviderTestClass(MetadataProvider):
 
     def __init__(self, collector):
@@ -363,7 +364,8 @@ class MpnDeviceInfoTest(unittest.TestCase):
         device_info_1 = MpnDeviceInfo(MpnPlatformType.APPLE, "applicationId",
                                       "deviceToken")
 
-        self.assertEqual(MpnPlatformType.APPLE, device_info_1.mpn_platform_type)
+        self.assertEqual(MpnPlatformType.APPLE,
+                         device_info_1.mpn_platform_type)
         self.assertEqual("applicationId", device_info_1.application_id)
         self.assertEqual("deviceToken", device_info_1.device_token)
 
@@ -1361,14 +1363,15 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "mpnDeviceInfo":
-                              MpnDeviceInfo(platform_type=MpnPlatformType.APPLE,
-                                            application_id=("com.lightstreamer"
-                                                            ".demo.ios."
-                                                            "stocklistdemo"),
-                                            device_token=("f780e9d8ffc86a5ec9a"
-                                                          "329e7745aa8fb3a1ecc"
-                                                          "e77c09e202ec24cff14"
-                                                          "a9906f1"))},
+                              MpnDeviceInfo(
+                                  platform_type=MpnPlatformType.APPLE,
+                                  application_id=("com.lightstreamer"
+                                                  ".demo.ios."
+                                                  "stocklistdemo"),
+                                  device_token=("f780e9d8ffc86a5ec9a"
+                                                "329e7745aa8fb3a1ecc"
+                                                "e77c09e202ec24cff14"
+                                                "a9906f1"))},
                              self.collector)
 
     def test_notify_device_access_with_notification_exception(self):
