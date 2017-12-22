@@ -173,7 +173,7 @@ See Also
 - `Adapter Remoting Infrastructure Network Protocol Specification`_
 - `Lightstreamer Chat Demo adapter for Python`_
 
-.. _Adapter Remoting Infrastructure Network Protocol Specification: http://www.lightstreamer.com/docs/adapter_generic_base/ARI%20Protocol.pdf
+.. _Adapter Remoting Infrastructure Network Protocol Specification: http://www.lightstreamer.com/latest/Lightstreamer_Allegro-Presto-Vivace_7_0/Lightstreamer/DOCS-SDKs/sdk_adapter_generic/doc/ARI%20Protocol.pdf
 .. _Lightstreamer Chat Demo adapter for Python: https://github.com/Lightstreamer/Lightstreamer-example-Chat-adapter-python
 
 
