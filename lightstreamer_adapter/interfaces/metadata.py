@@ -159,6 +159,7 @@ class MetadataProvider():
         on Edition and License Type.
         To know what features are enabled by your license, please see the License
         tab of the Monitoring Dashboard (by default, available at /dashboard).
+
         :param str user: A User name.
         :param str password: A password optionally required to validate the
          User.
