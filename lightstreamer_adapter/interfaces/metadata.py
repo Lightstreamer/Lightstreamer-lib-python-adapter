@@ -157,8 +157,9 @@ class MetadataProvider():
 
         **Edition Note:** https is an optional feature, available depending
         on Edition and License Type.
-        To know what features are enabled by your license, please see the License
-        tab of the Monitoring Dashboard (by default, available at /dashboard).
+        To know what features are enabled by your license, please see the
+        License tab of the Monitoring Dashboard (by default, available at
+        /dashboard).
 
         :param str user: A User name.
         :param str password: A password optionally required to validate the
@@ -301,8 +302,9 @@ class MetadataProvider():
 
         **Edition Note:** Bandwidth Control is an optional feature,
         available depending on Edition and License Type.
-        To know what features are enabled by your license, please see the License
-        tab of the Monitoring Dashboard (by default, available at /dashboard).
+        To know what features are enabled by your license, please see the
+        License tab of the Monitoring Dashboard (by default, available at
+        /dashboard).
 
         :param str user: An User
         :return: The allowed bandwidth, in Kbit/sec. A zero return value means
@@ -330,8 +332,9 @@ class MetadataProvider():
         **Edition Note:** A further global frequency limit could also
         be imposed by the Server, depending on Edition and License Type; this
         specific limit also applies to RAW mode and to unfiltered dispatching.
-        To know what features are enabled by your license, please see the License
-        tab of the Monitoring Dashboard (by default, available at /dashboard).
+        To know what features are enabled by your license, please see the
+        License tab of the Monitoring Dashboard (by default, available at
+        /dashboard).
 
         :param str user: An User
         :param str item: An Item name
@@ -694,8 +697,9 @@ class MetadataProvider():
 
         **Edition Note:** Push Notifications is an optional feature,
         available depending on Edition and License Type.
-        To know what features are enabled by your license, please see the License
-        tab of the Monitoring Dashboard (by default, available at /dashboard).
+        To know what features are enabled by your license, please see the
+        License tab of the Monitoring Dashboard (by default, available at
+        /dashboard).
 
         :param str user:  A User name.
         :param str session_id: The ID of a Session owned by the User.
@@ -721,8 +725,9 @@ class MetadataProvider():
 
         **Edition Note:** Push Notifications is an optional feature,
         available depending on Edition and License Type.
-        To know what features are enabled by your license, please see the License
-        tab of the Monitoring Dashboard (by default, available at /dashboard).
+        To know what features are enabled by your license, please see the
+        License tab of the Monitoring Dashboard (by default, available at
+        /dashboard).
 
         :param str user: User name.
         :param str session_id: The ID of a Session owned by the User. The
@@ -760,8 +765,9 @@ class MetadataProvider():
 
         **Edition Note:** Push Notifications is an optional feature,
         available depending on Edition and License Type.
-        To know what features are enabled by your license, please see the License
-        tab of the Monitoring Dashboard (by default, available at /dashboard).
+        To know what features are enabled by your license, please see the
+        License tab of the Monitoring Dashboard (by default, available at
+        /dashboard).
 
         :param str user: A User name.
         :param str session_id: The ID of a Session owned by the User.
