@@ -4,6 +4,22 @@ Release History
 ---------------
 
 
+1.1.2 (2018-02-22)
++++++++++++++++++++
+
+**Improvements**
+
+- Added clarifications on licensing matters in the docs.
+
+**Bug Fixes**
+
+- Fixed edition note in the documentation of notify_user_with_principal.
+ 
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since 1.8.
+
+
 1.1.1 (2017-12-22)
 +++++++++++++++++++
 
