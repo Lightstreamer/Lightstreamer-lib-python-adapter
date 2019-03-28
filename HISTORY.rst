@@ -4,6 +4,18 @@ Release History
 ---------------
 
 
+1.1.3 (2019-03-29)
++++++++++++++++++++
+
+**Bug Fixes**
+
+- Fixed parsing issue when subscribing to more than two items.
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since 1.8.
+
+
 1.1.2 (2018-02-22)
 +++++++++++++++++++
 
@@ -14,7 +26,7 @@ Release History
 **Bug Fixes**
 
 - Fixed edition note in the documentation of notify_user_with_principal.
- 
+
 **Lightstreamer Compatibility Notes**
 
 - Compatible with Adapter Remoting Infrastructure since 1.8.
@@ -27,12 +39,12 @@ Release History
 
 - Moved API documentation to `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/latest/>`_.
 
-- Fixed few source code fragments to make them PEP 8 compliant. 
+- Fixed few source code fragments to make them PEP 8 compliant.
 
 **Bug Fixes**
 
 - Fixed Lightstreamer Compatibility Notes in the README file.
- 
+
 **Lightstreamer Compatibility Notes**
 
 - Compatible with Adapter Remoting Infrastructure since 1.8.
