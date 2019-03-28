@@ -2,11 +2,13 @@
 Helper classes for the management of subscription and unsubscription of the
 Items handled by the Remote Data Adapter.
 """
-import threading
 from contextlib import contextmanager
+import threading
 from _collections import deque
-from . import DATA_PROVIDER_LOGGER
+
 from lightstreamer_adapter.protocol import RemotingException
+
+from . import DATA_PROVIDER_LOGGER
 
 
 class _ItemTaskManager():
@@ -20,6 +22,7 @@ class _ItemTaskManager():
     is executed in a sequentialized way, in order to avoid any synchronisation
     issue that may affect the Item consistency.
     """
+
     def __init__(self, item_name, subscription_mgr):
         self._item_name = item_name
         self._tasks_deq = deque()
@@ -235,7 +238,8 @@ class SubscriptionManager():
             yield
 
     def get_item_mgr(self, item_name):
-        """Retrieves the _ItemTaskManager associated with the provided item_name.
+        """Retrieves the _ItemTaskManager associated with the provided
+        item_name.
 
         This method is used only internally by the _ItemTaskManager to decide
         whether to remove itself from the SubscriptionManager, trough an
@@ -250,6 +254,7 @@ class SubscriptionManager():
             if item_name in self._active_items:
                 item_manager = self._active_items[item_name]
                 return item_manager.code
+        return None
 
     def del_active_item(self, item_name):
         """Removes the 'item_name' Item from this Susbcription Manager.

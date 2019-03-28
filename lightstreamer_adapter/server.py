@@ -35,6 +35,7 @@ def notify(function):
     """Decorator function which add timestamp information to each notification
     sent to the Proxy Adapter.
     """
+
     def wrap(obj, notification):
         """"Add the timestamp to the supplied notification, in the following
         format:
@@ -48,11 +49,12 @@ def notify(function):
     return wrap
 
 
-class _Sender(object):
+class _Sender():
     """Helper class which manages the communications from the Remote Adapter to
     the ProxyAdapter, sending data over the "request/replies" or
     "notifications" channels.
     """
+
     def __init__(self, sock, server, log):
         self._sock = sock
         self._server = server
@@ -79,15 +81,6 @@ class _Sender(object):
         """Enqueues a reply or notification to be sent to the Proxy Adapter."""
         self._log.debug("Enqueing line: %s", notification)
         self._send_queue.put(notification)
-
-    def direct_send(self, notification):
-        try:
-            current_log = self._log
-            # Send to_send over the network.
-            current_log.debug("Sending line: %s", notification)
-            self._sock.sendall(bytes(notification + '\r\n', 'utf-8'))
-        except OSError as err:
-            self._server.on_ioexception(err)
 
     def _do_run(self):
         """Target method for the Sender-Thread-XXX, started in the start'
@@ -234,6 +227,8 @@ class Server(metaclass=ABCMeta):
         # Logger actually overridden by subclasses.
         self._log = logging.getLogger("lightstreamer-adapter.server")
         self._exception_handler = None
+        self._remote_user = None
+        self._remote_password = None
         self._config = {}
         self._config['address'] = address
         self._config['name'] = "#{}".format(Server._number) if (name is
@@ -269,6 +264,28 @@ class Server(metaclass=ABCMeta):
         :type: float
         """
         return self._config['keep_alive']
+
+    @property
+    def remote_user(self):
+        """The username credential to be sent to the Proxy Adapter upon
+        connection. The credentials are needed only if the Proxy Adapter is
+        configured to require Remote Adapter authentication.
+        The credentials will be sent only if both are non-null.
+
+        :type: str
+        """
+        return self._remote_user
+
+    @property
+    def remote_password(self):
+        """The password credential to be sent to the Proxy Adapter upon
+        connection. The credentials are needed only if the Proxy Adapter is
+        configured to require Remote Adapter authentication.
+        The credentials will be sent only if both are non-null.
+
+        :type: str
+        """
+        return self._remote_password
 
     @property
     def thread_pool_size(self):
@@ -399,7 +416,7 @@ class Server(metaclass=ABCMeta):
         os._exit(1)
         return False
 
-    def _handle_exception(self, ioexception):
+    def _handle_exception(self, exception):
         pass
 
     @abstractmethod
@@ -409,14 +426,12 @@ class Server(metaclass=ABCMeta):
 
         This method is intended to be overridden by subclasses.
         """
-        pass
 
     @abstractmethod
     def _handle_request(self, request_id, data, method_name):
         """Intended to be overridden by subclasses, invoked for handling the
         received request, already splitted into the supplied parameters.
         """
-        pass
 
 
 class MetadataProviderServer(Server):
@@ -449,6 +464,7 @@ class MetadataProviderServer(Server):
     for the same session, are always guaranteed to be and sequentialized in the
     right way, although they may not occur in the same thread.
     """
+
     def __init__(self, adapter, address, name=None, keep_alive=1,
                  thread_pool_size=0):
         """Creates a server with the supplied configuration parameters. The
@@ -487,7 +503,6 @@ class MetadataProviderServer(Server):
 
         This class has a void implementation.
         """
-        pass
 
     def _handle_request(self, request_id, data, method_name):
         init_request = method_name == str(meta_protocol.Method.MPI)
@@ -535,15 +550,24 @@ class MetadataProviderServer(Server):
 
     def _on_mpi(self, data):
         parsed_data = meta_protocol.read_init(data)
+        parsed_data.setdefault("ARI.version", "1.8.0")
+        ari_version = parsed_data["ARI.version"]
+        del parsed_data["ARI.version"]
         try:
             if self._params:
                 init_params = self._params.copy()
                 parsed_data.update(init_params)
             self._adapter.initialize(parsed_data, self._config_file)
         except Exception as err:
-            res = meta_protocol.write_init(err)
+            res = meta_protocol.write_init(exception=err)
         else:
-            res = meta_protocol.write_init()
+            proxy_parameters = {}
+            if ari_version != "1.8.0":
+                proxy_parameters["ARI.version"] = ari_version
+                if self.remote_user and self.remote_password:
+                    proxy_parameters["remote_user"] = self.remote_user
+                    proxy_parameters["password"] = self.remote_password
+            res = meta_protocol.write_init(proxy_parameters)
         return res
 
     def _on_nus(self, data):
@@ -565,6 +589,7 @@ class MetadataProviderServer(Server):
                                                      max_bandwidth,
                                                      wants_tb_ntf)
             return res
+
         return execute
 
     def _on_nua(self, data):
@@ -589,6 +614,7 @@ class MetadataProviderServer(Server):
                                                      max_bandwidth,
                                                      wants_tb_notify)
             return res
+
         return execute
 
     def _on_nns(self, data):
@@ -606,6 +632,7 @@ class MetadataProviderServer(Server):
             except Exception as err:
                 res = meta_protocol.write_notify_new_session(err)
             return res
+
         return execute
 
     def _on_nsc(self, data):
@@ -619,6 +646,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_session_close()
             return res
+
         return execute
 
     def _on_gis(self, data):
@@ -639,6 +667,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_items(items)
             return res
+
         return execute
 
     def _on_gsc(self, data):
@@ -661,6 +690,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_schema(fields)
             return res
+
         return execute
 
     def _on_git(self, data):
@@ -681,6 +711,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_item_data(items)
             return res
+
         return execute
 
     def _on_gui(self, data):
@@ -704,6 +735,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_user_item_data(items)
             return res
+
         return execute
 
     def _on_num(self, data):
@@ -720,6 +752,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_user_message()
             return res
+
         return execute
 
     def _on_nnt(self, data):
@@ -736,6 +769,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_new_tables()
             return res
+
         return execute
 
     def _on_ntc(self, data):
@@ -751,6 +785,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_tables_close()
             return res
+
         return execute
 
     def _on_mda(self, data):
@@ -768,6 +803,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_device_acces()
             return res
+
         return execute
 
     def _on_msa(self, data):
@@ -788,6 +824,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_subscription_activation()
             return res
+
         return execute
 
     def _on_mdc(self, data):
@@ -808,6 +845,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_device_token_change()
             return res
+
         return execute
 
     def _handle_ioexception(self, ioexception):
@@ -1013,6 +1051,9 @@ class DataProviderServer(Server):
 
     def _on_dpi(self, data):
         parsed_data = data_protocol.read_init(data)
+        parsed_data.setdefault("ARI.version", "1.8.0")
+        ari_version = parsed_data["ARI.version"]
+        del parsed_data["ARI.version"]
         try:
             if self._params:
                 init_params = self._params.copy()
@@ -1021,9 +1062,19 @@ class DataProviderServer(Server):
             self._adapter.initialize(parsed_data, self._config_file)
             self._adapter.set_listener(self)
         except Exception as err:
-            res = data_protocol.write_init(err)
+            res = data_protocol.write_init(exception=err)
         else:
-            res = data_protocol.write_init()
+            proxy_parameters = None
+            if ari_version != "1.8.0":
+                proxy_parameters = {}
+                proxy_parameters["ARI.version"] = ari_version
+                if self.remote_user and self.remote_password:
+                    proxy_parameters["user"] = self.remote_user
+                    proxy_parameters["password"] = self.remote_password
+            res = data_protocol.write_init(proxy_parameters)
+            if proxy_parameters is not None:
+                notify_res = data_protocol.write_notify_init(proxy_parameters)
+                self._send_notify(notify_res)
         return res
 
     def _on_sub(self, request_id, data):
@@ -1175,6 +1226,7 @@ class ExceptionHandler(metaclass=ABCMeta):
     instance with a custom handler for error conditions occurring on the Remote
     Server.
     """
+
     def __init__(self):
         pass
 
@@ -1196,7 +1248,6 @@ class ExceptionHandler(metaclass=ABCMeta):
         :return bool: ``True`` to enable the default handling, false to
          suppress it.
         """
-        pass
 
     def handle_exception(self, exception):
         """Called by the Remote Server upon an unexpected error. After this

@@ -84,7 +84,6 @@ class DataProvider(metaclass=ABCMeta):
          case an error occurs that prevents the correct behavior of the Data
          Adapter.
         """
-        pass
 
     @abstractmethod
     def set_listener(self, event_listener):
@@ -95,7 +94,6 @@ class DataProvider(metaclass=ABCMeta):
 
         :param ItemEventListener event_listener: A listener.
         """
-        pass
 
     @abstractmethod
     def subscribe(self, item_name):
@@ -159,7 +157,6 @@ class DataProvider(metaclass=ABCMeta):
          method execution has caused a severe problem that can compromise
          future operation of the Data Adapter.
         """
-        pass
 
     @abstractmethod
     def unsubscribe(self, item_name):
@@ -182,7 +179,6 @@ class DataProvider(metaclass=ABCMeta):
          method execution has caused a severe problem that can compromise
          future operation of the Data Adapter.
         """
-        pass
 
     @abstractmethod
     def issnapshot_available(self, item_name):
@@ -204,7 +200,6 @@ class DataProvider(metaclass=ABCMeta):
         :raises lightstreamer_adapter.interfaces.data.SubscribeError: in case
          the Data Adapter is unable to answer to the request.
         """
-        pass
 
 
 class ItemEventListener(metaclass=ABCMeta):
@@ -275,7 +270,6 @@ class ItemEventListener(metaclass=ABCMeta):
         :param str item_name: The name of the Item whose snapshot has been
          completed
         """
-        pass
 
     @abstractmethod
     def clear_snapshot(self, item_name):
@@ -317,7 +311,6 @@ class ItemEventListener(metaclass=ABCMeta):
         :param str item_name: The name of the Item whose Snapshot has become
          empty.
         """
-        pass
 
     def failure(self, exception):
         """Called by a Data Adapter to notify Lightstreamer Kernel of the
@@ -327,11 +320,11 @@ class ItemEventListener(metaclass=ABCMeta):
         :param Exception exception: Any Excetion object, with the description
          of the problem.
         """
-        pass
 
 
 class DataError(Exception):
     """Base class for all exceptions directly raised by the Data Adapter."""
+
     def __init__(self, msg):
         self._msg = msg
         super(DataError, self).__init__(msg)

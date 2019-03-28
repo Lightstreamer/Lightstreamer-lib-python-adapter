@@ -98,7 +98,7 @@ class DataProviderServerInitTest(unittest.TestCase):
 
         self.assertEqual('#', server.name[0])
         self.assertEqual(1, server.keep_alive)
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
     def test_thread_pool_size(self):
         # Test non default properties
@@ -116,7 +116,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=0)
 
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -124,7 +124,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=-2)
 
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -132,7 +132,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=None)
 
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
     def test_keep_alive_value(self):
         # Test non default properties
@@ -248,8 +248,8 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_remote_params(self):
-        self.send_request(("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
-                           "data_provider.name|S|STOCKLIST"))
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
+                          "data_provider.name|S|STOCKLIST")
         self.assert_reply("10000010c3e4d0462|DPI|V")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "data_provider.name": "STOCKLIST"},
@@ -267,12 +267,37 @@ class DataProviderServerTest(RemoteAdapterBase):
                               "data_provider.name": "my_local_provider"},
                              self.collector['params'])
 
+    def test_init_with_protocol_version(self):
+        self.remote_adapter.adapter_params = {"data_provider.name":
+                                              "my_local_provider"}
+        self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
+                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                           "STOCKLIST"))
+
+        self.assert_notify("DPNI|S|ARI.version|S|1.8.1")
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1")
+
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "my_local_provider"},
+                             self.collector['params'])
+
+    def test_init_with_protocol_version_before_1_8_1(self):
+        self.remote_adapter.adapter_params = {"data_provider.name":
+                                              "my_local_provider"}
+        self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.0|S|"
+                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                           "STOCKLIST"))
+        self.assert_reply("10000010c3e4d0462|DPI|V")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "my_local_provider"},
+                             self.collector['params'])
+
     def test_malformed_init_for_unkown_token_type(self):
         request = ("10000010c3e4d0462|DPI|H|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
         self.send_request(request)
-        self.assert_notify(("FAL|E|Unknown+type+%27H%27+found+while+parsing+"
-                            "DPI+request"))
+        self.assert_notify("FAL|E|Unknown+type+%27H%27+found+while+parsing+"
+                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
         self.send_request("10000010c3e4d0462|DPI|S|")
@@ -281,18 +306,18 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
         self.send_request("10000010c3e4d0462|DPI|S||")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
-                            "DPI+request"))
+        self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
+                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
         self.send_request("10000010c3e4d0462|DPI|S|  |")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
-                            "DPI+request"))
+        self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
+                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
         self.send_request("10000010c3e4d0462|DPI|S|id|S")
-        self.assert_notify(("FAL|E|Invalid+number+of+tokens+while+parsing+"
-                            "DPI+request"))
+        self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
+                            "DPI+request")
 
     def test_init_with_data_provider_exception(self):
         request = "10000010c3e4d0462|DPI|S|data_provider.name|S|STOCKLIST"
@@ -496,6 +521,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.adapter.listener.failure(Exception("Generic exception"))
         self.assert_notify("FAL|E|Generic+exception")
+
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'DataProviderTest.testName']

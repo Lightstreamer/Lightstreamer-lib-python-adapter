@@ -2,16 +2,49 @@
 Module for testing the ARI Data Provider protocol implemented in the
 Lightstreamer SDK for Python Adapters.
 """
-import unittest
 import base64
 from collections import OrderedDict
+import unittest
+
 from lightstreamer_adapter import data_protocol
 from lightstreamer_adapter.protocol import RemotingException
+from lightstreamer_adapter.interfaces.data import DataProviderError
 
 
 class DataProtocolTest(unittest.TestCase):
     """TestCase for the Data Provider protocol.
     """
+
+    def test_dpi(self):
+        """Tests the response to a DPI request."""
+        res = data_protocol.write_init()
+        self.assertEqual("DPI|V", res)
+
+    def test_dpi_with_parameters(self):
+        """Tests the response to a DPI request with a list of parameters."""
+        parameters = {'param1':'value1', 'param2':'value2'}
+        res = data_protocol.write_init(parameters)
+        self.assertEqual("DPI|S|param1|S|value1|S|param2|S|value2", res)
+
+    def test_dpi_metaproviderexception(self):
+        """Tests the response to a DPI request in the case of a
+        DataProviderError.
+        """
+        error = DataProviderError("DataProvider Error")
+        res = data_protocol.write_init(exception=error)
+        self.assertEqual("DPI|ED|DataProvider+Error", res)
+
+    def test_dpi_generic_exception(self):
+        """Tests the response to a DPI request in the case of a generic exception.
+        """
+        res = data_protocol.write_init(exception=RuntimeError("Generic Error"))
+        self.assertEqual("DPI|E|Generic+Error", res)
+
+    def test_dpni(self):
+        """Tests the response to a DPNI request with a list of parameters."""
+        parameters = {'param1':'value1', 'param2':'value2'}
+        res = data_protocol.write_notify_init(parameters)
+        self.assertEqual("DPNI|S|param1|S|value1|S|param2|S|value2", res)
 
     def test_ud3_empty_map(self):
         """Tests the response to an UD3 request with an empty update
@@ -20,7 +53,7 @@ class DataProtocolTest(unittest.TestCase):
         events_map = {}
         res = data_protocol.write_update_map("item1", "10000010c3e4d0462",
                                              False, events_map)
-        self.assertEqual(("UD3|S|item1|S|10000010c3e4d0462|B|0"), res)
+        self.assertEqual("UD3|S|item1|S|10000010c3e4d0462|B|0", res)
 
     def test_ud3_none_map(self):
         """Tests the response to an UD3 request with a None update dictionary.
@@ -28,7 +61,7 @@ class DataProtocolTest(unittest.TestCase):
         events_map = None
         res = data_protocol.write_update_map("item1", "10000010c3e4d0462",
                                              False, events_map)
-        self.assertEqual(("UD3|S|item1|S|10000010c3e4d0462|B|0"), res)
+        self.assertEqual("UD3|S|item1|S|10000010c3e4d0462|B|0", res)
 
     def test_ud3_one_pair_map(self):
         """Tests the response to an UD3 request with a single key-value pair.

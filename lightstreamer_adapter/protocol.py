@@ -41,7 +41,7 @@ class RemotingException(Exception):
 
 
 def join(*args, append_separator=False):
-    """Returns a string which is a concatenation of all arguments, separated by
+    """Returns a string that is a concatenation of all arguments, separated by
     a '|'.
     """
     members = [i for i in args]
@@ -54,7 +54,9 @@ def remoting_exception_on_parse(method):
     RemotingException with a detailed message about the current parsing
     operation.
     """
+
     def wrap(protocol_func):
+
         def _wrap(*args, **kwargs):
             try:
                 return protocol_func(*args, **kwargs)
@@ -66,7 +68,9 @@ def remoting_exception_on_parse(method):
                 msg = ("An unexpected exception caught while parsing {} "
                        "request")
                 raise RemotingException(msg.format(str(method))) from err
+
         return _wrap
+
     return wrap
 
 
@@ -116,9 +120,7 @@ def read(packet, data_type, index):
             return int(current_token)
         elif current_data_type == "P":
             return decode_nobile_platform_type(current_token)
-    else:
-        raise RemotingException("Unknown type '{}' found".
-                                format(current_data_type))
+    raise RemotingException("Unknown type '{}' found".format(current_data_type))
 
 
 def read_map(tokens, start, length=None):
@@ -225,7 +227,7 @@ def encode_byte(byte_str):
 
 
 def decode_modes(modes):
-    if modes == NULL_VALUE or modes == EMPTY_VALUE:
+    if modes in (NULL_VALUE, EMPTY_VALUE):
         return None
 
     if modes == EMPTY_VALUE:
@@ -283,3 +285,15 @@ def _handle_exception(exception, method, *excepted_errors):
         return _append_exceptions(method, exception)
     except:
         return _append_exceptions(method, exception, False)
+
+
+def _write_init(method, excepted_error, proxy_parameters=None, exception=None):
+    if not exception:
+        if proxy_parameters:
+            parameters = []
+            for key, value in proxy_parameters.items():
+                parameters.append(key)
+                parameters.append(encode_string(value))
+            return join(str(method), 'S|') + '|S|'.join(parameters)
+        return join(str(method), "V")
+    return _handle_exception(exception, join(str(method), 'E'), excepted_error)

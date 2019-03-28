@@ -37,22 +37,28 @@ class MetadataProtocolTest(unittest.TestCase):
     """TestCase for the Metadata Provider protocol."""
 
     def test_mpi(self):
-        """Tests the response to a MPI request."""
+        """Tests the response to an MPI request."""
         res = metadata_protocol.write_init()
         self.assertEqual("MPI|V", res)
 
+    def test_mpi_with_parameters(self):
+        """Tests the response to an MPI request with a list of parameters."""
+        parameters = {'param1':'value1', 'param2':'value2'}
+        res = metadata_protocol.write_init(parameters)
+        self.assertEqual("MPI|S|param1|S|value1|S|param2|S|value2", res)
+
     def test_mpi_metaproviderexception(self):
-        """Tests the response to a MPI request in case of a
+        """Tests the response to an MPI request in the case of a
         MetadataProviderError.
         """
         error = MetadataProviderError("MetaProvider Error")
-        res = metadata_protocol.write_init(error)
+        res = metadata_protocol.write_init(exception=error)
         self.assertEqual("MPI|EM|MetaProvider+Error", res)
 
     def test_mpi_generic_exception(self):
-        """Tests the response to a MPI request in case of a generic exception.
+        """Tests the response to an MPI request in the case of a generic exception.
         """
-        res = metadata_protocol.write_init(RuntimeError("Generic Error"))
+        res = metadata_protocol.write_init(exception=RuntimeError("Generic Error"))
         self.assertEqual("MPI|E|Generic+Error", res)
 
     def test_nns(self):

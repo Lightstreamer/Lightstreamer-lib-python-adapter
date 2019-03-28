@@ -139,9 +139,9 @@ class MetadataProviderTestClass(MetadataProvider):
 
         return False
 
-    def notify_user(self, user, password, http_headers):
+    def notify_user(self, user, remote_password, http_headers):
         self.collector.update({'user': user,
-                               'password': password,
+                               'remote_password': remote_password,
                                'httpHeaders': http_headers})
 
         if user == "user1":
@@ -156,14 +156,14 @@ class MetadataProviderTestClass(MetadataProvider):
         if not user.strip():
             raise AccessError("An empty user is not allowed")
 
-    def notify_user_with_principal(self, user, password, http_headers,
+    def notify_user_with_principal(self, user, remote_password, http_headers,
                                    client_principal=None):
         self.collector.update({'user': user,
-                               'password': password,
+                               'remote_password': remote_password,
                                'httpHeaders': http_headers,
                                'clientPrincipal': client_principal})
 
-        self.notify_user(user, password, http_headers)
+        self.notify_user(user, remote_password, http_headers)
 
     def notify_new_session(self, user, session_id, client_context):
         if user == "user1":
@@ -537,7 +537,7 @@ class MetadataProviderServerInitTest(unittest.TestCase):
                                          RemoteAdapterBase.REQ_REPLY_PORT))
         self.assertEqual('#', server.name[0])
         self.assertEqual(1, server.keep_alive)
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
     def test_thread_pool_size(self):
         # Test non default properties
@@ -553,21 +553,21 @@ class MetadataProviderServerInitTest(unittest.TestCase):
             address=(RemoteAdapterBase.HOST,
                      RemoteAdapterBase.REQ_REPLY_PORT),
             thread_pool_size=0)
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
             address=(RemoteAdapterBase.HOST,
                      RemoteAdapterBase.REQ_REPLY_PORT),
             thread_pool_size=-2)
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
             address=(RemoteAdapterBase.HOST,
                      RemoteAdapterBase.REQ_REPLY_PORT),
             thread_pool_size=None)
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(8, server.thread_pool_size)
 
     def test_keep_alive_value(self):
         # Test non default properties
@@ -670,6 +670,30 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                               "my_local_meta_provider"},
                              self.collector['params'])
 
+    def test_init_with_protocol_version(self):
+        self.remote_adapter.adapter_params = {"proxy.instance_id":
+                                              "my_local_meta_provider"}
+        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
+                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                           "hewbc3ikbbctyui"))
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "proxy.instance_id":
+                              "my_local_meta_provider"},
+                             self.collector['params'])
+
+    def test_init_with_protocol_version_before_1_8_1(self):
+        self.remote_adapter.adapter_params = {"proxy.instance_id":
+                                              "my_local_meta_provider"}
+        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.0|S|"
+                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                           "hewbc3ikbbctyui"))
+        self.assert_reply("10000010c3e4d0462|MPI|V")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "proxy.instance_id":
+                              "my_local_meta_provider"},
+                             self.collector['params'])
+
     def test_init_with_metadata_provider_exception(self):
         self.send_request(("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
@@ -712,7 +736,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_init_miss(self):
         # Test error when the very first request is not a MPI request
-        self.send_request(("10000010c3e4d0462|NUS|S|userX|S|password|S|host|S|"
+        self.send_request(("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|host|S|"
                            "www.mycompany.com"))
 
         self.assert_caught_exception(("Unexpected request NUS while waiting "
@@ -720,28 +744,28 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_user(self):
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|userX|S|password|S|host|S|"
+        self.send_request(("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|host|S|"
                            "www.mycompany.com"))
 
         self.assert_reply("10000010c3e4d0462|NUS|D|12.3|B|1")
         self.assertDictEqual({"user": "userX",
-                              "password": "password",
+                              "remote_password": "remote_password",
                               "httpHeaders": {"host": "www.mycompany.com"}},
                              self.collector)
 
     def test_notify_user_with_no_http_headers(self):
         self.do_init_and_skip()
-        self.send_request("10000010c3e4d0462|NUS|S|userX|S|password")
+        self.send_request("10000010c3e4d0462|NUS|S|userX|S|remote_password")
         self.assert_reply("10000010c3e4d0462|NUS|D|12.3|B|1")
         self.assertDictEqual({"user": "userX",
-                              "password": "password",
+                              "remote_password": "remote_password",
                               "httpHeaders": {}},
                              self.collector)
 
     def test_notify_user_with_credits_exception(self):
         # Testing CreditsError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|user1|S|password|S|host|S|"
+        self.send_request(("10000010c3e4d0462|NUS|S|user1|S|remote_password|S|host|S|"
                            "www.mycompany.com"))
         self.assert_reply(("10000010c3e4d0462|NUS|EC|CreditsError|10|User+not+"
                            "allowed"))
@@ -749,7 +773,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_with_access_exception(self):
         # Testing AccessError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|$|S|password|S|host|S|"
+        self.send_request(("10000010c3e4d0462|NUS|S|$|S|remote_password|S|host|S|"
                            "www.mycompany.com"))
         self.assert_reply(("10000010c3e4d0462|NUS|EA|An+empty+user+is+not+"
                            "allowed"))
@@ -765,24 +789,24 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_with_generic_exception(self):
         # Testing other errors
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|user2|S|password|S|host|S|"
+        self.send_request(("10000010c3e4d0462|NUS|S|user2|S|remote_password|S|host|S|"
                            "www.mycompany.com"))
         self.assert_reply("10000010c3e4d0462|NUS|E|Error+while+notifying")
 
     def test_invalid_notify_user(self):
         self.do_init_and_skip()
-        self.send_request("10000010c3e4d0462|NUS|S|get+invalid|S|password")
-        self.assert_caught_exception(("Not a float value: 'Wrong Allowed Max "
-                                      "Bandwidth Type'"))
+        self.send_request("10000010c3e4d0462|NUS|S|get+invalid|S|remote_password")
+        self.assert_caught_exception("Not a float value: 'Wrong Allowed Max "
+                                      "Bandwidth Type'")
 
     def test_malformed_notify_user(self):
         self.do_init_and_skip()
-        # user and password are missing.
+        # user and remote_password are missing.
         self.send_request("10000010c3e4d0462|NUS")
         self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
-        # user and password are missing.
+        # user and remote_password are missing.
         self.send_request("10000010c3e4d0462|NUS|S|")
         self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
@@ -792,30 +816,30 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " NUS request"))
 
-        # password is missing
+        # remote_password is missing
         self.send_request("10000010c3e4d0462|NUS|S|user")
         self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
-        # password is missing
+        # remote_password is missing
         self.send_request("10000010c3e4d0462|NUS|S|user|S")
         self.assert_caught_exception(("Token not found while parsing NUS "
                                       "request"))
 
-        # Wrong token type for password.
+        # Wrong token type for remote_password.
         self.send_request("10000010c3e4d0462|NUS|S|user|S2")
         self.assert_caught_exception(("Unknown type 'S2' found while parsing"
                                       " NUS request"))
 
     def test_notify_user_auth(self):
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|userXA|S|password|S|"
+        self.send_request(("10000010c3e4d0462|NUA|S|userXA|S|remote_password|S|"
                            "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
                            "S|<HEADER_2>|S|<HEADER_VALUE2>"))
 
         self.assert_reply("10000010c3e4d0462|NUA|D|12.3|B|1")
         expected_dict = {"user": "userXA",
-                         "password": "password",
+                         "remote_password": "remote_password",
                          "clientPrincipal": '<CLIENT_PRINCIPAL>',
                          "httpHeaders": {"<HEADER_1>": "<HEADER_VALUE1>",
                                          "<HEADER_2>": "<HEADER_VALUE2>"}}
@@ -824,7 +848,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_with_auth_credits_exception(self):
         # Testing CreditsError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|user1|S|password|S|"
+        self.send_request(("10000010c3e4d0462|NUA|S|user1|S|remote_password|S|"
                            "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
                            "S|<HEADER_2>|S|<HEADER_VALUE2>"))
         self.assert_reply(("10000010c3e4d0462|NUA|EC|CreditsError|10|User+not+"
@@ -833,7 +857,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_with_auth_access_exception(self):
         # Testing AccessError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|$|S|password|S|"
+        self.send_request(("10000010c3e4d0462|NUA|S|$|S|remote_password|S|"
                            "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
                            "S|<HEADER_2>|S|<HEADER_VALUE2>"))
         self.assert_reply(("10000010c3e4d0462|NUA|EA|An+empty+user+is+not+"
@@ -842,7 +866,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_auth_with_generic_exception(self):
         # Testing other errors
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|user2|S|password|S|"
+        self.send_request(("10000010c3e4d0462|NUA|S|user2|S|remote_password|S|"
                            "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
                            "S|<HEADER_2>|S|<HEADER_VALUE2>"))
 

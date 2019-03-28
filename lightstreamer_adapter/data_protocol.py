@@ -7,7 +7,7 @@ from lightstreamer_adapter.protocol import (join,
                                             read,
                                             read_map,
                                             remoting_exception_on_parse,
-                                            _handle_exception,
+                                            _handle_exception, _write_init,
                                             RemotingException)
 
 from lightstreamer_adapter.interfaces.data import (DataProviderError,
@@ -18,12 +18,13 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
 class Method(Enum):
     """Enum for representing the methods of the Data Provider Protocol."""
     DPI = 1
-    SUB = 2
-    USB = 3
-    UD3 = 4
-    EOS = 5
-    CLS = 6
-    FAL = 7
+    DPNI = 2
+    SUB = 3
+    USB = 4
+    UD3 = 5
+    EOS = 6
+    CLS = 7
+    FAL = 8
 
     def __str__(self):
         return self.name
@@ -35,13 +36,29 @@ def read_init(data):
     return read_map(data, 0)
 
 
-def write_init(exception=None):
+def write_init(proxy_parameters=None, exception=None):
     """Encodes and returns a DPI ('Data Init') response."""
-    if not exception:
-        return join(str(Method.DPI), "V")
-    else:
-        return _handle_exception(exception, join(str(Method.DPI), 'E'),
-                                 DataProviderError)
+#     if not exception:
+#         if proxy_parameters:
+#             parameters = []
+#             for key, value in proxy_parameters.items():
+#                 parameters.append(key)
+#                 parameters.append(enc_str(value))
+#             return join(str(Method.DPI), 'S|') + '|S|'.join(parameters)
+#         return join(str(Method.DPI), "V")
+#     return _handle_exception(exception, join(str(Method.DPI), 'E'),
+#                              DataProviderError)
+    return _write_init(Method.DPI, DataProviderError, proxy_parameters,
+                       exception)
+
+
+def write_notify_init(proxy_parameters):
+    """Encodes and returns a DNPI ('Data Notifications Init') response."""
+    parameters = []
+    for key, value in proxy_parameters.items():
+        parameters.append(key)
+        parameters.append(enc_str(value))
+    return join(str(Method.DPNI), 'S|') + '|S|'.join(parameters)
 
 
 @remoting_exception_on_parse(Method.SUB)
@@ -54,10 +71,8 @@ def write_sub(exception=None):
     """Encodes and returns a SUB ('Subscribe') response."""
     if not exception:
         return join(str(Method.SUB), "V")
-    else:
-        return _handle_exception(exception, join(str(Method.SUB), 'E'),
-                                 SubscribeError,
-                                 FailureError)
+    return _handle_exception(exception, join(str(Method.SUB), 'E'),
+                             SubscribeError, FailureError)
 
 
 @remoting_exception_on_parse(Method.USB)
@@ -70,10 +85,8 @@ def write_unsub(exception=None):
     """Encodes and returns a USB ('Unsubscribe') response."""
     if not exception:
         return join(str(Method.USB), 'V')
-    else:
-        return _handle_exception(exception, join(str(Method.USB), 'E'),
-                                 SubscribeError,
-                                 FailureError)
+    return _handle_exception(exception, join(str(Method.USB), 'E'),
+                             SubscribeError, FailureError)
 
 
 def _encode_value(value):
@@ -83,10 +96,9 @@ def _encode_value(value):
         return "S|" + enc_str(value)
     elif isinstance(value, bytes):
         return "Y|" + enc_byte(value)
-    else:
-        raise RemotingException(("Found value '{}' of an unsupported type "
-                                 "while building a {} request")
-                                .format(str(value), str(Method.UD3)))
+    raise RemotingException(("Found value '{}' of an unsupported type while "
+                             "building a {} request").format(str(value),
+                                                             str(Method.UD3)))
 
 
 def write_update_map(item_name, request_id, issnapshot, events_map):
@@ -100,8 +112,7 @@ def write_update_map(item_name, request_id, issnapshot, events_map):
         tokens = [join('S', enc_str(field), _encode_value(value))
                   for field, value in events_map.items()]
         return update + "|".join(tokens)
-    else:
-        return update
+    return update
 
 
 def write_eos(item, request_id):

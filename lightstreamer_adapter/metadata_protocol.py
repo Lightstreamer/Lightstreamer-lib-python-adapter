@@ -2,7 +2,6 @@
 from enum import Enum
 from lightstreamer_adapter.protocol import (join,
                                             read,
-                                            read_token,
                                             read_seq,
                                             read_map,
                                             remoting_exception_on_parse,
@@ -11,8 +10,7 @@ from lightstreamer_adapter.protocol import (join,
                                             encode_boolean as enc_bool,
                                             encode_integer as enc_int,
                                             encode_modes as enc_modes,
-                                            _handle_exception,
-                                            RemotingException)
+                                            _handle_exception, _write_init)
 
 from lightstreamer_adapter.protocol import (MetadataProviderError,
                                             NotificationError,
@@ -55,13 +53,10 @@ def read_init(data):
     return read_map(data, 0)
 
 
-def write_init(exception=None):
-    """Encodes and returns a MPI ('Metadata Init') response."""
-    if not exception:
-        return join(str(Method.MPI), "V")
-    else:
-        return _handle_exception(exception, join(str(Method.MPI), 'E'),
-                                 MetadataProviderError)
+def write_init(proxy_parameters=None, exception=None):
+    """Encodes and returns an MPI ('Metadata Init') response."""
+    return _write_init(Method.MPI, MetadataProviderError, proxy_parameters,
+                       exception)
 
 
 @remoting_exception_on_parse(Method.NUS)
@@ -90,9 +85,8 @@ def write_notiy_user(method, allowed_max_bandwidth=None,
         return join(str(method),
                     'D', enc_double(allowed_max_bandwidth),
                     'B', enc_bool(wants_tables_notification))
-    else:
-        return _handle_exception(exception, join(str(method), 'E'),
-                                 AccessError, CreditsError)
+    return _handle_exception(exception, join(str(method), 'E'), AccessError,
+                             CreditsError)
 
 
 @remoting_exception_on_parse(Method.NNS)
@@ -108,10 +102,8 @@ def write_notify_new_session(exception=None):
     method = str(Method.NNS)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"),
-                                 CreditsError,
-                                 NotificationError)
+    return _handle_exception(exception, join(method, "E"), CreditsError,
+                             NotificationError)
 
 
 @remoting_exception_on_parse(Method.NSC)
@@ -125,9 +117,7 @@ def write_notify_session_close(exception=None):
     method = str(Method.NSC)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"),
-                                 NotificationError)
+    return _handle_exception(exception, join(method, "E"), NotificationError)
 
 
 @remoting_exception_on_parse(Method.GIS)
@@ -144,12 +134,10 @@ def write_get_items(items=None, exception=None):
     if exception:
         return _handle_exception(exception, join(method, 'E'),
                                  ItemsError)
-    else:
-        if items:
-            return join(method, 'S|') + '|S|'.join([enc_str(item) for
-                                                    item in items])
-        else:
-            return join(method)
+    if items:
+        return join(method, 'S|') + '|S|'.join([enc_str(item) for
+                                                item in items])
+    return join(method)
 
 
 @remoting_exception_on_parse(Method.GSC)
@@ -166,12 +154,10 @@ def write_get_schema(fields=None, exception=None):
     if exception:
         return _handle_exception(exception, join(method, 'E'),
                                  ItemsError, SchemaError)
-    else:
-        if fields:
-            return join(method, 'S|') + '|S|'.join([enc_str(field) for
-                                                    field in fields])
-        else:
-            return join(method)
+    if fields:
+        return join(method, 'S|') + '|S|'.join([enc_str(field) for
+                                                field in fields])
+    return join(method)
 
 
 @remoting_exception_on_parse(Method.GIT)
@@ -191,10 +177,8 @@ def write_get_item_data(items_data=None, exception=None):
                              for data in items_data]
             return join(method, append_separator=True) + \
                 "|".join(encoded_items)
-        else:
-            return join(method)
-    else:
-        return _handle_exception(exception, join(method, 'E'))
+        return join(method)
+    return _handle_exception(exception, join(method, 'E'))
 
 
 @remoting_exception_on_parse(Method.GUI)
@@ -216,10 +200,8 @@ def write_get_user_item_data(items_data=None, exception=None):
 
             return join(method, append_separator=True) + \
                 "|".join(encoded_items)
-        else:
-            return join(method)
-    else:
-        return _handle_exception(exception, join(method, 'E'))
+        return join(method)
+    return _handle_exception(exception, join(method, 'E'))
 
 
 @remoting_exception_on_parse(Method.NUM)
@@ -235,9 +217,8 @@ def write_notify_user_message(exception=None):
     method = str(Method.NUM)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"), CreditsError,
-                                 NotificationError)
+    return _handle_exception(exception, join(method, "E"), CreditsError,
+                             NotificationError)
 
 
 def _read_table(table, offset, with_selector=True):
@@ -276,9 +257,8 @@ def write_notify_new_tables(exception=None):
     method = str(Method.NNT)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"), CreditsError,
-                                 NotificationError)
+    return _handle_exception(exception, join(method, "E"), CreditsError,
+                             NotificationError)
 
 
 @remoting_exception_on_parse(Method.NTC)
@@ -293,9 +273,7 @@ def write_notify_tables_close(exception=None):
     method = str(Method.NTC)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"),
-                                 NotificationError)
+    return _handle_exception(exception, join(method, "E"), NotificationError)
 
 
 def _read_mpn_device_info(data, offset=0):
@@ -321,9 +299,8 @@ def write_notify_device_acces(exception=None):
     method = str(Method.MDA)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"),
-                                 CreditsError, NotificationError)
+    return _handle_exception(exception, join(method, "E"), CreditsError,
+                             NotificationError)
 
 
 def _read_subscription_info(data, offset):
@@ -354,9 +331,8 @@ def write_subscription_activation(exception=None):
     method = str(Method.MSA)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"),
-                                 CreditsError, NotificationError)
+    return _handle_exception(exception, join(method, "E"), CreditsError,
+                             NotificationError)
 
 
 @remoting_exception_on_parse(Method.MDC)
@@ -375,6 +351,5 @@ def write_device_token_change(exception=None):
     method = str(Method.MDC)
     if not exception:
         return join(method, "V")
-    else:
-        return _handle_exception(exception, join(method, "E"), CreditsError,
-                                 NotificationError)
+    return _handle_exception(exception, join(method, "E"), CreditsError,
+                             NotificationError)

@@ -94,7 +94,6 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
-        pass
 
     def notify_user(self, user, password, http_headers, client_principal=None):
         """Called by Lightstreamer Kernel through the Remote Server as a
@@ -134,7 +133,6 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
-        pass
 
     def notify_user_with_principal(self, user, password, http_headers,
                                    client_principal=None):
@@ -543,6 +541,12 @@ class MetadataProvider():
          * "LOCAL_SERVER" - the name of the specific server socket that handles
            the current connection, as configured through the <http_server> or
            <https_server> element
+         * "CLIENT_TYPE" - the type of client API in use; the value may be null
+           for some old client APIs
+         * "CLIENT_VERSION" - the signature, including version and build
+           number, of the client API in use; the signature may be only
+           partially complete, or even null, for some old client APIs and for
+           some custom clients
          * "REQUEST_ID" - the same id that has just been supplied to
            :meth:`notify_user` method for the current client request instance;
            this allows for using local authentication-related details for the
@@ -563,7 +567,6 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
-        pass
 
     def notify_session_close(self, session_id):
         """Called by Lightstreamer Kernel through the Remote Server to notify
@@ -587,7 +590,6 @@ class MetadataProvider():
         **IMPLEMENTATION NOTE:** does nothing, because the Metadata Adapter
         doesn't need to remember the open Sessions
         """
-        pass
 
     def wants_tables_notification(self, user):
         """Called by Lightstreamer Kernel through the Remote Server to know
@@ -648,7 +650,6 @@ class MetadataProvider():
         **IMPLEMENTATION NOTE:** unless the :meth:`wants_tables_notification`
         method is overridden, this method will never be called.
         """
-        pass
 
     def notify_tables_close(self, session_id, tables):
         """Called by Lightstreamer Kernel through the Remote Server to notify
@@ -679,7 +680,6 @@ class MetadataProvider():
         **IMPLEMENTATION NOTE:** does nothing, because the Metadata Adapter
         doesn't need to remember the open Sessions.
         """
-        pass
 
     def notify_mpn_device_access(self, user, session_id, device):
         """Called by Lightstreamer Kernel through the Remote Server to check
@@ -707,7 +707,6 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
-        pass
 
     def notify_mpn_subscription_activation(self, user, session_id, table,
                                            mpn_subscription):
@@ -751,7 +750,6 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
-        pass
 
     def notify_mpn_device_token_change(self, user, session_id, device,
                                        new_device_token):
@@ -782,7 +780,6 @@ class MetadataProvider():
 
         **IMPLEMENTATION NOTE:** does nothing.
         """
-        pass
 
 
 class Mode(Enum):
@@ -895,6 +892,7 @@ class TableInfo():
     attributes of every Table (i.e.: Subscription) to be added or removed to a
     Session have to be written to a ``TableInfo`` instance.
     """
+
     def __init__(self, win_index, mode, group, schema, first_idx, last_idx,
                  selector=None):
         self._win_index = win_index
@@ -965,8 +963,8 @@ class TableInfo():
 
     @property
     def max(self):
-        """The index of the last Item in the Group to be considered in the Table
-        (i.e. Subscription).
+        """The index of the last Item in the Group to be considered in the
+        Table (i.e. Subscription).
 
         :type: int
         """
@@ -995,6 +993,7 @@ class MpnSubscriptionInfo:
     To know what features are enabled by your license, please see the License
     tab of the Monitoring Dashboard (by default, available at /dashboard).
     """
+
     def __init__(self, device, notification_format, trigger):
         self._device = device
         self._notification_format = notification_format
@@ -1015,9 +1014,9 @@ class MpnSubscriptionInfo:
 
     @property
     def notification_format(self):
-        """The descriptor of the push notifications format of this subscription.
-        The structure of the format descriptor depends on the platform type
-        and it is represented in json.
+        """The descriptor of the push notifications format of this
+        subscription. The structure of the format descriptor depends on the
+        platform type and it is represented in json.
 
         :type: str
         """
@@ -1025,7 +1024,8 @@ class MpnSubscriptionInfo:
 
     @property
     def trigger(self):
-        """The optional expression that triggers the delivery of push notification.
+        """The optional expression that triggers the delivery of push
+        notification.
 
         :type: str
         """
@@ -1036,6 +1036,7 @@ class MetadataError(Exception):
     """Base exception class for all exceptions directly raised by the
     Metadata Adapter.
     """
+
     def __init__(self, msg):
         """Constructs a MetadataError with the supplied detail message.
 
@@ -1098,6 +1099,7 @@ class CreditsError(MetadataError):
     client_error_code will be forwarded by Lightstreamer Kernel to the
     Client.
     """
+
     def __init__(self, client_error_code, msg, user_msg=None):
         """Constructs a CreditsError with supplied error client_error_code and
         message text to be forwarded to the Client.  An internal error message
@@ -1141,6 +1143,7 @@ class ConflictingSessionError(CreditsError):
     try to close the specified session and invoke
     :meth:`MetadataProvider.notify_new_session` again.
     """
+
     def __init__(self, code, msg, conflicting_session_id, user_msg=None):
         """Constructs a ConflictingSessionError with supplied error
         client_error_code and message text that will be forwarded to the Client
