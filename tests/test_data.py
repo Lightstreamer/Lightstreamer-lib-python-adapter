@@ -370,7 +370,6 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_unsubscribe(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
-        # self.do_subscription('aapl%5F')
         item = self.adapter.subscribed.get()
         self.adapter.subscribed.task_done()
         self.assertEqual(item, "aapl_")
