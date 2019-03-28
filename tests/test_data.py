@@ -4,14 +4,18 @@ import logging
 import queue
 from collections import OrderedDict
 from .common import RemoteAdapterBase
-
+from multiprocessing import cpu_count
 from lightstreamer_adapter.server import DataProviderServer
 from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    SubscribeError,
                                                    FailureError,
                                                    DataProvider)
 
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
+
+# Specify here the number of your CPU cores
+EXPECTED_CPU_CORES = cpu_count()
 
 
 class DataProviderTestClass(DataProvider):
@@ -98,7 +102,7 @@ class DataProviderServerInitTest(unittest.TestCase):
 
         self.assertEqual('#', server.name[0])
         self.assertEqual(1, server.keep_alive)
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
     def test_thread_pool_size(self):
         # Test non default properties
@@ -116,7 +120,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=0)
 
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -124,7 +128,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=-2)
 
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
                                     address=(RemoteAdapterBase.HOST,
@@ -132,7 +136,7 @@ class DataProviderServerInitTest(unittest.TestCase):
                                              RemoteAdapterBase.NOTIFY_PORT),
                                     thread_pool_size=None)
 
-        self.assertEqual(4, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
     def test_keep_alive_value(self):
         # Test non default properties
@@ -192,6 +196,9 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def do_subscription(self, item_name):
         self.send_request("10000010c3e4d0462|SUB|S|" + item_name)
+
+    def do_subscription_with_request_id(self, request_id, item_name):
+        self.send_request(request_id + "|SUB|S|" + item_name)
 
     def do_subscription_and_skip(self, item):
         self.send_request("10000010c3e4d0462|SUB|S|" + item, True)
@@ -323,6 +330,20 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.adapter.subscribed.task_done()
         self.assertEqual(item, "aapl_")
 
+    def test_subscribe_to_more_items(self):
+        self.do_init_and_skip()
+        self.do_subscription_with_request_id("10000010c3e4d0462", 'aapl%5F')
+        self.do_subscription_with_request_id("20000010c3e4d0462", 'saals%5F')
+        self.do_subscription_with_request_id("30000010c3e4d0462", 'paals%5F')
+        self.assert_reply("10000010c3e4d0462|SUB|V")
+        self.assert_reply("20000010c3e4d0462|SUB|V")
+        self.assert_reply("30000010c3e4d0462|SUB|V")
+        notifications = self.receive_notify()
+        self.assertEquals(3, len(notifications))
+        self.assertEquals("EOS|S|aapl_|S|10000010c3e4d0462", notifications[0])
+        self.assertEquals("EOS|S|saals_|S|20000010c3e4d0462", notifications[1])
+        self.assertEquals("EOS|S|paals_|S|30000010c3e4d0462", notifications[2])
+
     def test_subscribe_with_subscribe_exception(self):
         self.do_init_and_skip()
         self.do_subscription('aapl%5F1')
@@ -349,6 +370,7 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_unsubscribe(self):
         self.do_init_and_skip()
         self.do_subscription_and_skip('aapl%5F')
+        # self.do_subscription('aapl%5F')
         item = self.adapter.subscribed.get()
         self.adapter.subscribed.task_done()
         self.assertEqual(item, "aapl_")
@@ -417,7 +439,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         # channel
         self.assert_notify("EOS|S|item1|S|10000010c3e4d0462")
 
-        # Usage of OrderdDict with the only purpose to respect the order
+        # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("field1", "value1"),
                                   ("field2", "value2")])
@@ -430,17 +452,19 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.do_subscription_and_skip("item1")
 
-        # Usage of OrderdDict with the only purpose to respect the order
-        # expressed in the assert statement.
+        # Skip first data received on the notification channel because of
+        # unavailability of snapshot
+        self.receive_notify()
 
+        # Usage of OrderdDict with the only purpose of respecting the order
+        # expressed in the assert statement.
         for i in range(0, 1000):
             events_map = OrderedDict([("field1", "value1"),
                                       ("field2", str(i))])
 
             self.adapter.listener.update("item1", events_map, False)
-            self.receive_notify()
-            # self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
-            #                    "|value1|S|field2|S|{}".format(i)))
+            self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
+                                "|value1|S|field2|S|{}".format(i)))
 
     def test_update_with_byte_value(self):
         self.do_init_and_skip()
@@ -449,7 +473,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         # channel
         self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
 
-        # Usage of OrderdDict with the only purpose to respect the order
+        # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
@@ -467,7 +491,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         # channel
         self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
 
-        # Usage of OrderdDict with the only purpose to respect the order
+        # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
@@ -483,7 +507,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         # channel
         self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
 
-        # Usage of OrderdDict with the only purpose to respect the order
+        # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
@@ -496,6 +520,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.adapter.listener.failure(Exception("Generic exception"))
         self.assert_notify("FAL|E|Generic+exception")
+
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'DataProviderTest.testName']
