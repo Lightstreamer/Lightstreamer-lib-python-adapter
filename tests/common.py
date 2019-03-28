@@ -3,7 +3,7 @@ import threading
 import logging
 import unittest
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
 
 
