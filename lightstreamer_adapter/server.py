@@ -35,6 +35,7 @@ def notify(function):
     """Decorator function which add timestamp information to each notification
     sent to the Proxy Adapter.
     """
+
     def wrap(obj, notification):
         """"Add the timestamp to the supplied notification, in the following
         format:
@@ -53,6 +54,7 @@ class _Sender(object):
     the ProxyAdapter, sending data over the "request/replies" or
     "notifications" channels.
     """
+
     def __init__(self, sock, server, log):
         self._sock = sock
         self._server = server
@@ -165,21 +167,26 @@ class _RequestReceiver():
         'start' method.
         """
         self._log.info("Request receiver '%s' starting...", self._server.name)
+        buffer = ''
         while not self._stop_request.is_set():
-            request = None
             try:
-                data = b''
-                while True:
-                    self._log.debug("Reading from socket...")
-                    more = sock.recv(1024)
-                    self._log.debug("Received %d bytes of data", len(more))
-                    if not more:
-                        raise EOFError('Socket connection broken')
-                    data += more
-                    if data.endswith(b'\n'):
-                        break
-                request = data.decode()
-                self._log.debug("Request line: %s", request)
+                self._log.debug("Reading from socket...")
+                data = sock.recv(1024)
+                self._log.debug("Received %d bytes of request data [%s]", len(data), data)
+                if not data:
+                    raise EOFError('Socket connection broken')
+                buffer += data.decode('ascii')
+                self._log.debug("Current buffered buffer [%s]", buffer)
+                tokens = buffer.splitlines(keepends=True)
+                buffer = ''
+                for token in tokens:
+                    if (token.endswith('\r\n')):
+                        self._log.debug("Request line: %s", token)
+                        self._server.on_received_request(token)
+                        buffer = ''
+                    else:
+                        self._log.debug("Buffering remaining token %s", token)
+                        buffer = token
             except (OSError, EOFError) as err:
                 if self._stop_request.is_set():
                     self._log.debug(("Error raised because of explicitly "
@@ -189,8 +196,6 @@ class _RequestReceiver():
                 # network communication.
                 self._server.on_ioexception(err)
                 break
-
-            self._server.on_received_request(request)
 
         self._log.info("Request receiver '%s' stopped", self._server.name)
 
@@ -449,6 +454,7 @@ class MetadataProviderServer(Server):
     for the same session, are always guaranteed to be and sequentialized in the
     right way, although they may not occur in the same thread.
     """
+
     def __init__(self, adapter, address, name=None, keep_alive=1,
                  thread_pool_size=0):
         """Creates a server with the supplied configuration parameters. The
@@ -565,6 +571,7 @@ class MetadataProviderServer(Server):
                                                      max_bandwidth,
                                                      wants_tb_ntf)
             return res
+
         return execute
 
     def _on_nua(self, data):
@@ -589,6 +596,7 @@ class MetadataProviderServer(Server):
                                                      max_bandwidth,
                                                      wants_tb_notify)
             return res
+
         return execute
 
     def _on_nns(self, data):
@@ -606,6 +614,7 @@ class MetadataProviderServer(Server):
             except Exception as err:
                 res = meta_protocol.write_notify_new_session(err)
             return res
+
         return execute
 
     def _on_nsc(self, data):
@@ -619,6 +628,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_session_close()
             return res
+
         return execute
 
     def _on_gis(self, data):
@@ -639,6 +649,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_items(items)
             return res
+
         return execute
 
     def _on_gsc(self, data):
@@ -661,6 +672,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_schema(fields)
             return res
+
         return execute
 
     def _on_git(self, data):
@@ -681,6 +693,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_item_data(items)
             return res
+
         return execute
 
     def _on_gui(self, data):
@@ -704,6 +717,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_get_user_item_data(items)
             return res
+
         return execute
 
     def _on_num(self, data):
@@ -720,6 +734,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_user_message()
             return res
+
         return execute
 
     def _on_nnt(self, data):
@@ -736,6 +751,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_new_tables()
             return res
+
         return execute
 
     def _on_ntc(self, data):
@@ -751,6 +767,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_tables_close()
             return res
+
         return execute
 
     def _on_mda(self, data):
@@ -768,6 +785,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_notify_device_acces()
             return res
+
         return execute
 
     def _on_msa(self, data):
@@ -788,6 +806,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_subscription_activation()
             return res
+
         return execute
 
     def _on_mdc(self, data):
@@ -808,6 +827,7 @@ class MetadataProviderServer(Server):
             else:
                 res = meta_protocol.write_device_token_change()
             return res
+
         return execute
 
     def _handle_ioexception(self, ioexception):
@@ -1175,6 +1195,7 @@ class ExceptionHandler(metaclass=ABCMeta):
     instance with a custom handler for error conditions occurring on the Remote
     Server.
     """
+
     def __init__(self):
         pass
 
