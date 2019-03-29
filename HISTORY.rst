@@ -4,7 +4,20 @@ Release History
 ---------------
 
 
-1.1.3 (2019-03-29)
+1.1.4 (2019-03-29)
++++++++++++++++++++
+
+**Bug Fixes**
+
+- Fixed a bug that caused requests sent from Lightstreamer instances running on
+  non-Windows platform not to be parsed correctly (see #2).
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since 1.8.
+
+
+1.1.3 (2019-03-28)
 +++++++++++++++++++
 
 **Bug Fixes**
