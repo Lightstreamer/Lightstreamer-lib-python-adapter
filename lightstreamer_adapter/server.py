@@ -176,7 +176,7 @@ class _RequestReceiver():
                 if not data:
                     raise EOFError('Socket connection broken')
                 buffer += data.decode('ascii')
-                self._log.debug("Current buffered buffer [%s]", buffer)
+                self._log.debug("Current buffer [%s]", buffer)
                 tokens = buffer.splitlines(keepends=True)
                 buffer = ''
                 for token in tokens:
