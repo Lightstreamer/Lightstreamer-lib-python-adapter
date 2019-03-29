@@ -180,7 +180,7 @@ class _RequestReceiver():
                 tokens = buffer.splitlines(keepends=True)
                 buffer = ''
                 for token in tokens:
-                    if (token.endswith('\r\n')):
+                    if token.endswith('\n'):
                         self._log.debug("Request line: %s", token)
                         self._server.on_received_request(token)
                         buffer = ''
