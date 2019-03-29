@@ -263,15 +263,16 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_local_and_remote_params(self):
-        self.remote_adapter.adapter_params = {"data_provider.name":
-                                              "my_local_provider"}
+        self.remote_adapter.adapter_params = {"my_param.name":
+                                              "my_local_param"}
         request = ("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
         self.send_request(request)
 
         self.assert_reply("10000010c3e4d0462|DPI|V")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "my_local_provider"},
+                              "data_provider.name": "STOCKLIST",
+                              "my_param.name": "my_local_param"},
                              self.collector['params'])
 
     def test_malformed_init_for_unkown_token_type(self):
