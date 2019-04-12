@@ -278,27 +278,25 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_with_protocol_version(self):
         self.remote_adapter.adapter_params = {"data_provider.name":
                                               "my_local_provider"}
+        self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2|S|"
+                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                           "STOCKLIST"))
+
+        self.assert_notify("DPNI|S|ARI.version|S|1.8.2")
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2")
+
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "my_local_provider"},
+                             self.collector['params'])
+
+    def test_init_with_unsupported_protocol_version(self):
+        self.remote_adapter.adapter_params = {"data_provider.name":
+                                              "my_local_provider"}
         self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
                            "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                            "STOCKLIST"))
-
-        self.assert_notify("DPNI|S|ARI.version|S|1.8.1")
-        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1")
-
-        self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "my_local_provider"},
-                             self.collector['params'])
-
-    def test_init_with_protocol_version_before_1_8_1(self):
-        self.remote_adapter.adapter_params = {"data_provider.name":
-                                              "my_local_provider"}
-        self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.0|S|"
-                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
-                           "STOCKLIST"))
-        self.assert_reply("10000010c3e4d0462|DPI|V")
-        self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "my_local_provider"},
-                             self.collector['params'])
+        self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+reserved+protocol+version+number%3A+1.8.1")
+        self.assertFalse('params' in self.collector)
 
     def test_malformed_init_for_unkown_token_type(self):
         request = ("10000010c3e4d0462|DPI|H|adapters_conf.id|S|DEMO|S|"
