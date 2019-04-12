@@ -63,31 +63,55 @@ class LightstreamerServerSimulator(unittest.TestCase):
         log.error("No connection available!")
 
     def send_request(self, request):
-        self._rr_client_socket.sendall(bytes(request + '\n', "utf-8"))
-        log.info("Sent request: {}".format(request))
+        protocol_request = request + '\r\n'
+        self._rr_client_socket.sendall(bytes(protocol_request, "utf-8"))
+        log.info("Sent request: {}".format(protocol_request))
 
     def receive_reply(self):
-        reply = self._get_data(self._rr_client_socket)
+        reply = self._get_reply(self._rr_client_socket)
         log.info("Received reply: {}".format(reply))
         return reply
 
-    def receive_notify(self):
-        notify = self._get_data(self._ntfy_client_socket)
+    def receive_notify(self, timeout=3.5):
+        self._ntfy_client_socket.settimeout(timeout)
+        notify = self._get_notifications(self._ntfy_client_socket)
         log.info("Received notify: {}".format(notify))
         return notify
 
-    def _get_data(self, sock):
+    def _get_reply(self, sock):
         data = b''
         while True:
-            log.debug("Reading from socket...")
+            log.debug("Reading from request-reply socket...")
             more = sock.recv(1024)
-            log.debug("Received {} test_data".format(len(more)))
+            log.debug("Received {} bytes of reply data".format(len(more)))
             if not more:
                 raise EOFError('Socket connection broken')
             data += more
             if data.endswith(b'\n'):
                 break
         return data.decode()
+
+    def _get_notifications(self, sock):
+        buffer = ''
+        notifications = []
+        while True:
+            log.debug("Reading from notification socket...")
+            more = sock.recv(1024)
+            log.debug("Received {} bytes of notification data".format(len(more)))
+            if not more:
+                raise EOFError('Socket connection broken')
+            buffer += more.decode()
+            tokens = buffer.splitlines(keepends=True)
+            for notify in tokens:
+                if (notify.endswith('\r\n') and notify.rstrip() != 'KEEPALIVE'):
+                    stripped = '|'.join(notify.split("|")[1:]).rstrip()
+                    notifications.append(stripped)
+                    buffer = ''
+                else:
+                    buffer = notify
+            if not buffer:
+                break
+        return notifications
 
     def stop(self):
         self._rr_client_socket.close()
@@ -162,8 +186,8 @@ class RemoteAdapterBase(unittest.TestCase):
         reply = self._ls_server.receive_reply()
         self.assertNotEqual(not_expected + '\r\n', reply)
 
-    def assert_notify(self, expected=None, timeout=0.5):
-        self._ls_server._ntfy_client_socket.settimeout(timeout)
-        notify = self.receive_notify()
-        stripped_notify = '|'.join(notify.split("|")[1:])
-        self.assertEqual(expected + '\r\n', stripped_notify)
+    def assert_notify(self, expected=None):
+        notifications = self.receive_notify()
+        self.assertEqual(len(notifications), 1)
+        self.assertEqual(expected, notifications[0])
+

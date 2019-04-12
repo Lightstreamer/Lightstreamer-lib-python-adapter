@@ -158,21 +158,26 @@ class _RequestReceiver():
         'start' method.
         """
         self._log.info("Request receiver '%s' starting...", self._server.name)
+        buffer = ''
         while not self._stop_request.is_set():
-            request = None
             try:
-                data = b''
-                while True:
-                    self._log.debug("Reading from socket...")
-                    more = sock.recv(1024)
-                    self._log.debug("Received %d bytes of data", len(more))
-                    if not more:
-                        raise EOFError('Socket connection broken')
-                    data += more
-                    if data.endswith(b'\n'):
-                        break
-                request = data.decode()
-                self._log.debug("Request line: %s", request)
+                self._log.debug("Reading from socket...")
+                data = sock.recv(1024)
+                self._log.debug("Received %d bytes of request data [%s]", len(data), data)
+                if not data:
+                    raise EOFError('Socket connection broken')
+                buffer += data.decode('ascii')
+                self._log.debug("Current buffer [%s]", buffer)
+                tokens = buffer.splitlines(keepends=True)
+                buffer = ''
+                for token in tokens:
+                    if token.endswith('\n'):
+                        self._log.debug("Request line: %s", token)
+                        self._server.on_received_request(token)
+                        buffer = ''
+                    else:
+                        self._log.debug("Buffering remaining token %s", token)
+                        buffer = token
             except (OSError, EOFError) as err:
                 if self._stop_request.is_set():
                     self._log.debug(("Error raised because of explicitly "
@@ -182,8 +187,6 @@ class _RequestReceiver():
                 # network communication.
                 self._server.on_ioexception(err)
                 break
-
-            self._server.on_received_request(request)
 
         self._log.info("Request receiver '%s' stopped", self._server.name)
 

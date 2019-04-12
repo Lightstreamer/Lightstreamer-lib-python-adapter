@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 # Always prefer setuptools over distutils
 from setuptools import setup
 # To use a consistent encoding
@@ -22,7 +21,7 @@ packages = ['lightstreamer_adapter',
 
 setup(
     name='lightstreamer_adapter',
-    version='1.1.2',
+    version='1.1.4',
     description='Lightstreamer SDK for Python Adapters',
     long_description=readme + '\n\n' + history,
     url='https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter',
