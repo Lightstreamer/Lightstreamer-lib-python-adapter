@@ -1,5 +1,6 @@
 """Commons functionalities implementing the ARI Protocol."""
 import base64
+from enum import Enum
 from urllib import parse
 from collections import OrderedDict
 
@@ -17,7 +18,6 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    FailureError)
 EMPTY_VALUE = "$"
 NULL_VALUE = "#"
-METHOD_KEEP_ALIVE = "KEEPALIVE"
 MODES = OrderedDict([("RAW", "R"),
                      ("MERGE", "M"),
                      ("DISTINCT", "D"),
@@ -33,6 +33,16 @@ _EXCEPTIONS_MAP = {str(MetadataProviderError): 'M',
                    str(DataProviderError): 'D',
                    str(SubscribeError): 'U',
                    str(FailureError): 'F'}
+
+
+class Method(Enum):
+    """Enum for representing common methods of the protocol.
+    """
+    KEEP_ALIVE = 1
+    RAC = 2
+
+    def __str__(self):
+        return self.name
 
 
 class RemotingException(Exception):
@@ -297,3 +307,12 @@ def _write_init(method, excepted_error, proxy_parameters=None, exception=None):
             return join(str(method), 'S|') + '|S|'.join(parameters)
         return join(str(method), "V")
     return _handle_exception(exception, join(str(method), 'E'), excepted_error)
+
+
+def write_credentials(username, password):
+    """Encodes and returns a RAC packet, for protocol version 1.8.2 and above.
+    """
+    method = Method.RAC
+    return join(str(method), 'S|', "user", 'S|', encode_string(username),
+                'S|', "password", 'S|', encode_string(password))
+
