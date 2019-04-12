@@ -97,7 +97,7 @@ class _Sender():
                         to_send = self._send_queue.get(timeout=keep_alive)
                     except queue.Empty:
                         # Keepalive Timeout triggered.
-                        to_send = protocol.METHOD_KEEP_ALIVE
+                        to_send = protocol.Method.KEEP_ALIVE
                         current_log = self._keep_alive_log
                 else:
                     to_send = self._send_queue.get()
@@ -341,6 +341,9 @@ class Server(metaclass=ABCMeta):
         # has been started.
         self._on_request_receiver_started()
 
+        if self.remote_user is not None and self.remote_password is not None:
+            self._send_remote_credentials()
+
     def close(self):
         """Stops the management of the Remote Adapter and destroys the threads
         used by this Server. This instance can no longer be used.
@@ -445,6 +448,12 @@ class Server(metaclass=ABCMeta):
         received request, already splitted into the supplied parameters.
         """
 
+    @abstractmethod
+    def _send_remote_credentials(self):
+        """Intended to be overridden by subclasses, invoked for sending the
+        remote credentials to the Proxy Adapter.
+        """
+
 
 class MetadataProviderServer(Server):
     """A server object which can run a Remote Metadata Adapter and connect it
@@ -504,6 +513,15 @@ class MetadataProviderServer(Server):
         self._adapter = adapter
         self.init_expected = True
 
+    def _send_remote_credentials(self):
+        """Invoked for sending the remote credentials to the Proxy Metadata
+        Adapter.
+        """
+
+        unsolicited_message = protocol.write_credentials(self.remote_user,
+                                                         self.remote_password)
+        self._send_reply("1", unsolicited_message)
+
     def _on_request_receiver_started(self):
         """Invoked to notify this subclass the the Request Receiver has been
         started.
@@ -538,7 +556,7 @@ class MetadataProviderServer(Server):
             return
 
         # Invokes the retrieved method, which in turn returns an asynchronous
-        # function to be executed through the executor-
+        # function to be executed through the executor.
         async_func = on_method(data)
 
         # Define a task function to wrap the execution of the returned
@@ -557,11 +575,18 @@ class MetadataProviderServer(Server):
 
     def _on_mpi(self, data):
         parsed_data = meta_protocol.read_init(data)
+        # "ARI.version" is the new parameter sent by the Proxy Adapter to carry
+        # the protocol version that the Remote Adapter is willing to use.
+        # If the parameter is not present, it means that an we are connected
+        # with an old Proxy Adapter, therefore we can assume version 1.8.0 or
+        # earlier.
         parsed_data.setdefault("ARI.version", "1.8.0")
-        ari_version = parsed_data["ARI.version"]
+        proxy_version = parsed_data["ARI.version"]
         del parsed_data["ARI.version"]
         try:
-            if self._params:
+            if proxy_version == "1.8.1":
+                raise Exception("Unsupported reserved protocol version number: {}".format(proxy_version))
+            if self._params is not None:
                 init_params = self._params.copy()
                 parsed_data.update(init_params)
             self._adapter.initialize(parsed_data, self._config_file)
@@ -569,11 +594,11 @@ class MetadataProviderServer(Server):
             res = meta_protocol.write_init(exception=err)
         else:
             proxy_parameters = {}
-            if ari_version != "1.8.0":
-                proxy_parameters["ARI.version"] = ari_version
-                if self.remote_user and self.remote_password:
-                    proxy_parameters["remote_user"] = self.remote_user
-                    proxy_parameters["password"] = self.remote_password
+            if proxy_version != "1.8.0":
+                # If connected with a Proxy that support protocol version 1.8.2
+                # and above, specify which protocol version is currently
+                # supported by this lib: 1.8.2
+                proxy_parameters["ARI.version"] = "1.8.2"
             res = meta_protocol.write_init(proxy_parameters)
         return res
 
@@ -980,6 +1005,16 @@ class DataProviderServer(Server):
         self.notify_address = (address[0], address[2])
         self._notify_sock = None
 
+    def _send_remote_credentials(self):
+        """Invoked for sending the remote credentials to the Proxy Metadata
+        Adapter.
+        """
+
+        unsolicited_message = protocol.write_credentials(self.remote_user,
+                                                         self.remote_password)
+        self._send_reply("1", unsolicited_message)
+        self._send_notify(unsolicited_message)
+
     def _handle_request(self, request_id, data, method_name):
         init_request = method_name == str(data_protocol.Method.DPI)
         if init_request and not self.init_expected:
@@ -1054,9 +1089,11 @@ class DataProviderServer(Server):
     def _on_dpi(self, data):
         parsed_data = data_protocol.read_init(data)
         parsed_data.setdefault("ARI.version", "1.8.0")
-        ari_version = parsed_data["ARI.version"]
+        proxy_version = parsed_data["ARI.version"]
         del parsed_data["ARI.version"]
         try:
+            if proxy_version == "1.8.1":
+                raise Exception("Unsupported reserved protocol version number: {}".format(proxy_version))
             if self._params:
                 init_params = self._params.copy()
                 parsed_data.update(init_params)
@@ -1067,12 +1104,9 @@ class DataProviderServer(Server):
             res = data_protocol.write_init(exception=err)
         else:
             proxy_parameters = None
-            if ari_version != "1.8.0":
+            if proxy_version != "1.8.0":
                 proxy_parameters = {}
-                proxy_parameters["ARI.version"] = ari_version
-                if self.remote_user and self.remote_password:
-                    proxy_parameters["user"] = self.remote_user
-                    proxy_parameters["password"] = self.remote_password
+                proxy_parameters["ARI.version"] = "1.8.2"
             res = data_protocol.write_init(proxy_parameters)
             if proxy_parameters is not None:
                 notify_res = data_protocol.write_notify_init(proxy_parameters)
