@@ -673,26 +673,35 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_init_with_protocol_version(self):
         self.remote_adapter.adapter_params = {"proxy.instance_id":
                                               "my_local_meta_provider"}
-        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
+        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2|S|"
                            "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
-        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1")
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
                               "my_local_meta_provider"},
                              self.collector['params'])
 
-    def test_init_with_protocol_version_before_1_8_1(self):
+    def test_init_with_protocol_version_above_1_8_2(self):
         self.remote_adapter.adapter_params = {"proxy.instance_id":
                                               "my_local_meta_provider"}
-        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.0|S|"
+        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.4|S|"
                            "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
-        self.assert_reply("10000010c3e4d0462|MPI|V")
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
                               "my_local_meta_provider"},
                              self.collector['params'])
+
+    def test_init_with_unsupported_protocol_version(self):
+        self.remote_adapter.adapter_params = {"proxy.instance_id":
+                                              "my_local_meta_provider"}
+        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
+                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                           "hewbc3ikbbctyui"))
+        self.assert_reply("10000010c3e4d0462|MPI|E|Unsupported+reserved+protocol+version+number%3A+1.8.1")
+        self.assertFalse('params' in self.collector)
 
     def test_init_with_metadata_provider_exception(self):
         self.send_request(("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
