@@ -217,6 +217,15 @@ class Server(metaclass=ABCMeta):
     established connections, then activated through its own :meth:`start` and
     finally disposed through its own :meth:`close`. Further reuse of the same
     instance is not supported.
+
+    The Server will take care of sending keepalive packets on the connections
+    when needed. The interval can be configured through the provider
+    ``keep_alive`` parameter, where a value of 0 or ``None`` means no
+    keepalives. By defaut, it is set to 10 sec.
+    However, if a stricter interval is requested by the Proxy Adapter on
+    startup, will be obeyed (with a safety minimum of 1 second). This should
+    ensure that the Proxy Adapter activity checks will always succeed, but for
+    some old versions of the Proxy Adapter.
     """
 
     _DEFAULT_POOL_SIZE = 4
@@ -446,11 +455,6 @@ class MetadataProviderServer(Server):
     then activated through :meth:`MetadataProviderServer.start` and finally
     disposed through :meth:`Server.close`.
     Further reuse of the same instance is not supported.
-
-    The server will take care of sending keepalive packets on the connections
-    when needed. The interval can be configured through the provided
-    ``keep_alive`` parameter; by default it is 1 sec; a value of 0, negative or
-    ``None`` disables the keepalives.
 
     By default, the invocations to the Metadata Adapter methods will be done in
     a limited thread pool with a size determined by the number of detected cpu
@@ -923,11 +927,6 @@ class DataProviderServer(Server):
     activated through :meth:`DataProviderServer.start()` and finally disposed
     through :meth:`Server.close()`.
     Further reuse of the same instance is not supported.
-
-    The server will take care of sending keepalive packets on the connections
-    when needed. The interval can be configured through the provided
-    ``keep_alive`` parameter; by default it is 1 sec; a value of 0, negative or
-    ``None`` disables the keepalives.
 
     By default, the invocations to the Data Adapter methods will be done in
     a limited thread pool with a size determined by the number of detected cpu
