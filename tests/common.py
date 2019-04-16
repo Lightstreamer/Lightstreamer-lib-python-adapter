@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
 
 
-class LightstreamerServerSimulator(unittest.TestCase):
+class LightstreamerServerSimulator():
 
     def __init__(self, req_reply_adr, notify_adr=None):
         # Request-Reply Socket
@@ -46,6 +46,9 @@ class LightstreamerServerSimulator(unittest.TestCase):
             log.info("Listener at {} closed"
                      .format(self._notify_sock.getsockname()))
             self._notify_sock.close()
+
+    def set_rr_socket_timeout(self, timeout):
+        self._rr_client_socket.settimeout(timeout)
 
     def start(self):
         self.main_thread = threading.Thread(target=self._accept_connections,
@@ -142,7 +145,7 @@ class RemoteAdapterBase(unittest.TestCase):
     def on_setup(self):
         pass
 
-    def on_teardown(self, remote_adapter):
+    def on_teardown(self, remote_adapter=None):
         pass
 
     @property
@@ -174,12 +177,12 @@ class RemoteAdapterBase(unittest.TestCase):
         return self._ls_server.receive_notify()
 
     def assert_reply(self, expected=None, timeout=0.2):
-        self._ls_server._rr_client_socket.settimeout(timeout)
+        self._ls_server.set_rr_socket_timeout(timeout)
         reply = self._ls_server.receive_reply()
         self.assertEqual(expected + '\r\n', reply)
 
     def assert_not_reply(self, not_expected=None, timeout=0.2):
-        self._ls_server._rr_client_socket.settimeout(timeout)
+        self._ls_server.set_rr_socket_timeout(timeout)
         reply = self._ls_server.receive_reply()
         self.assertNotEqual(not_expected + '\r\n', reply)
 
