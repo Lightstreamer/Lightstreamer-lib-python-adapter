@@ -2,7 +2,7 @@ import socket
 import threading
 import logging
 import unittest
-
+from enum import Enum
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
 
@@ -27,24 +27,19 @@ class LightstreamerServerSimulator():
             self._notify_sock.listen(1)
 
     def _accept_connections(self):
-        log.info("Listening at {}" .format(self._rr_sock.getsockname()))
+        log.info("Listening at %s", self._rr_sock.getsockname())
         self._rr_client_socket, rr_client_addr = self._rr_sock.accept()
-        log.info("Accepted a connection from {} on {}"
-                 .format(rr_client_addr, self._rr_sock.getsockname()))
-        log.info("Listener at {} closed"
-                 .format(self._rr_sock.getsockname()))
+        log.info("Accepted a connection from %s on %s", rr_client_addr,
+                 self._rr_sock.getsockname())
+        log.info("Listener at %s closed", self._rr_sock.getsockname())
         self._rr_sock.close()
 
         if self._notify_sock is not None:
-            log.info("Listening at {}".format(self._notify_sock.getsockname()))
-            socket_pair = self._notify_sock.accept()
-            self._ntfy_client_socket = socket_pair[0]
-            ntfy_client_addr = socket_pair[1]
-            log.info("Accepted a connection from {} on {}"
-                     .format(ntfy_client_addr,
-                             self._notify_sock.getsockname()))
-            log.info("Listener at {} closed"
-                     .format(self._notify_sock.getsockname()))
+            log.info("Listening at %s", self._notify_sock.getsockname())
+            self._ntfy_client_socket, ntfy_client_addr = self._notify_sock.accept()
+            log.info("Accepted a connection from %s on %s", ntfy_client_addr,
+                             self._notify_sock.getsockname())
+            log.info("Listener at %s closed", self._notify_sock.getsockname())
             self._notify_sock.close()
 
     def set_rr_socket_timeout(self, timeout):
@@ -68,11 +63,11 @@ class LightstreamerServerSimulator():
     def send_request(self, request):
         protocol_request = request + '\r\n'
         self._rr_client_socket.sendall(bytes(protocol_request, "utf-8"))
-        log.info("Sent request: {}".format(protocol_request))
+        log.info("Sent request: %s", protocol_request)
 
     def receive_reply(self):
         reply = self._get_reply(self._rr_client_socket)
-        log.info("Received reply: {}".format(reply))
+        log.info("Received reply: %s", reply)
         return reply
 
     def receive_notify(self, timeout=3.5):
@@ -86,7 +81,7 @@ class LightstreamerServerSimulator():
         while True:
             log.debug("Reading from request-reply socket...")
             more = sock.recv(1024)
-            log.debug("Received {} bytes of reply data".format(len(more)))
+            log.debug("Received %d bytes of reply data", len(more))
             if not more:
                 raise EOFError('Socket connection broken')
             data += more
@@ -100,7 +95,7 @@ class LightstreamerServerSimulator():
         while True:
             log.debug("Reading from notification socket...")
             more = sock.recv(1024)
-            log.debug("Received {} bytes of notification data".format(len(more)))
+            log.debug("Received %d bytes of notification data", len(more))
             if not more:
                 raise EOFError('Socket connection broken')
             buffer += more.decode()
@@ -130,23 +125,24 @@ class RemoteAdapterBase(unittest.TestCase):
 
     def setUp(self):
         log.info("\n\nStarting new test...")
+        self._remote_adapter = None
         # Configures and starts the Lightstreamer Server simulator
         self._ls_server = LightstreamerServerSimulator(
                                                   self.get_req_reply_address(),
                                                   self.get_notify_address())
         self._ls_server.start()
-        # Configures and start the Remote Adapter
-        self._remote_adapter = self.on_setup()
-        self._remote_adapter.start()
-        # Waiting for a new incoming connection (blocking)
-        self._rr_client_socket = self._ls_server.retrieve_connection()
+        self.on_setup()
         log.info("setUp completed\n\n")
 
     def on_setup(self):
         pass
 
-    def on_teardown(self, remote_adapter=None):
+    def on_teardown(self):
         pass
+
+    def launch_remote_adapter(self, remote_adapter):
+        self._remote_adapter = remote_adapter
+        self._remote_adapter.start()
 
     @property
     def remote_adapter(self):
@@ -159,10 +155,11 @@ class RemoteAdapterBase(unittest.TestCase):
         return None
 
     def tearDown(self):
-        self._remote_adapter.close()
+        if self._remote_adapter is not None:
+            self._remote_adapter.close()
 
-        # Invoke the hook to notify that the Remote Adapter is closing
-        self.on_teardown(self._remote_adapter)
+            # Invoke the hook to notify that the Remote Adapter is closing
+            self.on_teardown()
 
         # Stops the Lightstreamer Server Simulator
         self._ls_server.stop()
@@ -191,3 +188,8 @@ class RemoteAdapterBase(unittest.TestCase):
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
 
+
+class KeepaliveConstants(Enum):
+    DEFAULT = 10.0
+    MIN = 1.0
+    STRICTER = 1.0
