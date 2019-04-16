@@ -38,7 +38,7 @@ _EXCEPTIONS_MAP = {str(MetadataProviderError): 'M',
 class Method(Enum):
     """Enum for representing common methods of the protocol.
     """
-    KEEP_ALIVE = 1
+    KEEPALIVE = 1
     RAC = 2
 
     def __str__(self):
