@@ -125,9 +125,6 @@ class RemoteAdapterBase(unittest.TestCase):
     REQ_REPLY_ADDRESS = (HOST, REQ_REPLY_PORT)
     NOTIFY_ADDRESS = (HOST, NOTIFY_PORT)
 
-    def __init__(self, method_name):
-        super(RemoteAdapterBase, self).__init__(method_name)
-
     def setUp(self):
         log.info("\n\nStarting new test...")
         # Configures and starts the Lightstreamer Server simulator
