@@ -1203,8 +1203,11 @@ class DataProviderServer(Server):
     def _on_dpi(self, data):
         parsed_data = data_protocol.read_init(data)
         parsed_data.setdefault("ARI.version", "1.8.0")
+        parsed_data.setdefault("keepalive_hint.millis", None)
         proxy_version = parsed_data["ARI.version"]
+        keep_alive_hint = parsed_data["keepalive_hint.millis"]
         del parsed_data["ARI.version"]
+        del parsed_data["keepalive_hint.millis"]
         try:
             if proxy_version == "1.8.1":
                 raise Exception("Unsupported reserved protocol version number: {}".format(proxy_version))
@@ -1225,6 +1228,7 @@ class DataProviderServer(Server):
             if proxy_parameters is not None:
                 notify_res = data_protocol.write_notify_init(proxy_parameters)
                 self._send_notify(notify_res)
+        self._use_keep_alive_hint(keep_alive_hint)
         return res
 
     def _on_sub(self, request_id, data):
