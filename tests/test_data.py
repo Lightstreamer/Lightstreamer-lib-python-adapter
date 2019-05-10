@@ -10,6 +10,7 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    SubscribeError,
                                                    FailureError,
                                                    DataProvider)
+from time import sleep
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
@@ -65,13 +66,11 @@ class DataProviderTestClass(DataProvider):
         self.collector.update({'itemName': item})
 
 
-class DataProviderServerInitTest(unittest.TestCase):
+class DataProviderServerConstructionTest(unittest.TestCase):
 
     def test_start_with_error(self):
         server = DataProviderServer(DataProviderTestClass({}),
-                                    (RemoteAdapterBase.HOST,
-                                     RemoteAdapterBase.REQ_REPLY_PORT,
-                                     RemoteAdapterBase.NOTIFY_PORT))
+                                    RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS)
         with self.assertRaises(Exception) as err:
             server.start()
 
@@ -83,9 +82,7 @@ class DataProviderServerInitTest(unittest.TestCase):
     def test_not_right_adapter(self):
         with self.assertRaises(TypeError) as te:
             DataProviderServer({},
-                               (RemoteAdapterBase.HOST,
-                                RemoteAdapterBase.REQ_REPLY_PORT,
-                                RemoteAdapterBase.NOTIFY_PORT))
+                               RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS)
 
         the_exception = te.exception
         self.assertIsInstance(the_exception, TypeError)
@@ -96,44 +93,36 @@ class DataProviderServerInitTest(unittest.TestCase):
     def test_default_properties(self):
         # Test default properties
         server = DataProviderServer(DataProviderTestClass({}),
-                                    (RemoteAdapterBase.HOST,
-                                     RemoteAdapterBase.REQ_REPLY_PORT,
-                                     RemoteAdapterBase.NOTIFY_PORT))
+                                    RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS)
 
         self.assertEqual('#', server.name[0])
-        self.assertEqual(1, server.keep_alive)
+        self.assertEqual(10, server.keep_alive)
         self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
+        self.assertIsNone(server.remote_user)
+        self.assertIsNone(server.remote_password)
 
     def test_thread_pool_size(self):
         # Test non default properties
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     thread_pool_size=2)
 
         self.assertEqual(2, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     thread_pool_size=0)
 
         self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     thread_pool_size=-2)
 
         self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     thread_pool_size=None)
 
         self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
@@ -141,57 +130,76 @@ class DataProviderServerInitTest(unittest.TestCase):
     def test_keep_alive_value(self):
         # Test non default properties
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     keep_alive=2)
         self.assertEqual(2, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     keep_alive=0)
         self.assertEqual(0, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     keep_alive=-2)
         self.assertEqual(0, server.keep_alive)
 
         server = DataProviderServer(DataProviderTestClass({}),
-                                    address=(RemoteAdapterBase.HOST,
-                                             RemoteAdapterBase.REQ_REPLY_PORT,
-                                             RemoteAdapterBase.NOTIFY_PORT),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
                                     keep_alive=None)
-        self.assertEqual(0, server.keep_alive)
+        self.assertEqual(10, server.keep_alive)
+
+    def test_remote_credentials(self):
+        server = DataProviderServer(DataProviderTestClass({}),
+                                    address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS)
+        server.remote_user = "user"
+        server.remote_password = "password"
+        self.assertEqual("user", server.remote_user)
+        self.assertEqual("password", server.remote_password)
+
+
+class DataProviderServerInitializationTest(RemoteAdapterBase):
+
+    def __init__(self, method_name):
+        super(DataProviderServerInitializationTest, self).__init__(method_name)
+        self.collector = {}
+        self.adapter = DataProviderTestClass(self.collector)
+
+    def setup_remote_adapter(self, keep_alive=None, config=None, params=None,
+                             username=None, password=None):
+        remote_server = DataProviderServer(adapter=self.adapter,
+                                        address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
+                                        keep_alive=keep_alive)
+        remote_server.adapter_config = config
+        remote_server.adapter_params = params
+        remote_server.remote_user = username
+        remote_server.remote_password = password
+        self.launch_remote_server(remote_server)
+
+    def is_enable_notify(self):
+        return True
+
+    def test_remote_credentials(self):
+        self.setup_remote_adapter(username="username", password="password")
+        self.assert_reply("1|RAC|S|username|S|password")
+        self.assert_notify("RAC|S|username|S|password")
 
 
 class DataProviderServerTest(RemoteAdapterBase):
 
-    def __init__(self, method_name):
-        super(DataProviderServerTest, self).__init__(method_name)
-        self.adapter = None
-        self.collector = {}
-
     def on_setup(self):
+        self.collector = {}
         # Configuring and starting MetadataProviderServer
         self.adapter = DataProviderTestClass(self.collector)
-        address = (RemoteAdapterBase.HOST,
-                   RemoteAdapterBase.REQ_REPLY_PORT,
-                   RemoteAdapterBase.NOTIFY_PORT)
-        remote_adapter_server = DataProviderServer(adapter=self.adapter,
-                                                   address=address,
-                                                   keep_alive=1,
-                                                   name="DataProviderTest")
-        return remote_adapter_server
+        remote_server = DataProviderServer(adapter=self.adapter,
+                                           address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
+                                           name="DataProviderTest")
+        self.launch_remote_server(remote_server)
 
-    def get_notify_address(self):
-        return RemoteAdapterBase.NOTIFY_ADDRESS
+    def is_enable_notify(self):
+        return True
 
-    def on_teardown(self, server):
+    def on_teardown(self, remote_server=None):
         log.info("DataProviderTest completed")
 
     def do_subscription(self, item_name):
@@ -214,25 +222,25 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def test_default_keep_alive(self):
         # Receive a KEEPALIVE message because no requests have been issued
-        for _ in range(0, 3):
+        for _ in range(0, 1):
             start = time.time()
-            self.assert_reply("KEEPALIVE", timeout=1.1)
+            self.assert_reply("KEEPALIVE", timeout=11.1)
             end = time.time()
             self.assertGreaterEqual(end - start, 0.99)
 
     def test_no_keep_alive(self):
         self.do_init_and_skip()
-        # Receive a KEEPALIVE message because no requests have been issued
+        # Receive a KEEPALIVE message because no request has been issued
         items = ["item1", "item2", "item3"]
         for item in items:
             # Wait for half the KEEPALIVE time
-            time.sleep(0.5)
+            time.sleep(5.0)
             self.do_subscription(item)
             self.assert_not_reply("KEEPALIVE")
 
         # As no more requests have been issued, a period longer than 1 second
         # must have been elapsed, therefore we expect a KEEPALIVE message
-        self.assert_reply("KEEPALIVE", timeout=2)
+        self.assert_reply("KEEPALIVE", timeout=11.1)
 
     def test_init(self):
         self.do_init()
@@ -241,12 +249,12 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.assertIsNotNone(self.adapter.listener)
 
     def test_init_with_adapter_config(self):
-        self.remote_adapter.adapter_config = "config.file"
+        self.remote_server.adapter_config = "config.file"
         self.do_init_and_skip()
         self.assertEqual("config.file", self.adapter.config_file)
 
     def test_init_with_local_params(self):
-        self.remote_adapter.adapter_params = {"par1": "val1", "par2": "val2"}
+        self.remote_server.adapter_params = {"par1": "val1", "par2": "val2"}
         self.send_request("10000010c3e4d0462|DPI|")
 
         self.assert_reply("10000010c3e4d0462|DPI|V")
@@ -263,7 +271,7 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_local_and_remote_params(self):
-        self.remote_adapter.adapter_params = {"my_param.name":
+        self.remote_server.adapter_params = {"my_param.name":
                                               "my_local_param"}
         request = ("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
@@ -276,7 +284,7 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_protocol_version(self):
-        self.remote_adapter.adapter_params = {"data_provider.name":
+        self.remote_server.adapter_params = {"data_provider.name":
                                               "my_local_provider"}
         self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2|S|"
                            "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
@@ -290,7 +298,7 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_unsupported_protocol_version(self):
-        self.remote_adapter.adapter_params = {"data_provider.name":
+        self.remote_server.adapter_params = {"data_provider.name":
                                               "my_local_provider"}
         self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
                            "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
@@ -359,11 +367,17 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_subscription_with_request_id("10000010c3e4d0462", 'aapl%5F')
         self.do_subscription_with_request_id("20000010c3e4d0462", 'saals%5F')
         self.do_subscription_with_request_id("30000010c3e4d0462", 'paals%5F')
-        self.assert_reply("10000010c3e4d0462|SUB|V")
-        self.assert_reply("20000010c3e4d0462|SUB|V")
-        self.assert_reply("30000010c3e4d0462|SUB|V")
-        notifications = self.receive_notify()
-        self.assertEquals(3, len(notifications))
+
+        # Ensure buffer is full before reading from it
+        sleep(1)
+
+        replies = self.receive_replies()
+        self.assertEquals(3, len(replies))
+        self.assertEquals("10000010c3e4d0462|SUB|V", replies[0])
+        self.assertEquals("20000010c3e4d0462|SUB|V", replies[1])
+        self.assertEquals("30000010c3e4d0462|SUB|V", replies[2])
+
+        notifications = self.receive_notifications()
         self.assertEquals("EOS|S|aapl_|S|10000010c3e4d0462", notifications[0])
         self.assertEquals("EOS|S|saals_|S|20000010c3e4d0462", notifications[1])
         self.assertEquals("EOS|S|paals_|S|30000010c3e4d0462", notifications[2])
@@ -477,7 +491,7 @@ class DataProviderServerTest(RemoteAdapterBase):
 
         # Skip first data received on the notification channel because of
         # unavailability of snapshot
-        self.receive_notify()
+        self.receive_notifications()
 
         # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
@@ -543,6 +557,10 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.adapter.listener.failure(Exception("Generic exception"))
         self.assert_notify("FAL|E|Generic+exception")
+
+    def test_remote_credentials(self):
+        self.setup_remote_adapter(username="username", password="password")
+        self.assert_reply("1|RAC|S|username|S|password")
 
 
 if __name__ == "__main__":
