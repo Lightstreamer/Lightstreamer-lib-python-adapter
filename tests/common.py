@@ -58,45 +58,33 @@ class LightstreamerServerSimulator():
         self._rr_client_socket.sendall(bytes(protocol_request, "utf-8"))
         log.info("Sent request: %s", protocol_request)
 
-    def receive_reply(self):
-        reply = self._get_reply(self._rr_client_socket)
+    def receive_replies(self):
+        reply = self._read_from_socket(self._rr_client_socket)
         log.info("Received reply: %s", reply)
         return reply
 
-    def receive_notify(self, timeout=3.5):
+    def receive_notifications(self, timeout=3.5):
         self._ntfy_client_socket.settimeout(timeout)
-        notify = self._get_notifications(self._ntfy_client_socket)
+        notify = self._read_from_socket(self._ntfy_client_socket, split=True)
         log.info("Received notify: %s", notify)
         return notify
 
-    def _get_reply(self, sock):
-        data = b''
-        while True:
-            log.debug("Reading from request-reply socket...")
-            more = sock.recv(1024)
-            log.debug("Received %d bytes of reply data", len(more))
-            if not more:
-                raise EOFError('Socket connection broken')
-            data += more
-            if data.endswith(b'\n'):
-                break
-        return data.decode()
-
-    def _get_notifications(self, sock):
+    def _read_from_socket(self, sock, split=False):
         buffer = ''
         notifications = []
         while True:
-            log.debug("Reading from notification socket...")
+            log.debug("Reading from socket...")
             more = sock.recv(1024)
-            log.debug("Received %d bytes of notification data", len(more))
+            log.debug("Received %d bytes of data", len(more))
             if not more:
                 raise EOFError('Socket connection broken')
             buffer += more.decode()
             tokens = buffer.splitlines(keepends=True)
             for notify in tokens:
-                if (notify.endswith('\r\n') and notify.rstrip() != 'KEEPALIVE'):
-                    stripped = '|'.join(notify.split("|")[1:]).rstrip()
-                    notifications.append(stripped)
+                if notify.endswith('\r\n'):
+                    if split is True:
+                        notify = '|'.join(notify.split("|")[1:])
+                    notifications.append(notify.rstrip())
                     buffer = ''
                 else:
                     buffer = notify
@@ -147,18 +135,14 @@ class RemoteAdapterBase(unittest.TestCase):
         self._remote_server.start()
 
     @property
-    def exception_handler(self):
-        return self._remote_server._exception_handler
-
-    @property
     def remote_server(self):
         return self._remote_server
 
     def tearDown(self):
         if self._remote_server is not None:
             self._remote_server.close()
-        if self.exception_handler is not None:
-            self.exception_handler.join()
+            if self._remote_server._exception_handler is not None:
+                self._remote_server._exception_handler.join()
 
         # Stops the Lightstreamer Server Simulator
         self._ls_server.stop()
@@ -167,28 +151,33 @@ class RemoteAdapterBase(unittest.TestCase):
     def send_request(self, request, skip_reply=False):
         self._ls_server.send_request(request)
         if skip_reply:
-            self._ls_server.receive_reply()
+            self._ls_server.receive_replies()
 
-    def receive_notify(self):
-        return self._ls_server.receive_notify()
+    def receive_replies(self):
+        return self._ls_server.receive_replies()
+
+    def receive_notifications(self):
+        return self._ls_server.receive_notifications()
 
     def assert_reply(self, expected=None, timeout=0.2):
         self._ls_server.set_rr_socket_timeout(timeout)
-        reply = self._ls_server.receive_reply()
-        self.assertEqual(expected + '\r\n', reply)
+        reply = self._ls_server.receive_replies()
+        self.assertEqual(len(reply), 1)
+        self.assertEqual(expected, reply[0])
 
     def assert_not_reply(self, not_expected=None, timeout=0.2):
         self._ls_server.set_rr_socket_timeout(timeout)
-        reply = self._ls_server.receive_reply()
-        self.assertNotEqual(not_expected + '\r\n', reply)
+        reply = self._ls_server.receive_replies()
+        self.assertEqual(len(reply), 1)
+        self.assertNotEqual(not_expected, reply[0])
 
     def assert_notify(self, expected=None):
-        notifications = self.receive_notify()
+        notifications = self.receive_notifications()
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
 
     def assert_caught_exception(self, msg):
-        self.assertEqual(msg, self.exception_handler.get())
+        self.assertEqual(msg, self._remote_server._exception_handler.get())
 
 
 class MyExceptionHandler(ExceptionHandler):
