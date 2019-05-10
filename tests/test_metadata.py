@@ -1,8 +1,9 @@
 import unittest
 import logging
-import queue
 
-from .common import RemoteAdapterBase
+from multiprocessing import cpu_count
+
+from .common import (RemoteAdapterBase, KeepaliveConstants)
 from lightstreamer_adapter.server import (MetadataProviderServer,
                                           ExceptionHandler)
 from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
@@ -18,8 +19,12 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnPlatformType,
                                                        TableInfo,
                                                        MpnSubscriptionInfo)
+import time
 
 log = logging.getLogger(__name__)
+
+# Specify here the number of your CPU cores
+EXPECTED_CPU_CORES = cpu_count()
 
 
 class MetadataProviderTestClass(MetadataProvider):
@@ -413,29 +418,6 @@ class MpnSubscriptionTest(unittest.TestCase):
                          subscription.notification_format)
 
 
-class MyExceptionHandler(ExceptionHandler):
-
-    def __init__(self):
-        self._caught_exception_queue = queue.Queue()
-
-    def handle_io_exception(self, ioexception):
-        print("MyExceptionHandler-> Got IO Exception {}".format(ioexception))
-        return False
-
-    def handle_exception(self, exception):
-        print("MyExceptionHandler-> Caught exception: {}"
-              .format(str(exception)))
-        self._caught_exception_queue.put(str(exception))
-        self._caught_exception_queue.task_done()
-        return False
-
-    def get(self):
-        return self._caught_exception_queue.get(timeout=0.3)
-
-    def join(self):
-        self._caught_exception_queue.join()
-
-
 class MetadataProviderTest(unittest.TestCase):
 
     def setUp(self):
@@ -503,15 +485,14 @@ class MetadataProviderTest(unittest.TestCase):
         self.assertFalse(mode_maybe_allowed)
 
 
-class MetadataProviderServerInitTest(unittest.TestCase):
+# @unittest.skip
+class MetadataProviderServerConstructionTest(unittest.TestCase):
 
     def test_start_with_error(self):
-        server = MetadataProviderServer(MetadataProviderTestClass({}),
-                                        (RemoteAdapterBase.HOST,
-                                         RemoteAdapterBase.REQ_REPLY_PORT,
-                                         RemoteAdapterBase.NOTIFY_PORT))
+        remote_server = MetadataProviderServer(MetadataProviderTestClass({}),
+                                        RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
         with self.assertRaises(Exception) as err:
-            server.start()
+            remote_server.start()
 
         the_exception = err.exception
         self.assertIsInstance(the_exception, MetadataProviderError)
@@ -521,8 +502,7 @@ class MetadataProviderServerInitTest(unittest.TestCase):
     def test_not_right_adapter(self):
         with self.assertRaises(TypeError) as te:
             MetadataProviderServer({},
-                                   (RemoteAdapterBase.HOST,
-                                    RemoteAdapterBase.REQ_REPLY_PORT))
+                                   RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
 
         the_exception = te.exception
         self.assertIsInstance(the_exception, TypeError)
@@ -533,102 +513,223 @@ class MetadataProviderServerInitTest(unittest.TestCase):
     def test_default_properties(self):
         # Test default properties
         server = MetadataProviderServer(MetadataProviderTestClass({}),
-                                        (RemoteAdapterBase.HOST,
-                                         RemoteAdapterBase.REQ_REPLY_PORT))
+                                        RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
         self.assertEqual('#', server.name[0])
-        self.assertEqual(1, server.keep_alive)
-        self.assertEqual(8, server.thread_pool_size)
+        self.assertEqual(KeepaliveConstants.DEFAULT.value, server.keep_alive)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
+        self.assertIsNone(server.remote_user)
+        self.assertIsNone(server.remote_password)
 
     def test_thread_pool_size(self):
         # Test non default properties
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             thread_pool_size=2)
         self.assertEqual(2, server.thread_pool_size)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             thread_pool_size=0)
-        self.assertEqual(8, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             thread_pool_size=-2)
-        self.assertEqual(8, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             thread_pool_size=None)
-        self.assertEqual(8, server.thread_pool_size)
+        self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
 
     def test_keep_alive_value(self):
         # Test non default properties
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             keep_alive=2)
         self.assertEqual(2, server.keep_alive)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             keep_alive=0)
         self.assertEqual(0, server.keep_alive)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             keep_alive=-2)
         self.assertEqual(0, server.keep_alive)
 
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
-            address=(RemoteAdapterBase.HOST,
-                     RemoteAdapterBase.REQ_REPLY_PORT),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
             keep_alive=None)
-        self.assertEqual(0, server.keep_alive)
+        self.assertEqual(KeepaliveConstants.DEFAULT.value, server.keep_alive)
+
+    def test_remote_credentialis(self):
+        server = MetadataProviderServer(MetadataProviderTestClass({}),
+                                    address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        server.remote_user = "user"
+        server.remote_password = "password"
+        self.assertEqual("user", server.remote_user)
+        self.assertEqual("password", server.remote_password)
 
 
-class MetadataProviderServerTest(RemoteAdapterBase):
+class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def __init__(self, method_name):
-        super(MetadataProviderServerTest, self).__init__(method_name)
-        self.adapter = None
-        self.exception_handler = None
+        super(MetadataProviderServerInitializationTest, self).__init__(method_name)
         self.collector = {}
-
-    def on_setup(self):
-        # Configuring and starting MetadataProviderServer.
         self.adapter = MetadataProviderTestClass(self.collector)
-        server = MetadataProviderServer(self.adapter,
-                                        self.get_req_reply_address(),
-                                        keep_alive=0)
-        self.exception_handler = MyExceptionHandler()
-        server.set_exception_handler(self.exception_handler)
-        return server
 
-    def on_teardown(self, server):
-        self.exception_handler.join()
-        log.info("MetadataProviderTest completed")
-
-    def assert_caught_exception(self, msg):
-        self.assertEqual(msg, self.exception_handler.get())
+    def setup_remote_adapter(self, keep_alive=None, config=None, params=None,
+                             username=None, password=None):
+        remote_server = MetadataProviderServer(adapter=self.adapter,
+                                        address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
+                                        keep_alive=keep_alive)
+        remote_server.adapter_config = config
+        remote_server.adapter_params = params
+        remote_server.remote_user = username
+        remote_server.remote_password = password
+        self.launch_remote_server(remote_server, set_exception_handler=True)
 
     def do_init_and_skip(self):
         self.send_request("10000010c3e4d0462|MPI", True)
 
+    # @unittest.SkipTest
+    def test_no_keepalive_hint_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+
+        self.assertEqual(KeepaliveConstants.STRICTER.value,
+                         self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_no_keepalive_hint_and_configured_keepalive(self):
+        CONFIGURED_KEEP_ALIVE = 5
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_negative_keepalive_hint_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|-510"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.DEFAULT.value,
+                         self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_negative_keepalive_hint_and_configured_keepalive(self):
+        CONFIGURED_KEEP_ALIVE = 6
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|-500"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_keepalive_hint_less_than_default_and_no_configured_keepalive(self):
+        EXPEXTED_KEEP_ALIVE = 9
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
+                           "keepalive_hint.millis|S|9000"
+                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_keepalive_hint_less_than_default_and_min_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
+                           "keepalive_hint.millis|S|500"
+                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.MIN.value, self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_keepalive_hint_greather_than_default_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|11000"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.DEFAULT.value,
+                          self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_keepalive_less_than_configured_keepalive(self):
+        EXPEXTED_KEEP_ALIVE = 4
+        CONFIGURED_KEEP_ALIVE = 5
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
+                          "keepalive_hint.millis|S|4000"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    # @unittest.SkipTest
+    def test_keepalive_less_then_configured_keepalive_and_min(self):
+        CONFIGURED_KEEP_ALIVE = 5
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|500"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
+                          "hewbc3ikbbctyui"}, self.collector['params'])
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.MIN.value,
+                         self.remote_server.keep_alive)
+
+    def test_keep_alive(self):
+        self.setup_remote_adapter(2)
+        # Receive a KEEPALIVE message because no request has been issued
+        for _ in range(0, 1):
+            start = time.time()
+            self.assert_reply("KEEPALIVE", timeout=2.1)
+            end = time.time()
+            self.assertGreaterEqual(end - start, 1.99)
+
     def test_init(self):
+        self.setup_remote_adapter()
         self.send_request(("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                            "proxy.instance_id|S|hewbc3ikbbctyui"))
         self.assert_reply('10000010c3e4d0462|MPI|V')
@@ -637,12 +738,13 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.assertIsNone(self.adapter.config_file)
 
     def test_init_with_adapter_config(self):
-        self.remote_adapter.adapter_config = "config.file"
+        self.setup_remote_adapter(config="config.file")
         self.do_init_and_skip()
         self.assertEqual("config.file", self.adapter.config_file)
 
     def test_init_with_local_params(self):
-        self.remote_adapter.adapter_params = {"par1": "val1", "par2": "val2"}
+        self.setup_remote_adapter()
+        self.remote_server.adapter_params = {"par1": "val1", "par2": "val2"}
         self.send_request("10000010c3e4d0462|MPI")
 
         self.assert_reply("10000010c3e4d0462|MPI|V")
@@ -651,6 +753,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_remote_params(self):
+        self.setup_remote_adapter()
         self.send_request(("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                            "proxy.instance_id|S|hewbc3ikbbctyui"))
 
@@ -660,7 +763,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_local_and_remote_params(self):
-        self.remote_adapter.adapter_params = {"proxy.instance_id":
+        self.setup_remote_adapter()
+        self.remote_server.adapter_params = {"proxy.instance_id":
                                               "my_local_meta_provider"}
         self.send_request(("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                            "proxy.instance_id|S|hewbc3ikbbctyui"))
@@ -671,8 +775,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_protocol_version(self):
-        self.remote_adapter.adapter_params = {"proxy.instance_id":
-                                              "my_local_meta_provider"}
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                          "my_local_meta_provider"})
         self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2|S|"
                            "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
@@ -683,8 +787,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_protocol_version_above_1_8_2(self):
-        self.remote_adapter.adapter_params = {"proxy.instance_id":
-                                              "my_local_meta_provider"}
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                          "my_local_meta_provider"})
         self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.4|S|"
                            "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
@@ -695,8 +799,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_unsupported_protocol_version(self):
-        self.remote_adapter.adapter_params = {"proxy.instance_id":
-                                              "my_local_meta_provider"}
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                            "my_local_meta_provider"})
         self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
                            "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
@@ -704,52 +808,79 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.assertFalse('params' in self.collector)
 
     def test_init_with_metadata_provider_exception(self):
+        self.setup_remote_adapter()
         self.send_request(("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
                            "hewbc3ikbbctyui"))
         self.assert_reply("10000010c3e4d0462|MPI|EM|The+ID+must+be+supplied")
 
     def test_init_with_generic_exception(self):
+        self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO")
         self.assert_reply("10000010c3e4d0462|MPI|E|Exception")
 
     def test_malformed_init_for_unkown_token_type(self):
+        self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|adapters_conf.id|S1|DEMO')
         self.assert_caught_exception(("Unknown type 'S1' found while parsing"
                                       " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
+        self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|')
         self.assert_caught_exception(("Invalid number of tokens while parsing"
                                       " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
+        self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S||')
         self.assert_caught_exception(("Invalid number of tokens while parsing"
                                       " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
+        self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|  |')
         self.assert_caught_exception(("Invalid number of tokens while parsing"
                                       " MPI request"))
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
+        self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|id|S')
         self.assert_caught_exception(("Invalid number of tokens while parsing "
                                       "MPI request"))
 
     def test_init_init(self):
+        self.setup_remote_adapter()
         # Test error when more than one MPI request is issued
         self.do_init_and_skip()
         self.send_request("10000010c3e4d0462|MPI")
         self.assert_caught_exception("Unexpected late MPI request")
 
     def test_init_miss(self):
+        self.setup_remote_adapter()
         # Test error when the very first request is not a MPI request
         self.send_request(("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|host|S|"
                            "www.mycompany.com"))
 
         self.assert_caught_exception(("Unexpected request NUS while waiting "
                                       "for MPI request"))
+
+    def test_remote_credentials(self):
+        self.setup_remote_adapter(username="username", password="password")
+        self.assert_reply("1|RAC|S|username|S|password")
+
+
+class MetadataProviderServerTest(RemoteAdapterBase):
+
+    def on_setup(self):
+        self.collector = {}
+        # Configuring and starting MetadataProviderServer.
+        adapter = MetadataProviderTestClass(self.collector)
+        remote_server = MetadataProviderServer(adapter,
+                                        RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        self.launch_remote_server(remote_server, set_exception_handler=True)
+
+    def do_init_and_skip(self):
+        self.send_request("10000010c3e4d0462|MPI", True)
 
     def test_notify_user(self):
         self.do_init_and_skip()
