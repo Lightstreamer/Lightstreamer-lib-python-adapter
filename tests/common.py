@@ -1,24 +1,26 @@
 import socket
 import threading
 import logging
+import queue
 import unittest
 from enum import Enum
+from lightstreamer_adapter.server import ExceptionHandler
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
 
 
 class LightstreamerServerSimulator():
 
-    def __init__(self, req_reply_adr, notify_adr=None):
+    def __init__(self, req_reply_adr, notify_adr, enable_notify=False):
+        self.main_thread = None
         # Request-Reply Socket
-        self._rr_sock = socket.socket(socket.AF_INET,
-                                      socket.SOCK_STREAM)
+        self._rr_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._rr_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._rr_sock.bind(req_reply_adr)
         self._rr_sock.listen(1)
         self._rr_client_socket = None
         self._notify_sock, self._ntfy_client_socket = None, None
-        if notify_adr is not None:
+        if enable_notify is True:
             self._notify_sock = socket.socket(socket.AF_INET,
                                               socket.SOCK_STREAM)
             self._notify_sock.setsockopt(socket.SOL_SOCKET,
@@ -29,7 +31,7 @@ class LightstreamerServerSimulator():
     def _accept_connections(self):
         log.info("Listening at %s", self._rr_sock.getsockname())
         self._rr_client_socket, rr_client_addr = self._rr_sock.accept()
-        log.info("Accepted a connection from %s on %s", rr_client_addr,
+        log.info("Accepted connection from %s on %s", rr_client_addr,
                  self._rr_sock.getsockname())
         log.info("Listener at %s closed", self._rr_sock.getsockname())
         self._rr_sock.close()
@@ -51,15 +53,6 @@ class LightstreamerServerSimulator():
         self.main_thread.start()
         log.info("Started accepting new connections")
 
-    def retrieve_connection(self):
-        log.debug("Retrieving connection...")
-        self.main_thread.join()
-        if self._rr_client_socket is not None:
-            log.info("Connection retrieved")
-            return self._rr_client_socket
-
-        log.error("No connection available!")
-
     def send_request(self, request):
         protocol_request = request + '\r\n'
         self._rr_client_socket.sendall(bytes(protocol_request, "utf-8"))
@@ -73,7 +66,7 @@ class LightstreamerServerSimulator():
     def receive_notify(self, timeout=3.5):
         self._ntfy_client_socket.settimeout(timeout)
         notify = self._get_notifications(self._ntfy_client_socket)
-        log.info("Received notify: {}".format(notify))
+        log.info("Received notify: %s", notify)
         return notify
 
     def _get_reply(self, sock):
@@ -119,20 +112,27 @@ class LightstreamerServerSimulator():
 
 class RemoteAdapterBase(unittest.TestCase):
 
-    HOST, REQ_REPLY_PORT, NOTIFY_PORT = 'localhost', 6662, 6663
-    REQ_REPLY_ADDRESS = (HOST, REQ_REPLY_PORT)
-    NOTIFY_ADDRESS = (HOST, NOTIFY_PORT)
+    _HOST, _REQ_REPLY_PORT, _NOTIFY_PORT = 'localhost', 6662, 6663
+    _REQUEST_REPLY_ADDRESS = (_HOST, _REQ_REPLY_PORT)
+    _NOTIFY_ADDRESS = (_HOST, _NOTIFY_PORT)
+    PROXY_METADATA_ADAPTER_ADDRESS = (_HOST, _REQ_REPLY_PORT)
+    PROXY_DATA_ADAPTER_ADDRESS = (_HOST, _REQ_REPLY_PORT, _NOTIFY_PORT)
 
     def setUp(self):
         log.info("\n\nStarting new test...")
-        self._remote_adapter = None
+        self._remote_server = None
+        self._exception_handler = None
         # Configures and starts the Lightstreamer Server simulator
         self._ls_server = LightstreamerServerSimulator(
-                                                  self.get_req_reply_address(),
-                                                  self.get_notify_address())
+                                                  RemoteAdapterBase._REQUEST_REPLY_ADDRESS,
+                                                  RemoteAdapterBase._NOTIFY_ADDRESS,
+                                                  self.is_enable_notify())
         self._ls_server.start()
         self.on_setup()
         log.info("setUp completed\n\n")
+
+    def is_enable_notify(self):
+        return False
 
     def on_setup(self):
         pass
@@ -140,26 +140,25 @@ class RemoteAdapterBase(unittest.TestCase):
     def on_teardown(self):
         pass
 
-    def launch_remote_adapter(self, remote_adapter):
-        self._remote_adapter = remote_adapter
-        self._remote_adapter.start()
+    def launch_remote_server(self, remote_server, set_exception_handler=False):
+        self._remote_server = remote_server
+        if set_exception_handler is True:
+            self._remote_server.set_exception_handler(MyExceptionHandler())
+        self._remote_server.start()
 
     @property
-    def remote_adapter(self):
-        return self._remote_adapter
+    def exception_handler(self):
+        return self._remote_server._exception_handler
 
-    def get_req_reply_address(self):
-        return RemoteAdapterBase.REQ_REPLY_ADDRESS
-
-    def get_notify_address(self):
-        return None
+    @property
+    def remote_server(self):
+        return self._remote_server
 
     def tearDown(self):
-        if self._remote_adapter is not None:
-            self._remote_adapter.close()
-
-            # Invoke the hook to notify that the Remote Adapter is closing
-            self.on_teardown()
+        if self._remote_server is not None:
+            self._remote_server.close()
+        if self.exception_handler is not None:
+            self.exception_handler.join()
 
         # Stops the Lightstreamer Server Simulator
         self._ls_server.stop()
@@ -187,6 +186,33 @@ class RemoteAdapterBase(unittest.TestCase):
         notifications = self.receive_notify()
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
+
+    def assert_caught_exception(self, msg):
+        self.assertEqual(msg, self.exception_handler.get())
+
+
+class MyExceptionHandler(ExceptionHandler):
+
+    def __init__(self):
+        super(MyExceptionHandler, self).__init__()
+        self._caught_exception_queue = queue.Queue()
+
+    def handle_io_exception(self, ioexception):
+        print("MyExceptionHandler-> Got IO Exception {}".format(ioexception))
+        return False
+
+    def handle_exception(self, exception):
+        print("MyExceptionHandler-> Caught exception: {}"
+              .format(str(exception)))
+        self._caught_exception_queue.put(str(exception))
+        self._caught_exception_queue.task_done()
+        return False
+
+    def get(self):
+        return self._caught_exception_queue.get(timeout=0.3)
+
+    def join(self):
+        self._caught_exception_queue.join()
 
 
 class KeepaliveConstants(Enum):
