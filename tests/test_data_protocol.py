@@ -5,7 +5,7 @@ Lightstreamer SDK for Python Adapters.
 import base64
 from collections import OrderedDict
 import unittest
-
+from lightstreamer_adapter import protocol
 from lightstreamer_adapter import data_protocol
 from lightstreamer_adapter.protocol import RemotingException
 from lightstreamer_adapter.interfaces.data import DataProviderError
@@ -174,3 +174,7 @@ class DataProtocolTest(unittest.TestCase):
                                            {})
 
         self.assertEqual("Not a bool value: 'None'", str(err.exception))
+
+    def test_credentials(self):
+        res = protocol.write_credentials("username", "password")
+        self.assertEqual("RAC|S|username|S|password", res)
