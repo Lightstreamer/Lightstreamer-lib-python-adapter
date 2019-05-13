@@ -52,15 +52,6 @@ def write_init(proxy_parameters=None, exception=None):
                        exception)
 
 
-def write_notify_init(proxy_parameters):
-    """Encodes and returns a DNPI ('Data Notifications Init') response."""
-    parameters = []
-    for key, value in proxy_parameters.items():
-        parameters.append(key)
-        parameters.append(enc_str(value))
-    return join(str(Method.DPNI), 'S|') + '|S|'.join(parameters)
-
-
 @remoting_exception_on_parse(Method.SUB)
 def read_sub(data):
     """Reads and parses a SUB ('Subscribe') request."""
