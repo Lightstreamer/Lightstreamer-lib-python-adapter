@@ -355,9 +355,11 @@ class Server(metaclass=ABCMeta):
 
     def _use_keep_alive_hint(self, keepalive_hint=None):
         if keepalive_hint is None:
-            # No informaion provided, we stick to a stricter default
+            # No information provided, we stick to a stricter default
             if self._configured_keep_alive is None:
-                self._log.info("Keepalive time for %s finally set to %d milliseconds to support old Proxy Adapter", self.name, self._STRICT_KEEPALIVE)
+                self._log.info("Keepalive time for %s finally set to %d "
+                               "milliseconds to support old Proxy Adapter",
+                               self.name, self._STRICT_KEEPALIVE)
                 self._change_keep_alive(Server._STRICT_KEEPALIVE)
             # else:
                 # For backward compatibility we keep the setting; it is possible
@@ -432,8 +434,8 @@ class Server(metaclass=ABCMeta):
         the Proxy Adapter are received and forwarded to the Remote Adapter.
         """
         if self.keep_alive > 0:
-            self._log.info("Keepalive time for %s set to %d milliseconds",
-                           self.name, self.keep_alive)
+            self._log.info("Keepalive time for %s set to %d seconds", self.name,
+                           self.keep_alive)
         else:
             self._log.info("Keepalive for %s disabled", self.name)
 
@@ -1225,9 +1227,6 @@ class DataProviderServer(Server):
                 proxy_parameters = {}
                 proxy_parameters["ARI.version"] = "1.8.2"
             res = data_protocol.write_init(proxy_parameters)
-            if proxy_parameters is not None:
-                notify_res = data_protocol.write_notify_init(proxy_parameters)
-                self._send_notify(notify_res)
         self._use_keep_alive_hint(keep_alive_hint)
         return res
 
