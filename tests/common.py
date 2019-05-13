@@ -5,6 +5,7 @@ import queue
 import unittest
 from enum import Enum
 from lightstreamer_adapter.server import ExceptionHandler
+from sphinx.ext.inheritance_diagram import skip
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lightstreamer-test_server")
 
@@ -47,6 +48,9 @@ class LightstreamerServerSimulator():
     def set_rr_socket_timeout(self, timeout):
         self._rr_client_socket.settimeout(timeout)
 
+    def set_notify_socket_timeout(self, timeout):
+        self._ntfy_client_socket.settimeout(timeout)
+
     def start(self):
         self.main_thread = threading.Thread(target=self._accept_connections,
                                             name="Simple Server Thread")
@@ -58,18 +62,19 @@ class LightstreamerServerSimulator():
         self._rr_client_socket.sendall(bytes(protocol_request, "utf-8"))
         log.info("Sent request: %s", protocol_request)
 
-    def receive_replies(self):
-        reply = self._read_from_socket(self._rr_client_socket)
+    def receive_replies(self, skip_keepalive):
+        reply = self._read_from_socket(self._rr_client_socket, skip_keepalive,
+                                       split=False)
         log.info("Received reply: %s", reply)
         return reply
 
-    def receive_notifications(self, timeout=3.5):
-        self._ntfy_client_socket.settimeout(timeout)
-        notify = self._read_from_socket(self._ntfy_client_socket, split=True)
+    def receive_notifications(self, skip_keepalive):
+        notify = self._read_from_socket(self._ntfy_client_socket, skip_keepalive,
+                                        split=True)
         log.info("Received notify: %s", notify)
         return notify
 
-    def _read_from_socket(self, sock, split=False):
+    def _read_from_socket(self, sock, skip_keepalive, split):
         buffer = ''
         notifications = []
         while True:
@@ -81,7 +86,7 @@ class LightstreamerServerSimulator():
             buffer += more.decode()
             tokens = buffer.splitlines(keepends=True)
             for notify in tokens:
-                if notify.endswith('\r\n'):
+                if notify.endswith('\r\n') and (not skip_keepalive or notify.strip() != 'KEEPALIVE'):
                     if split is True:
                         notify = '|'.join(notify.split("|")[1:])
                     notifications.append(notify.rstrip())
@@ -151,28 +156,29 @@ class RemoteAdapterBase(unittest.TestCase):
     def send_request(self, request, skip_reply=False):
         self._ls_server.send_request(request)
         if skip_reply:
-            self._ls_server.receive_replies()
+            self._ls_server.receive_replies(skip_keepalive=True)
 
     def receive_replies(self):
-        return self._ls_server.receive_replies()
+        return self._ls_server.receive_replies(skip_keepalive=True)
 
     def receive_notifications(self):
-        return self._ls_server.receive_notifications()
+        return self._ls_server.receive_notifications(skip_keepalive=True)
 
-    def assert_reply(self, expected=None, timeout=0.2):
+    def assert_reply(self, expected=None, timeout=0.2, skip_keepalive=True):
         self._ls_server.set_rr_socket_timeout(timeout)
-        reply = self._ls_server.receive_replies()
+        reply = self._ls_server.receive_replies(skip_keepalive)
         self.assertEqual(len(reply), 1)
         self.assertEqual(expected, reply[0])
 
-    def assert_not_reply(self, not_expected=None, timeout=0.2):
+    def assert_not_reply(self, not_expected=None, timeout=0.2, skip_keepalive=True):
         self._ls_server.set_rr_socket_timeout(timeout)
-        reply = self._ls_server.receive_replies()
+        reply = self._ls_server.receive_replies(skip_keepalive)
         self.assertEqual(len(reply), 1)
         self.assertNotEqual(not_expected, reply[0])
 
     def assert_notify(self, expected=None):
-        notifications = self.receive_notifications()
+        self._ls_server.set_notify_socket_timeout(3.5)
+        notifications = self._ls_server.receive_notifications(skip_keepalive=True)
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
 
