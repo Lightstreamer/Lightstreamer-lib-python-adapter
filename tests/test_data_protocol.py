@@ -40,12 +40,6 @@ class DataProtocolTest(unittest.TestCase):
         res = data_protocol.write_init(exception=RuntimeError("Generic Error"))
         self.assertEqual("DPI|E|Generic+Error", res)
 
-    def test_dpni(self):
-        """Tests the response to a DPNI request with a list of parameters."""
-        parameters = {'param1':'value1', 'param2':'value2'}
-        res = data_protocol.write_notify_init(parameters)
-        self.assertEqual("DPNI|S|param1|S|value1|S|param2|S|value2", res)
-
     def test_ud3_empty_map(self):
         """Tests the response to an UD3 request with an empty update
         dictionary.
