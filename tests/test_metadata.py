@@ -485,7 +485,6 @@ class MetadataProviderTest(unittest.TestCase):
         self.assertFalse(mode_maybe_allowed)
 
 
-# @unittest.skip
 class MetadataProviderServerConstructionTest(unittest.TestCase):
 
     def test_start_with_error(self):
@@ -602,7 +601,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def do_init_and_skip(self):
         self.send_request("10000010c3e4d0462|MPI", True)
 
-    # @unittest.SkipTest
     def test_no_keepalive_hint_and_no_configured_keepalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
@@ -615,7 +613,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.STRICTER.value,
                          self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_no_keepalive_hint_and_configured_keepalive(self):
         CONFIGURED_KEEP_ALIVE = 5
         self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
@@ -627,7 +624,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_negative_keepalive_hint_and_no_configured_keepalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
@@ -640,7 +636,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.DEFAULT.value,
                          self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_negative_keepalive_hint_and_configured_keepalive(self):
         CONFIGURED_KEEP_ALIVE = 6
         self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
@@ -653,7 +648,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_keepalive_hint_less_than_default_and_no_configured_keepalive(self):
         EXPEXTED_KEEP_ALIVE = 9
         self.setup_remote_adapter()
@@ -666,7 +660,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_keepalive_hint_less_than_default_and_min_and_no_configured_keepalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
@@ -678,7 +671,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(KeepaliveConstants.MIN.value, self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_keepalive_hint_greather_than_default_and_no_configured_keepalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
@@ -691,7 +683,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.DEFAULT.value,
                           self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_keepalive_less_than_configured_keepalive(self):
         EXPEXTED_KEEP_ALIVE = 4
         CONFIGURED_KEEP_ALIVE = 5
@@ -705,7 +696,6 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
 
-    # @unittest.SkipTest
     def test_keepalive_less_then_configured_keepalive_and_min(self):
         CONFIGURED_KEEP_ALIVE = 5
         self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
@@ -724,7 +714,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         # Receive a KEEPALIVE message because no request has been issued
         for _ in range(0, 1):
             start = time.time()
-            self.assert_reply("KEEPALIVE", timeout=2.1)
+            self.assert_reply("KEEPALIVE", timeout=2.1, skip_keepalive=False)
             end = time.time()
             self.assertGreaterEqual(end - start, 1.99)
 
