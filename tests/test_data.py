@@ -11,6 +11,7 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    FailureError,
                                                    DataProvider)
 from time import sleep
+from common import KeepaliveConstants
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
@@ -169,7 +170,8 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
                              username=None, password=None):
         remote_server = DataProviderServer(adapter=self.adapter,
                                         address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS,
-                                        keep_alive=keep_alive)
+                                        keep_alive=keep_alive,
+                                        name="DataProviderTest")
         remote_server.adapter_config = config
         remote_server.adapter_params = params
         remote_server.remote_user = username
@@ -178,6 +180,94 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
 
     def is_enable_notify(self):
         return True
+
+    def test_no_keepalive_hint_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|data_provider.name|S|STOCKLIST")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertEqual(KeepaliveConstants.STRICTER.value,
+                         self.remote_server.keep_alive)
+
+    def test_no_keepalive_hint_and_configured_keepalive(self):
+        CONFIGURED_KEEP_ALIVE = 5
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|data_provider.name|S|STOCKLIST")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    def test_negative_keepalive_hint_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|data_provider.name|S|STOCKLIST|"
+                          "|S|keepalive_hint.millis|S|-510")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.DEFAULT.value,
+                         self.remote_server.keep_alive)
+
+    def test_negative_keepalive_hint_and_configured_keepalive(self):
+        CONFIGURED_KEEP_ALIVE = 6
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|data_provider.name|S|STOCKLIST|"
+                          "|S|keepalive_hint.millis|S|-500")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    def test_keepalive_hint_less_than_default_and_no_configured_keepalive(self):
+        EXPEXTED_KEEP_ALIVE = 9
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|keepalive_hint.millis|S|9000")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    def test_keepalive_hint_less_than_default_and_min_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|keepalive_hint.millis|S|500")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.MIN.value, self.remote_server.keep_alive)
+
+    def test_keepalive_hint_greather_than_default_and_no_configured_keepalive(self):
+        self.setup_remote_adapter()
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|11000"
+                          "|S|data_provider.name|S|STOCKLIST")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.DEFAULT.value,
+                          self.remote_server.keep_alive)
+
+    def test_keepalive_less_than_configured_keepalive(self):
+        EXPEXTED_KEEP_ALIVE = 4
+        CONFIGURED_KEEP_ALIVE = 5
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|4000"
+                          "|S|data_provider.name|S|STOCKLIST")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
+
+    def test_keepalive_less_then_configured_keepalive_and_min(self):
+        CONFIGURED_KEEP_ALIVE = 5
+        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|keepalive_hint.millis|S|500"
+                          "|S|data_provider.name|S|STOCKLIST")
+        self.assert_reply('10000010c3e4d0462|DPI|V')
+        self.assertIsNone(self.adapter.config_file)
+        self.assertEqual(KeepaliveConstants.MIN.value,
+                         self.remote_server.keep_alive)
 
     def test_remote_credentials(self):
         self.setup_remote_adapter(username="username", password="password")
@@ -224,23 +314,25 @@ class DataProviderServerTest(RemoteAdapterBase):
         # Receive a KEEPALIVE message because no requests have been issued
         for _ in range(0, 1):
             start = time.time()
-            self.assert_reply("KEEPALIVE", timeout=11.1)
+            self.assert_reply(expected="KEEPALIVE", timeout=11.1, skip_keepalive=False)
             end = time.time()
             self.assertGreaterEqual(end - start, 0.99)
 
     def test_no_keep_alive(self):
+        # Initialization with no further configurations leads to a keepalive
+        # time of 1 second.
         self.do_init_and_skip()
         # Receive a KEEPALIVE message because no request has been issued
         items = ["item1", "item2", "item3"]
         for item in items:
             # Wait for half the KEEPALIVE time
-            time.sleep(5.0)
+            time.sleep(0.5)
             self.do_subscription(item)
-            self.assert_not_reply("KEEPALIVE")
+            self.assert_not_reply("KEEPALIVE", skip_keepalive=False)
 
         # As no more requests have been issued, a period longer than 1 second
         # must have been elapsed, therefore we expect a KEEPALIVE message
-        self.assert_reply("KEEPALIVE", timeout=11.1)
+        self.assert_reply("KEEPALIVE", timeout=1.1, skip_keepalive=False)
 
     def test_init(self):
         self.do_init()
@@ -286,11 +378,10 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_with_protocol_version(self):
         self.remote_server.adapter_params = {"data_provider.name":
                                               "my_local_provider"}
-        self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2|S|"
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2|S|"
                            "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
-                           "STOCKLIST"))
+                           "STOCKLIST")
 
-        self.assert_notify("DPNI|S|ARI.version|S|1.8.2")
         self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2")
 
         self.assertDictEqual({"adapters_conf.id": "DEMO",
@@ -300,9 +391,9 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_with_unsupported_protocol_version(self):
         self.remote_server.adapter_params = {"data_provider.name":
                                               "my_local_provider"}
-        self.send_request(("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
                            "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
-                           "STOCKLIST"))
+                           "STOCKLIST")
         self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+reserved+protocol+version+number%3A+1.8.1")
         self.assertFalse('params' in self.collector)
 
@@ -500,8 +591,8 @@ class DataProviderServerTest(RemoteAdapterBase):
                                       ("field2", str(i))])
 
             self.adapter.listener.update("item1", events_map, False)
-            self.assert_notify(("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
-                                "|value1|S|field2|S|{}".format(i)))
+            self.assert_notify("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
+                                "|value1|S|field2|S|{}".format(i))
 
     def test_update_with_byte_value(self):
         self.do_init_and_skip()
@@ -557,10 +648,6 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.do_init_and_skip()
         self.adapter.listener.failure(Exception("Generic exception"))
         self.assert_notify("FAL|E|Generic+exception")
-
-    def test_remote_credentials(self):
-        self.setup_remote_adapter(username="username", password="password")
-        self.assert_reply("1|RAC|S|username|S|password")
 
 
 if __name__ == "__main__":
