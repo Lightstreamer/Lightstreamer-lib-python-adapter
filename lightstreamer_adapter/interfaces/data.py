@@ -243,7 +243,6 @@ class ItemEventListener(metaclass=ABCMeta):
         :param bool issnapshot: ``True`` if the Item Event carries the Item
          Snapshot.
         """
-        pass
 
     @abstractmethod
     def end_of_snapshot(self, item_name):
@@ -351,7 +350,6 @@ class SubscribeError(DataError):
     :meth:`DataProvider.unsubscribe` methods if the request cannot be
     satisfied.
     """
-    pass
 
 
 class FailureError(DataError):
@@ -359,4 +357,3 @@ class FailureError(DataError):
     :meth:`DataProvider.unsubscribe` methods if the method execution has caused
     a severe problem that can compromise future operation of the Data Adapter.
     """
-    pass
