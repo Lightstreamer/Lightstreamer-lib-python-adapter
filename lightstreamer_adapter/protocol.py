@@ -310,5 +310,5 @@ def write_credentials(username, password):
     """Encodes and returns a RAC packet, for protocol version 1.8.2 and above.
     """
     method = Method.RAC
-    return join(str(method), 'S', encode_string(username), 'S',
-                encode_string(password))
+    return join(str(method), 'S', 'user', 'S', encode_string(username), 'S',
+                'password', 'S', encode_string(password))
