@@ -171,5 +171,5 @@ class DataProtocolTest(unittest.TestCase):
         self.assertEqual("Not a bool value: 'None'", str(err.exception))
 
     def test_credentials(self):
-        res = protocol.write_credentials("username", "password")
-        self.assertEqual("RAC|S|username|S|password", res)
+        res = protocol.write_credentials("remote1", "fdhjkslghak")
+        self.assertEqual("RAC|S|user|S|remote1|S|password|S|fdhjkslghak", res)
