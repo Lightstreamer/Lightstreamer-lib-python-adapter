@@ -22,7 +22,7 @@ class DataProtocolTest(unittest.TestCase):
 
     def test_dpi_with_parameters(self):
         """Tests the response to a DPI request with a list of parameters."""
-        parameters = {'param1':'value1', 'param2':'value2'}
+        parameters = {'param1': 'value1', 'param2':     'value2'}
         res = data_protocol.write_init(parameters)
         self.assertEqual("DPI|S|param1|S|value1|S|param2|S|value2", res)
 
@@ -35,7 +35,8 @@ class DataProtocolTest(unittest.TestCase):
         self.assertEqual("DPI|ED|DataProvider+Error", res)
 
     def test_dpi_generic_exception(self):
-        """Tests the response to a DPI request in the case of a generic exception.
+        """Tests the response to a DPI request in the case of a generic
+        exception.
         """
         res = data_protocol.write_init(exception=RuntimeError("Generic Error"))
         self.assertEqual("DPI|E|Generic+Error", res)
