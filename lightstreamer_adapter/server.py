@@ -143,13 +143,13 @@ class _RequestReceiver():
     """
 
     def __init__(self, sock, keepalive, server):
-        self._log = logging.getLogger(("lightstreamer-adapter.requestreply"
-                                       ".requests"))
+        self._log = logging.getLogger("lightstreamer-adapter.requestreply"
+                                      ".requests")
         self._sock = sock
         self._server = server
-        reply_sender_log = logging.getLogger(("lightstreamer-adapter."
-                                              "requestreply.replies."
-                                              "ReplySender"))
+        reply_sender_log = logging.getLogger("lightstreamer-adapter."
+                                             "requestreply.replies."
+                                             "ReplySender")
         self._reply_sender = _Sender(sock=sock, server=self._server,
                                      keepalive=keepalive, log=reply_sender_log)
         self._stop_request = Event()
@@ -197,8 +197,8 @@ class _RequestReceiver():
                         buffer = token
             except (OSError, EOFError) as err:
                 if self._stop_request.is_set():
-                    self._log.debug(("Error raised because of explicitly "
-                                     "closed socket, no issue"))
+                    self._log.debug("Error raised because of explicitly closed"
+                                    " socket, no issue")
                     break
                 # An exception has been raised, due to some issue in the
                 # network communication.
@@ -451,7 +451,7 @@ class Server(metaclass=ABCMeta):
                                                   server=self)
         self._request_receiver.start()
 
-        # Invokes hook to notify subclass that the Request Receiver  has been
+        # Invokes hook to notify subclass that the Request Receiver has been
         # started.
         self._on_request_receiver_started()
 
@@ -515,8 +515,8 @@ class Server(metaclass=ABCMeta):
         for further details.
         """
         if self._exception_handler is not None:
-            self._log.info(("Caught exception: %s, notifying the "
-                            "application..."), str(ioexception))
+            self._log.info("Caught exception: %s, notifying the "
+                           "application...", str(ioexception))
             # Enable default handling in case the exception handler
             # returns False.
             if not self._exception_handler.handle_ioexception(ioexception):
@@ -531,8 +531,8 @@ class Server(metaclass=ABCMeta):
         further details.
         """
         if self._exception_handler is not None:
-            self._log.info(("Caught exception: %s, notifying the "
-                            "application..."), str(exception))
+            self._log.info("Caught exception: %s, notifying the "
+                           "application...", str(exception))
             # Enable default handling in case the exception handler
             # returns False.
             if not self._exception_handler.handle_exception(exception):
@@ -619,9 +619,9 @@ class MetadataProviderServer(Server):
         super(MetadataProviderServer, self).__init__(address, name, keep_alive,
                                                      thread_pool_size)
         if not isinstance(adapter, MetadataProvider):
-            raise TypeError(("The provided adapter is not a subclass of "
-                             "lightstreamer_adapter.interfaces."
-                             "MetadataProvider"))
+            raise TypeError("The provided adapter is not a subclass of "
+                            "lightstreamer_adapter.interfaces."
+                            "MetadataProvider")
         self._config_file = None
         self._params = None
         self._adapter = adapter
@@ -649,9 +649,8 @@ class MetadataProviderServer(Server):
             raise RemotingException("Unexpected late {} request"
                                     .format(str(meta_protocol.Method.MPI)))
         elif not init_request and self.init_expected:
-            raise RemotingException(("Unexpected request {} while waiting for "
-                                     "{} request")
-                                    .format(method_name,
+            raise RemotingException("Unexpected request {} while waiting for "
+                                    "{} request".format(method_name,
                                             meta_protocol.Method.MPI))
         if init_request:
             self.init_expected = False
@@ -810,9 +809,8 @@ class MetadataProviderServer(Server):
             try:
                 items = self._adapter.get_items(user, session_id, group)
                 if not items:
-                    METADATA_LOGGER.warning(("None or empty field list from "
-                                             "get_items for group '%s'"),
-                                            group)
+                    METADATA_LOGGER.warning("None or empty field list from "
+                                            "get_items for group '%s'", group)
             except Exception as err:
                 res = meta_protocol.write_get_items(exception=err)
             else:
@@ -833,9 +831,9 @@ class MetadataProviderServer(Server):
                 fields = self._adapter.get_schema(user, session_id, group,
                                                   schema)
                 if not fields:
-                    METADATA_LOGGER.warning(("None or empty field list from "
-                                             "get_schema for schema '%s' in "
-                                             "group '%s'"), schema, group)
+                    METADATA_LOGGER.warning("None or empty field list from "
+                                            "get_schema for schema '%s' in "
+                                            "group '%s'", schema, group)
             except Exception as err:
                 res = meta_protocol.write_get_schema(exception=err)
             else:
@@ -1000,9 +998,8 @@ class MetadataProviderServer(Server):
         return execute
 
     def _handle_ioexception(self, ioexception):
-        METADATA_LOGGER.fatal(("Exception caught while reading/writing from/to"
-                               " network: <%s>, aborting..."),
-                              str(ioexception))
+        METADATA_LOGGER.fatal("Exception caught while reading/writing from/to"
+                              " network: <%s>, aborting...", str(ioexception))
         super(MetadataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
@@ -1053,13 +1050,13 @@ class MetadataProviderServer(Server):
          error occurred in the initialization phase. The adapter was not
          started.
         """
-        METADATA_LOGGER.info(("Managing Metadata Adapter %s with a thread pool"
-                              " size of %d"), self.name, self.thread_pool_size)
+        METADATA_LOGGER.info("Managing Metadata Adapter %s with a thread pool"
+                             " size of %d", self.name, self.thread_pool_size)
         try:
             super(MetadataProviderServer, self).start()
         except (TypeError, OSError) as err:
-            raise MetadataProviderError(("Caught an error during the "
-                                         "initialization phase")) from err
+            raise MetadataProviderError("Caught an error during the "
+                                        "initialization phase") from err
 
 
 class DataProviderServer(Server):
@@ -1113,8 +1110,8 @@ class DataProviderServer(Server):
                                                  thread_pool_size)
 
         if not isinstance(adapter, DataProvider):
-            raise TypeError(("The provided adapter is not a subclass of "
-                             "lightstreamer_adapter.interfaces.DataProvider"))
+            raise TypeError("The provided adapter is not a subclass of "
+                            "lightstreamer_adapter.interfaces.DataProvider")
         self._config_file = None
         self._params = None
         self._adapter = adapter
@@ -1140,9 +1137,8 @@ class DataProviderServer(Server):
             raise RemotingException("Unexpected late {} request"
                                     .format(str(data_protocol.Method.DPI)))
         elif not init_request and self.init_expected:
-            raise RemotingException(("Unexpected request {} while waiting for "
-                                     "{} request")
-                                    .format(method_name,
+            raise RemotingException("Unexpected request {} while waiting for "
+                                    "{} request".format(method_name,
                                             data_protocol.Method.DPI))
         if init_request:
             self.init_expected = False
@@ -1198,9 +1194,9 @@ class DataProviderServer(Server):
         """
         self._ntfy_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._ntfy_sock.connect(self.notify_address)
-        notify_sender_log = logging.getLogger(("lightstreamer-adapter."
-                                               "requestreply.notifications."
-                                               "NotifySender"))
+        notify_sender_log = logging.getLogger("lightstreamer-adapter."
+                                              "requestreply.notifications."
+                                              "NotifySender")
         self._notify_sender = _Sender(sock=self._ntfy_sock, server=self,
                                       keepalive=self.keep_alive,
                                       log=notify_sender_log)
@@ -1312,8 +1308,8 @@ class DataProviderServer(Server):
             except RemotingException as err:
                 self.on_exception(err)
         else:
-            DATA_LOGGER.warning(("Unexpected end_of_snapshot notify for item_name "
-                                 "%s"), item_name)
+            DATA_LOGGER.warning("Unexpected end_of_snapshot notify for "
+                                "item_name %s", item_name)
 
     def clear_snapshot(self, item_name):
         request_id = self._subscription_mgr.get_active_item(item_name)
@@ -1324,7 +1320,7 @@ class DataProviderServer(Server):
             except RemotingException as err:
                 self.on_exception(err)
         else:
-            DATA_LOGGER.warning(("Unexpected clear_snapshot for item_name %s"),
+            DATA_LOGGER.warning("Unexpected clear_snapshot for item_name %s",
                                 item_name)
 
     def failure(self, exception):
@@ -1335,19 +1331,19 @@ class DataProviderServer(Server):
             self.on_exception(err)
 
     def _handle_ioexception(self, ioexception):
-        DATA_LOGGER.fatal(("Exception caught while reading/writing from/to "
-                           "network: <%s>, aborting..."), str(ioexception))
+        DATA_LOGGER.fatal("Exception caught while reading/writing from/to "
+                          "network: <%s>, aborting...", str(ioexception))
         super(DataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
-        DATA_LOGGER.error(("Caught exception: %s, trying to notify a failure.."
-                           "."), str(exception))
+        DATA_LOGGER.error("Caught exception: %s, trying to notify a "
+                          "failure...", str(exception))
         try:
             res = data_protocol.write_failure(exception)
             self._send_notify(res)
         except RemotingException:
-            DATA_LOGGER.exception(("Caught second-level exception while trying"
-                                   " to notify a first-level exception"))
+            DATA_LOGGER.exception("Caught second-level exception while trying"
+                                  " to notify a first-level exception")
 
         return False
 
@@ -1364,13 +1360,13 @@ class DataProviderServer(Server):
          error occurred in the initialization phase. The adapter was not
          started.
         """
-        DATA_LOGGER.info(("Managing Data Adapter %s with a thread pool size of"
-                          " %d"), self.name, self.thread_pool_size)
+        DATA_LOGGER.info("Managing Data Adapter %s with a thread pool size of"
+                         " %d", self.name, self.thread_pool_size)
         try:
             super(DataProviderServer, self).start()
         except (TypeError, OSError) as err:
-            raise DataProviderError(("Caught an error during the "
-                                     "initialization phase")) from err
+            raise DataProviderError("Caught an error during the "
+                                    "initialization phase") from err
 
     def close(self):
         """Stops the management of the Remote Data Adapter attached to this
