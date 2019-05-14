@@ -1,11 +1,9 @@
 import unittest
 import logging
-
+import time
 from multiprocessing import cpu_count
-
-from .common import (RemoteAdapterBase, KeepaliveConstants)
-from lightstreamer_adapter.server import (MetadataProviderServer,
-                                          ExceptionHandler)
+from common import (RemoteAdapterBase, KeepaliveConstants)
+from lightstreamer_adapter.server import MetadataProviderServer
 from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnDeviceInfo,
                                                        Mode,
@@ -19,7 +17,6 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnPlatformType,
                                                        TableInfo,
                                                        MpnSubscriptionInfo)
-import time
 
 log = logging.getLogger(__name__)
 
@@ -76,67 +73,67 @@ class MetadataProviderTestClass(MetadataProvider):
     def wants_tables_notification(self, user):
         return True
 
-    def get_distinct_snapshot_length(self, item):
-        if item == "item_1":
+    def get_distinct_snapshot_length(self, item_name):
+        if item_name == "item_1":
             return 10
 
-        if item == "item_2":
+        if item_name == "item_2":
             return 20
 
-        if item == "item_4":
-            raise RuntimeError("Error for provided item")
+        if item_name == "item_4":
+            raise RuntimeError("Error for provided item_name")
 
-        if item == "get invalid":
+        if item_name == "get invalid":
             return "Wrong Distinct Snapshot Length Type"
 
         return 0
 
-    def get_min_source_frequency(self, item):
-        if item == "item_1":
+    def get_min_source_frequency(self, item_name):
+        if item_name == "item_1":
             return 4.5
 
-        if item == "item_2":
+        if item_name == "item_2":
             return 7.3
 
         return 0.0
 
-    def mode_may_be_allowed(self, item, mode):
-        if item == "item_1":
+    def mode_may_be_allowed(self, item_name, mode):
+        if item_name == "item_1":
             if mode in [Mode.MERGE, Mode.DISTINCT]:
                 return True
 
-        if item == "item_2":
+        if item_name == "item_2":
             if mode in [Mode.RAW, Mode.MERGE, Mode.COMMAND]:
                 return True
 
         return False
 
-    def get_allowed_max_item_frequency(self, user, item):
-        if item == "item_1":
+    def get_allowed_max_item_frequency(self, user, item_name):
+        if item_name == "item_1":
             return 170.5
 
-        if item == "item_2":
+        if item_name == "item_2":
             return 27.3
 
         return 0.0
 
-    def get_allowed_buffer_size(self, user, item):
-        if item == "item_1":
+    def get_allowed_buffer_size(self, user, item_name):
+        if item_name == "item_1":
             return 30
 
-        if item == "item_2":
+        if item_name == "item_2":
             return 40
 
-        if item == "get invalid":
+        if item_name == "get invalid":
             return "Wrong Allowed Buffer Size"
 
         return 0
 
-    def ismode_allowed(self, user, item, mode):
-        if item == "item_1":
+    def ismode_allowed(self, user, item_name, mode):
+        if item_name == "item_1":
             return True
 
-        if item == "item_2" and mode in [Mode.RAW, Mode.MERGE]:
+        if item_name == "item_2" and mode in [Mode.RAW, Mode.MERGE]:
             return True
 
         if user == "user2":
@@ -144,9 +141,9 @@ class MetadataProviderTestClass(MetadataProvider):
 
         return False
 
-    def notify_user(self, user, remote_password, http_headers):
+    def notify_user(self, user, password, http_headers):
         self.collector.update({'user': user,
-                               'remote_password': remote_password,
+                               'remote_password': password,
                                'httpHeaders': http_headers})
 
         if user == "user1":
@@ -161,14 +158,14 @@ class MetadataProviderTestClass(MetadataProvider):
         if not user.strip():
             raise AccessError("An empty user is not allowed")
 
-    def notify_user_with_principal(self, user, remote_password, http_headers,
+    def notify_user_with_principal(self, user, password, http_headers,
                                    client_principal=None):
         self.collector.update({'user': user,
-                               'remote_password': remote_password,
+                               'remote_password': password,
                                'httpHeaders': http_headers,
                                'clientPrincipal': client_principal})
 
-        self.notify_user(user, remote_password, http_headers)
+        self.notify_user(user, password, http_headers)
 
     def notify_new_session(self, user, session_id, client_context):
         if user == "user1":
@@ -265,7 +262,7 @@ class MetadataProviderTestClass(MetadataProvider):
         self.collector.update({'sessionId': session_id,
                                'tableInfos': tables})
 
-    def notify_mpn_device_access(self, user, sessionID, device):
+    def notify_mpn_device_access(self, user, session_id, device):
         if user is None:
             raise NotificationError("NotificationError")
 
@@ -276,10 +273,10 @@ class MetadataProviderTestClass(MetadataProvider):
             raise RuntimeError("Exception")
 
         self.collector.update({"user": user,
-                               "sessionId": sessionID,
+                               "sessionId": session_id,
                                "mpnDeviceInfo": device})
 
-    def notify_mpn_subscription_activation(self, user, sessionID, table,
+    def notify_mpn_subscription_activation(self, user, session_id, table,
                                            mpn_subscription):
         if user is None:
             raise NotificationError("NotificationError")
@@ -291,11 +288,11 @@ class MetadataProviderTestClass(MetadataProvider):
             raise RuntimeError("Exception")
 
         self.collector.update({"user": user,
-                               "sessionId": sessionID,
+                               "sessionId": session_id,
                                "table": table,
                                "mpn_subscription": mpn_subscription})
 
-    def notify_mpn_device_token_change(self, user, sessionID, device,
+    def notify_mpn_device_token_change(self, user, session_id, device,
                                        new_device_token):
         if user is None:
             raise NotificationError("NotificationError")
@@ -306,7 +303,7 @@ class MetadataProviderTestClass(MetadataProvider):
         if user == "user2":
             raise RuntimeError("Exception")
         self.collector.update({"user": user,
-                               "sessionId": sessionID,
+                               "sessionId": session_id,
                                "mpnDeviceInfo": device,
                                "newDeviceToken": new_device_token})
 
@@ -404,9 +401,9 @@ class MpnSubscriptionTest(unittest.TestCase):
                                "deviceToken")
         subscription = MpnSubscriptionInfo(
             device=device,
-            notification_format=("{\"aps\":{\"alert\":\"${message}\","
-                                 "\"badge\":\"AUTO\"},\"acme2\":"
-                                 "[\"${tag1}\",\"${tag2}\"]}"),
+            notification_format="{\"aps\":{\"alert\":\"${message}\","
+                                "\"badge\":\"AUTO\"},\"acme2\":"
+                                "[\"${tag1}\",\"${tag2}\"]}",
             trigger="Double.parseDouble(${last_price}) > 1000.0")
 
         self.assertEqual(device, subscription.device)
@@ -488,8 +485,9 @@ class MetadataProviderTest(unittest.TestCase):
 class MetadataProviderServerConstructionTest(unittest.TestCase):
 
     def test_start_with_error(self):
-        remote_server = MetadataProviderServer(MetadataProviderTestClass({}),
-                                        RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        remote_server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
         with self.assertRaises(Exception) as err:
             remote_server.start()
 
@@ -499,20 +497,22 @@ class MetadataProviderServerConstructionTest(unittest.TestCase):
                          "Caught an error during the initialization phase")
 
     def test_not_right_adapter(self):
-        with self.assertRaises(TypeError) as te:
-            MetadataProviderServer({},
-                                   RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        with self.assertRaises(TypeError) as type_error:
+            MetadataProviderServer(
+                {},
+                RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
 
-        the_exception = te.exception
+        the_exception = type_error.exception
         self.assertIsInstance(the_exception, TypeError)
         self.assertEqual(str(the_exception),
-                         ("The provided adapter is not a subclass of "
-                          "lightstreamer_adapter.interfaces.MetadataProvider"))
+                         "The provided adapter is not a subclass of "
+                         "lightstreamer_adapter.interfaces.MetadataProvider")
 
     def test_default_properties(self):
         # Test default properties
-        server = MetadataProviderServer(MetadataProviderTestClass({}),
-                                        RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
         self.assertEqual('#', server.name[0])
         self.assertEqual(KeepaliveConstants.DEFAULT.value, server.keep_alive)
         self.assertEqual(EXPECTED_CPU_CORES, server.thread_pool_size)
@@ -572,8 +572,9 @@ class MetadataProviderServerConstructionTest(unittest.TestCase):
         self.assertEqual(KeepaliveConstants.DEFAULT.value, server.keep_alive)
 
     def test_remote_credentialis(self):
-        server = MetadataProviderServer(MetadataProviderTestClass({}),
-                                    address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
         server.remote_user = "user"
         server.remote_password = "password"
         self.assertEqual("user", server.remote_user)
@@ -583,15 +584,17 @@ class MetadataProviderServerConstructionTest(unittest.TestCase):
 class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def __init__(self, method_name):
-        super(MetadataProviderServerInitializationTest, self).__init__(method_name)
+        super(MetadataProviderServerInitializationTest, self).__init__(
+            method_name)
         self.collector = {}
         self.adapter = MetadataProviderTestClass(self.collector)
 
     def setup_remote_adapter(self, keep_alive=None, config=None, params=None,
                              username=None, password=None):
-        remote_server = MetadataProviderServer(adapter=self.adapter,
-                                        address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
-                                        keep_alive=keep_alive)
+        remote_server = MetadataProviderServer(
+            adapter=self.adapter,
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS,
+            keep_alive=keep_alive)
         remote_server.adapter_config = config
         remote_server.adapter_params = params
         remote_server.remote_user = username
@@ -601,7 +604,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def do_init_and_skip(self):
         self.send_request("10000010c3e4d0462|MPI", True)
 
-    def test_no_keepalive_hint_and_no_configured_keepalive(self):
+    def test_no_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -613,18 +616,18 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.STRICTER.value,
                          self.remote_server.keep_alive)
 
-    def test_no_keepalive_hint_and_configured_keepalive(self):
-        CONFIGURED_KEEP_ALIVE = 5
-        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+    def test_no_kalive_hint_and_configured_kalive(self):
+        configured_keepalive = 5
+        self.setup_remote_adapter(configured_keepalive)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply('10000010c3e4d0462|MPI|V')
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
-        self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
+        self.assertEqual(configured_keepalive, self.remote_server.keep_alive)
 
-    def test_negative_keepalive_hint_and_no_configured_keepalive(self):
+    def test_negative_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|-510"
@@ -636,9 +639,9 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.DEFAULT.value,
                          self.remote_server.keep_alive)
 
-    def test_negative_keepalive_hint_and_configured_keepalive(self):
-        CONFIGURED_KEEP_ALIVE = 6
-        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+    def test_negative_kalive_hint_and_configured_kalive(self):
+        configured_keepalive = 6
+        self.setup_remote_adapter(configured_keepalive)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|-500"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -646,32 +649,33 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
-        self.assertEqual(CONFIGURED_KEEP_ALIVE, self.remote_server.keep_alive)
+        self.assertEqual(configured_keepalive, self.remote_server.keep_alive)
 
-    def test_keepalive_hint_less_than_default_and_no_configured_keepalive(self):
-        EXPEXTED_KEEP_ALIVE = 9
+    def test_kalive_hint_lt_default_and_no_configured_kalive(self):
+        expected_keepalive = 9
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                           "keepalive_hint.millis|S|9000"
-                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+                          "keepalive_hint.millis|S|9000"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply('10000010c3e4d0462|MPI|V')
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
-        self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
+        self.assertEqual(expected_keepalive, self.remote_server.keep_alive)
 
-    def test_keepalive_hint_less_than_default_and_min_and_no_configured_keepalive(self):
+    def test_kalive_hint_lt_default_and_min_and_no_configured_kalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                           "keepalive_hint.millis|S|500"
-                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
+                          "keepalive_hint.millis|S|500"
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply('10000010c3e4d0462|MPI|V')
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
-        self.assertEqual(KeepaliveConstants.MIN.value, self.remote_server.keep_alive)
+        self.assertEqual(KeepaliveConstants.MIN.value,
+                         self.remote_server.keep_alive)
 
-    def test_keepalive_hint_greather_than_default_and_no_configured_keepalive(self):
+    def test_kalive_hint_gt_default_and_no_configured_kalive(self):
         self.setup_remote_adapter()
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|11000"
@@ -681,12 +685,12 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(KeepaliveConstants.DEFAULT.value,
-                          self.remote_server.keep_alive)
+                         self.remote_server.keep_alive)
 
-    def test_keepalive_less_than_configured_keepalive(self):
-        EXPEXTED_KEEP_ALIVE = 4
-        CONFIGURED_KEEP_ALIVE = 5
-        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+    def test_kalive_lt_configured_kalive(self):
+        expected_keepalive = 4
+        configured_keepalive = 5
+        self.setup_remote_adapter(configured_keepalive)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|4000"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -694,11 +698,11 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
-        self.assertEqual(EXPEXTED_KEEP_ALIVE, self.remote_server.keep_alive)
+        self.assertEqual(expected_keepalive, self.remote_server.keep_alive)
 
-    def test_keepalive_less_then_configured_keepalive_and_min(self):
-        CONFIGURED_KEEP_ALIVE = 5
-        self.setup_remote_adapter(CONFIGURED_KEEP_ALIVE)
+    def test_kalive_less_then_configured_kalive_and_min(self):
+        configured_keepalive = 5
+        self.setup_remote_adapter(configured_keepalive)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|500"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -720,8 +724,8 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init(self):
         self.setup_remote_adapter()
-        self.send_request(("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                           "proxy.instance_id|S|hewbc3ikbbctyui"))
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
+                          "proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply('10000010c3e4d0462|MPI|V')
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
@@ -744,8 +748,8 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_with_remote_params(self):
         self.setup_remote_adapter()
-        self.send_request(("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                           "proxy.instance_id|S|hewbc3ikbbctyui"))
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
+                          "proxy.instance_id|S|hewbc3ikbbctyui")
 
         self.assert_reply("10000010c3e4d0462|MPI|V")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
@@ -755,9 +759,9 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_with_local_and_remote_params(self):
         self.setup_remote_adapter()
         self.remote_server.adapter_params = {"proxy.instance_id":
-                                              "my_local_meta_provider"}
-        self.send_request(("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                           "proxy.instance_id|S|hewbc3ikbbctyui"))
+                                             "my_local_meta_provider"}
+        self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
+                          "proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply("10000010c3e4d0462|MPI|V")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
@@ -767,9 +771,9 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_with_protocol_version(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
-        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2|S|"
-                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
-                           "hewbc3ikbbctyui"))
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
         self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
@@ -779,9 +783,9 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_with_protocol_version_above_1_8_2(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
-        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.4|S|"
-                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
-                           "hewbc3ikbbctyui"))
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.4|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
         self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
@@ -790,17 +794,18 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_with_unsupported_protocol_version(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
-                                            "my_local_meta_provider"})
-        self.send_request(("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
-                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
-                           "hewbc3ikbbctyui"))
-        self.assert_reply("10000010c3e4d0462|MPI|E|Unsupported+reserved+protocol+version+number%3A+1.8.1")
+                                          "my_local_meta_provider"})
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
+        self.assert_reply("10000010c3e4d0462|MPI|E|Unsupported+reserved+"
+                          "protocol+version+number%3A+1.8.1")
         self.assertFalse('params' in self.collector)
 
     def test_init_with_metadata_provider_exception(self):
         self.setup_remote_adapter()
-        self.send_request(("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
-                           "hewbc3ikbbctyui"))
+        self.send_request("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
         self.assert_reply("10000010c3e4d0462|MPI|EM|The+ID+must+be+supplied")
 
     def test_init_with_generic_exception(self):
@@ -811,32 +816,32 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_malformed_init_for_unkown_token_type(self):
         self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|adapters_conf.id|S1|DEMO')
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " MPI request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
         self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|')
-        self.assert_caught_exception(("Invalid number of tokens while parsing"
-                                      " MPI request"))
+        self.assert_caught_exception("Invalid number of tokens while parsing "
+                                     "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
         self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S||')
-        self.assert_caught_exception(("Invalid number of tokens while parsing"
-                                      " MPI request"))
+        self.assert_caught_exception("Invalid number of tokens while parsing "
+                                     "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
         self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|  |')
-        self.assert_caught_exception(("Invalid number of tokens while parsing"
-                                      " MPI request"))
+        self.assert_caught_exception("Invalid number of tokens while parsing "
+                                     "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
         self.setup_remote_adapter()
         self.send_request('10000010c3e4d0462|MPI|S|id|S')
-        self.assert_caught_exception(("Invalid number of tokens while parsing "
-                                      "MPI request"))
+        self.assert_caught_exception("Invalid number of tokens while parsing "
+                                     "MPI request")
 
     def test_init_init(self):
         self.setup_remote_adapter()
@@ -848,11 +853,11 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_miss(self):
         self.setup_remote_adapter()
         # Test error when the very first request is not a MPI request
-        self.send_request(("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|host|S|"
-                           "www.mycompany.com"))
+        self.send_request("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|"
+                          "host|S|www.mycompany.com")
 
-        self.assert_caught_exception(("Unexpected request NUS while waiting "
-                                      "for MPI request"))
+        self.assert_caught_exception("Unexpected request NUS while waiting for"
+                                     " MPI request")
 
     def test_remote_credentials(self):
         self.setup_remote_adapter(username="username", password="password")
@@ -865,8 +870,9 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.collector = {}
         # Configuring and starting MetadataProviderServer.
         adapter = MetadataProviderTestClass(self.collector)
-        remote_server = MetadataProviderServer(adapter,
-                                        RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        remote_server = MetadataProviderServer(
+            adapter,
+            RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
         self.launch_remote_server(remote_server, set_exception_handler=True)
 
     def do_init_and_skip(self):
@@ -874,8 +880,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_user(self):
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|host|S|"
-                           "www.mycompany.com"))
+        self.send_request("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|"
+                          "host|S|www.mycompany.com")
 
         self.assert_reply("10000010c3e4d0462|NUS|D|12.3|B|1")
         self.assertDictEqual({"user": "userX",
@@ -895,77 +901,78 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_with_credits_exception(self):
         # Testing CreditsError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|user1|S|remote_password|S|host|S|"
-                           "www.mycompany.com"))
-        self.assert_reply(("10000010c3e4d0462|NUS|EC|CreditsError|10|User+not+"
-                           "allowed"))
+        self.send_request("10000010c3e4d0462|NUS|S|user1|S|remote_password|S|"
+                          "host|S|www.mycompany.com")
+        self.assert_reply("10000010c3e4d0462|NUS|EC|CreditsError|10|User+not+"
+                          "allowed")
 
     def test_notify_user_with_access_exception(self):
         # Testing AccessError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|$|S|remote_password|S|host|S|"
-                           "www.mycompany.com"))
-        self.assert_reply(("10000010c3e4d0462|NUS|EA|An+empty+user+is+not+"
-                           "allowed"))
+        self.send_request("10000010c3e4d0462|NUS|S|$|S|remote_password|S|host|"
+                          "S|www.mycompany.com")
+        self.assert_reply("10000010c3e4d0462|NUS|EA|An+empty+user+is+not+"
+                          "allowed")
 
     def test_notify_user_with_access_exception2(self):
         # Testing AccessError with null value for user
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|#|S|#|S|host|S|"
-                           "www.mycompany.com|"))
-        self.assert_reply(("10000010c3e4d0462|NUS|EA|A+NULL+user+is+not+"
-                           "allowed"))
+        self.send_request("10000010c3e4d0462|NUS|S|#|S|#|S|host|S|"
+                          "www.mycompany.com|")
+        self.assert_reply("10000010c3e4d0462|NUS|EA|A+NULL+user+is+not+"
+                          "allowed")
 
     def test_notify_user_with_generic_exception(self):
         # Testing other errors
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUS|S|user2|S|remote_password|S|host|S|"
-                           "www.mycompany.com"))
+        self.send_request("10000010c3e4d0462|NUS|S|user2|S|remote_password|S|"
+                          "host|S|www.mycompany.com")
         self.assert_reply("10000010c3e4d0462|NUS|E|Error+while+notifying")
 
     def test_invalid_notify_user(self):
         self.do_init_and_skip()
-        self.send_request("10000010c3e4d0462|NUS|S|get+invalid|S|remote_password")
+        self.send_request("10000010c3e4d0462|NUS|S|get+invalid|S|"
+                          "remote_password")
         self.assert_caught_exception("Not a float value: 'Wrong Allowed Max "
-                                      "Bandwidth Type'")
+                                     "Bandwidth Type'")
 
     def test_malformed_notify_user(self):
         self.do_init_and_skip()
         # user and remote_password are missing.
         self.send_request("10000010c3e4d0462|NUS")
-        self.assert_caught_exception(("Token not found while parsing NUS "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NUS "
+                                     "request")
 
         # user and remote_password are missing.
         self.send_request("10000010c3e4d0462|NUS|S|")
-        self.assert_caught_exception(("Token not found while parsing NUS "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NUS "
+                                     "request")
 
         # Wrong token type for user.
         self.send_request("10000010c3e4d0462|NUS|S1|user")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " NUS request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NUS request")
 
         # remote_password is missing
         self.send_request("10000010c3e4d0462|NUS|S|user")
-        self.assert_caught_exception(("Token not found while parsing NUS "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NUS "
+                                     "request")
 
         # remote_password is missing
         self.send_request("10000010c3e4d0462|NUS|S|user|S")
-        self.assert_caught_exception(("Token not found while parsing NUS "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NUS "
+                                     "request")
 
         # Wrong token type for remote_password.
         self.send_request("10000010c3e4d0462|NUS|S|user|S2")
-        self.assert_caught_exception(("Unknown type 'S2' found while parsing"
-                                      " NUS request"))
+        self.assert_caught_exception("Unknown type 'S2' found while parsing "
+                                     "NUS request")
 
     def test_notify_user_auth(self):
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|userXA|S|remote_password|S|"
-                           "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
-                           "S|<HEADER_2>|S|<HEADER_VALUE2>"))
+        self.send_request("10000010c3e4d0462|NUA|S|userXA|S|remote_password|S|"
+                          "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
+                          "S|<HEADER_2>|S|<HEADER_VALUE2>")
 
         self.assert_reply("10000010c3e4d0462|NUA|D|12.3|B|1")
         expected_dict = {"user": "userXA",
@@ -978,46 +985,46 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_user_with_auth_credits_exception(self):
         # Testing CreditsError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|user1|S|remote_password|S|"
-                           "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
-                           "S|<HEADER_2>|S|<HEADER_VALUE2>"))
-        self.assert_reply(("10000010c3e4d0462|NUA|EC|CreditsError|10|User+not+"
-                           "allowed"))
+        self.send_request("10000010c3e4d0462|NUA|S|user1|S|remote_password|S|"
+                          "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
+                          "S|<HEADER_2>|S|<HEADER_VALUE2>")
+        self.assert_reply("10000010c3e4d0462|NUA|EC|CreditsError|10|User+not+"
+                          "allowed")
 
     def test_notify_user_with_auth_access_exception(self):
         # Testing AccessError
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|$|S|remote_password|S|"
-                           "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
-                           "S|<HEADER_2>|S|<HEADER_VALUE2>"))
-        self.assert_reply(("10000010c3e4d0462|NUA|EA|An+empty+user+is+not+"
-                           "allowed"))
+        self.send_request("10000010c3e4d0462|NUA|S|$|S|remote_password|S|"
+                          "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
+                          "S|<HEADER_2>|S|<HEADER_VALUE2>")
+        self.assert_reply("10000010c3e4d0462|NUA|EA|An+empty+user+is+not+"
+                          "allowed")
 
     def test_notify_user_auth_with_generic_exception(self):
         # Testing other errors
         self.do_init_and_skip()
-        self.send_request(("10000010c3e4d0462|NUA|S|user2|S|remote_password|S|"
-                           "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
-                           "S|<HEADER_2>|S|<HEADER_VALUE2>"))
+        self.send_request("10000010c3e4d0462|NUA|S|user2|S|remote_password|S|"
+                          "<CLIENT_PRINCIPAL>|S|<HEADER_1>|S|<HEADER_VALUE1>|"
+                          "S|<HEADER_2>|S|<HEADER_VALUE2>")
 
         self.assert_reply("10000010c3e4d0462|NUA|E|Error+while+notifying")
 
     def test_malformed_notify_user_auth(self):
         self.do_init_and_skip()
         self.send_request("10000010c3e4d0462|NUA|S|")
-        self.assert_caught_exception(("Token not found while parsing NUA "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NUA "
+                                     "request")
 
         self.send_request("10000010c3e4d0462|NUA|S1|user")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " NUA request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NUA request")
 
     def test_notify_new_session(self):
         self.do_init_and_skip()
-        self.send_request(("10000020b3e6d0462|NNS|S|<user name>|S|"
-                           "<session ID>|S|<context prop name 1>|S|"
-                           "<context prop 1 value>|S|<context prop name N>|S|"
-                           "<context prop N value>"))
+        self.send_request("10000020b3e6d0462|NNS|S|<user name>|S|"
+                          "<session ID>|S|<context prop name 1>|S|"
+                          "<context prop 1 value>|S|<context prop name N>|S|"
+                          "<context prop N value>")
 
         self.assert_reply("10000020b3e6d0462|NNS|V")
         self.assertDictEqual({"user": "<user name>",
@@ -1031,46 +1038,46 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_notify_new_session_with_exception(self):
         # Testing CreditError
         self.do_init_and_skip()
-        self.send_request(("10000020b3e6d0462|NNS|S|user1|S|<session ID>|S|"
-                           "<context prop name 1>|S|<context prop 1 value>|S|"
-                           "<context prop name N>|S|<context prop N value>"))
-        self.assert_reply(("10000020b3e6d0462|NNS|EC|CreditsError|9|User+not+"
-                           "allowed"))
+        self.send_request("10000020b3e6d0462|NNS|S|user1|S|<session ID>|S|"
+                          "<context prop name 1>|S|<context prop 1 value>|S|"
+                          "<context prop name N>|S|<context prop N value>")
+        self.assert_reply("10000020b3e6d0462|NNS|EC|CreditsError|9|User+not+"
+                          "allowed")
 
     def test_notify_new_session_with_notification_exception(self):
         # Testing NotificationError
         self.do_init_and_skip()
-        self.send_request(("10000020b3e6d0462|NNS|S|user2|S|<session ID>|S|"
-                           "<context prop name 1>|S|<context prop 1 value>|S|"
-                           "<context prop name N>|S|<context prop N value>"))
+        self.send_request("10000020b3e6d0462|NNS|S|user2|S|<session ID>|S|"
+                          "<context prop name 1>|S|<context prop 1 value>|S|"
+                          "<context prop name N>|S|<context prop N value>")
         self.assert_reply("10000020b3e6d0462|NNS|EN|NotificationError")
 
     def test_notify_new_session_with_conflicting_session_exception(self):
         # Testing ConflictingSessionError
         self.do_init_and_skip()
-        self.send_request(("10000020b3e6d0462|NNS|S|user3|S|<session ID>|S|"
-                           "<context prop name 1>|S|<context prop 1 value>|S|"
-                           "<context prop name N>|S|<context prop N value>"))
-        self.assert_reply(("10000020b3e6d0462|NNS|EX|ConflictingSessionError|"
-                           "11|clientErrorMsg|conflictingSessionID"))
+        self.send_request("10000020b3e6d0462|NNS|S|user3|S|<session ID>|S|"
+                          "<context prop name 1>|S|<context prop 1 value>|S|"
+                          "<context prop name N>|S|<context prop N value>")
+        self.assert_reply("10000020b3e6d0462|NNS|EX|ConflictingSessionError|"
+                          "11|clientErrorMsg|conflictingSessionID")
 
     def test_notify_new_session_with_generic_exception(self):
         # Testing generic Error
         self.do_init_and_skip()
-        self.send_request(("10000020b3e6d0462|NNS|S|user4|S|<session ID>|S|"
-                           "<context prop name 1>|S|<context prop 1 value>|S|"
-                           "<context prop name N>|S|<context prop N value>"))
+        self.send_request("10000020b3e6d0462|NNS|S|user4|S|<session ID>|S|"
+                          "<context prop name 1>|S|<context prop 1 value>|S|"
+                          "<context prop name N>|S|<context prop N value>")
         self.assert_reply("10000020b3e6d0462|NNS|E|Error+while+notifying")
 
     def test_malformed_notify_new_session(self):
         self.do_init_and_skip()
         self.send_request("10000020b3e6d0462|NNS|S|")
-        self.assert_caught_exception(("Token not found while parsing NNS "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NNS "
+                                     "request")
 
         self.send_request("10000020b3e6d0462|NNS|S1|user4")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing "
-                                      "NNS request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NNS request")
 
     def test_notify_session_close(self):
         self.do_init_and_skip()
@@ -1096,49 +1103,46 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_malformed_notify_session_close(self):
         self.do_init_and_skip()
         self.send_request("20000010c3e4d0462|NSC|S|")
-        self.assert_caught_exception(("Token not found while parsing NSC "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NSC "
+                                     "request")
 
         self.send_request("20000010c3e4d0462|NSC|S1|user4")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " NSC request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NSC request")
 
     def test_get_items(self):
         self.do_init_and_skip()
-        self.send_request(("50000010c3e4d0462|GIS|S|user1|S|nasdaq100_AA_AL+"
-                           "abc|S|S8f3da29cfc463220T5454537"))
+        self.send_request("50000010c3e4d0462|GIS|S|user1|S|nasdaq100_AA_AL+"
+                          "abc|S|S8f3da29cfc463220T5454537")
         self.assert_reply("50000010c3e4d0462|GIS|S|nasdaq100_AA_AL|S|abc")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
-                              "group": "nasdaq100_AA_AL abc"},
-                             self.collector)
+                              "group": "nasdaq100_AA_AL abc"}, self.collector)
 
     def test_get_items_with_no_returned_items(self):
         self.do_init_and_skip()
-        self.send_request(("50000010c3e4d0462|GIS|S|user1|S|no+items|S|"
-                           "S8f3da29cfc463220T5454537"))
+        self.send_request("50000010c3e4d0462|GIS|S|user1|S|no+items|S|"
+                          "S8f3da29cfc463220T5454537")
         self.assert_reply("50000010c3e4d0462|GIS")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
-                              "group": "no items"},
-                             self.collector)
+                              "group": "no items"}, self.collector)
 
     def test_get_items_with_items_exception(self):
         # Testing ItemsError Error provoked by an empty user ()
         self.do_init_and_skip()
-        self.send_request(("50000010c3e4d0462|GIS|S|$|S|nasdaq100_AA_AL+abc|S|"
-                           "S8f3da29cfc463220T5454537"))
+        self.send_request("50000010c3e4d0462|GIS|S|$|S|nasdaq100_AA_AL+abc|S|"
+                          "S8f3da29cfc463220T5454537")
         self.assert_reply("50000010c3e4d0462|GIS|EI|Empty+User")
         self.assertDictEqual({"user": "",
                               "sessionId": "S8f3da29cfc463220T5454537",
-                              "group": "nasdaq100_AA_AL abc"},
-                             self.collector)
+                              "group": "nasdaq100_AA_AL abc"}, self.collector)
 
     def test_get_items_with_generic_exception(self):
         # Testing generic Error provoked by a null user (#)
         self.do_init_and_skip()
-        self.send_request(("50000010c3e4d0462|GIS|S|#|S|nasdaq100_AA_AL+abc|S|"
-                           "S8f3da29cfc463220T5454537"))
+        self.send_request("50000010c3e4d0462|GIS|S|#|S|nasdaq100_AA_AL+abc|S|"
+                          "S8f3da29cfc463220T5454537")
 
         self.assert_reply("50000010c3e4d0462|GIS|E|NULL+User")
         self.assertDictEqual({"user": None,
@@ -1148,81 +1152,76 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_invalid_get_items(self):
         self.do_init_and_skip()
-        self.send_request(("50000010c3e4d0462|GIS|S|user1|S|get+invalid|S|"
-                           "S8f3da29cfc463220T5454537"))
+        self.send_request("50000010c3e4d0462|GIS|S|user1|S|get+invalid|S|"
+                          "S8f3da29cfc463220T5454537")
         self.assert_caught_exception("Unknown error while url-encoding string")
 
     def test_malformed_get_items(self):
         self.do_init_and_skip()
         self.send_request("50000010c3e4d0462|GIS|S|")
-        self.assert_caught_exception(("Token not found while parsing GIS "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing GIS "
+                                     "request")
 
         self.send_request("50000010c3e4d0462|GIS|S1|nasdaq100_AA_AL")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " GIS request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "GIS request")
 
     def test_get_schema(self):
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
-                           "abc|S|short1+short2|S|S8f3da29cfc463220T5454537"))
+        self.send_request("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
+                          "abc|S|short1+short2|S|S8f3da29cfc463220T5454537")
         self.assert_reply("70000010c3e4d0462|GSC|S|short1|S|short2")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "group": "nasdaq100_AA_AL abc",
-                              "schema": "short1 short2"},
-                             self.collector)
+                              "schema": "short1 short2"}, self.collector)
 
     def test_get_schema_with_no_returned_schema(self):
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
-                           "abc|S|no+schema|S|S8f3da29cfc463220T5454537"))
+        self.send_request("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
+                          "abc|S|no+schema|S|S8f3da29cfc463220T5454537")
         self.assert_reply("70000010c3e4d0462|GSC")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "group": "nasdaq100_AA_AL abc",
-                              "schema": "no schema"},
-                             self.collector)
+                              "schema": "no schema"}, self.collector)
 
     def test_get_schema_with_items_exception(self):
         # Testing ItemsError provoked by null user (#)
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GSC|S|#|S|nasdaq100_AA_AL+abc|S|"
-                           "short1+short2|S|S8f3da29cfc463220T5454537"))
+        self.send_request("70000010c3e4d0462|GSC|S|#|S|nasdaq100_AA_AL+abc|S|"
+                          "short1+short2|S|S8f3da29cfc463220T5454537")
         self.assert_reply("70000010c3e4d0462|GSC|EI|NULL+User")
         self.assertDictEqual({"user": None,
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "group": "nasdaq100_AA_AL abc",
-                              "schema": "short1 short2"},
-                             self.collector)
+                              "schema": "short1 short2"}, self.collector)
 
     def test_get_schema_with_schema_exception(self):
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL|S|"
-                           "shortA|S|S8f3da29cfc463220T5454537"))
+        self.send_request("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL|S|"
+                          "shortA|S|S8f3da29cfc463220T5454537")
         self.assert_reply("70000010c3e4d0462|GSC|ES|SchemaError")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "group": "nasdaq100_AA_AL",
-                              "schema": "shortA"},
-                             self.collector)
+                              "schema": "shortA"}, self.collector)
 
     def test_get_schema_with_generic_exception(self):
         # Testing ItemsEerror provoked by an empty user
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GSC|S|$|S|nasdaq100_AA_AL+abc|S|"
-                           "short1+short2|S|S8f3da29cfc463220T5454537"))
+        self.send_request("70000010c3e4d0462|GSC|S|$|S|nasdaq100_AA_AL+abc|S|"
+                          "short1+short2|S|S8f3da29cfc463220T5454537")
         self.assert_reply("70000010c3e4d0462|GSC|E|Empty+User")
         self.assertDictEqual({"user": "",
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "group": "nasdaq100_AA_AL abc",
-                              "schema": "short1 short2"},
-                             self.collector)
+                              "schema": "short1 short2"}, self.collector)
 
     def test_invalid_get_schema(self):
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL|S|"
-                           "get+invalid|S|S8f3da29cfc463220T5454537"))
+        self.send_request("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL|S|"
+                          "get+invalid|S|S8f3da29cfc463220T5454537")
         self.assert_caught_exception("Unknown error while url-encoding string")
 
     def test_malformed_get_schema(self):
@@ -1230,25 +1229,25 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
         # Missing token.
         self.send_request("70000010c3e4d0462|GSC|S|")
-        self.assert_caught_exception(("Token not found while parsing GSC "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing GSC "
+                                     "request")
 
         # Wrong token type.
         self.send_request("70000010c3e4d0462|GSC|S1|nasdaq100_AA_AL")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " GSC request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "GSC request")
 
         # No fields specifications.
-        self.send_request(("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
-                           "abc|S|S8f3da29cfc463220T5454537"))
-        self.assert_caught_exception(("Token not found while parsing GSC "
-                                      "request"))
+        self.send_request("70000010c3e4d0462|GSC|S|user1|S|nasdaq100_AA_AL+"
+                          "abc|S|S8f3da29cfc463220T5454537")
+        self.assert_caught_exception("Token not found while parsing GSC "
+                                     "request")
 
     def test_get_item_data(self):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|item_1|S|item_2|S|item_3")
-        self.assert_reply(("70000010c3e4d0462|GIT|I|10|D|4.5|M|MD|I|20|D|7.3"
-                           "|M|RMC|I|0|D|0.0|M|$"))
+        self.assert_reply("70000010c3e4d0462|GIT|I|10|D|4.5|M|MD|I|20|D|7.3"
+                          "|M|RMC|I|0|D|0.0|M|$")
 
     def test_get_item_data_with_no_specified_item(self):
         self.do_init_and_skip()
@@ -1259,30 +1258,30 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         # Testing generic Error provoked by item_4
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|item_1|S|item_2|S|item_4")
-        self.assert_reply("70000010c3e4d0462|GIT|E|Error+for+provided+item")
+        self.assert_reply("70000010c3e4d0462|GIT|E|Error+for+provided+item_name")
 
     def test_invalid_get_item_data(self):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|get+invalid")
-        self.assert_caught_exception(("Not an int value: 'Wrong Distinct "
-                                      "Snapshot Length Type'"))
+        self.assert_caught_exception("Not an int value: 'Wrong Distinct "
+                                     "Snapshot Length Type'")
 
     def test_malformed_get_item_data(self):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|")
-        self.assert_caught_exception(("Token not found while parsing GIT "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing GIT "
+                                     "request")
 
-        self.send_request("70000010c3e4d0462|GIT|S1|item")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " GIT request"))
+        self.send_request("70000010c3e4d0462|GIT|S1|item_name")
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "GIT request")
 
     def test_get_user_item_data(self):
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GUI|S|user1|S|item_1|S|item_2|S|"
-                           "item_3"))
-        self.assert_reply(("70000010c3e4d0462|GUI|I|30|D|170.5|M|RMDC|I|40|D|"
-                           "27.3|M|RM|I|0|D|0.0|M|$"))
+        self.send_request("70000010c3e4d0462|GUI|S|user1|S|item_1|S|item_2|S|"
+                          "item_3")
+        self.assert_reply("70000010c3e4d0462|GUI|I|30|D|170.5|M|RMDC|I|40|D|"
+                          "27.3|M|RM|I|0|D|0.0|M|$")
 
     def test_get_user_item_data_with_no_specified_items(self):
         self.do_init_and_skip()
@@ -1292,34 +1291,34 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def test_get_user_item_data_with_exception(self):
         # Testing generic Error provoked by user2
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GUI|S|user2|S|item_1|S|item_2|S|"
-                           "item_4"))
+        self.send_request("70000010c3e4d0462|GUI|S|user2|S|item_1|S|item_2|S|"
+                          "item_4")
         self.assert_reply("70000010c3e4d0462|GUI|E|No+user+allowed")
 
     def test_invalid_get_user_item_data(self):
         self.do_init_and_skip()
-        self.send_request(("70000010c3e4d0462|GUI|S|user1|S|get+invalid"))
-        self.assert_caught_exception(("Not an int value: 'Wrong Allowed Buffer"
-                                      " Size'"))
+        self.send_request("70000010c3e4d0462|GUI|S|user1|S|get+invalid")
+        self.assert_caught_exception("Not an int value: 'Wrong Allowed Buffer"
+                                     " Size'")
 
     def test_malformed_get_user_item_data(self):
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GUI")
-        self.assert_caught_exception(("Token not found while parsing GUI "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing GUI "
+                                     "request")
 
         self.send_request("70000010c3e4d0462|GUI|S|")
-        self.assert_caught_exception(("Token not found while parsing GUI "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing GUI "
+                                     "request")
 
         self.send_request("70000010c3e4d0462|GUI|S1|user2")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " GUI request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing"
+                                     " GUI request")
 
     def test_notify_user_message(self):
         self.do_init_and_skip()
-        self.send_request(("d0000010c3e4d0462|NUM|S|user1|S|"
-                           "S8f3da29cfc463220T5454537|S|stop+logging"))
+        self.send_request("d0000010c3e4d0462|NUM|S|user1|S|"
+                          "S8f3da29cfc463220T5454537|S|stop+logging")
         self.assert_reply("d0000010c3e4d0462|NUM|V")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
@@ -1328,39 +1327,39 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_user_message_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("d0000010c3e4d0462|NUM|S|user2|S|"
-                           "S8f3da29cfc463220T5454537|S|stop+logging"))
+        self.send_request("d0000010c3e4d0462|NUM|S|user2|S|"
+                          "S8f3da29cfc463220T5454537|S|stop+logging")
         self.assert_reply("d0000010c3e4d0462|NUM|EN|NotificationError")
 
     def test_notify_user_message_with_credits_exception(self):
         self.do_init_and_skip()
-        self.send_request(("d0000010c3e4d0462|NUM|S|user3|S|"
-                           "S8f3da29cfc463220T5454537|S|stop+logging"))
-        self.assert_reply(("d0000010c3e4d0462|NUM|EC|CreditsError|4|"
-                           "clientErrorMsg"))
+        self.send_request("d0000010c3e4d0462|NUM|S|user3|S|"
+                          "S8f3da29cfc463220T5454537|S|stop+logging")
+        self.assert_reply("d0000010c3e4d0462|NUM|EC|CreditsError|4|"
+                          "clientErrorMsg")
 
     def test_notify_user_message_with_generic_exception(self):
         self.do_init_and_skip()
-        self.send_request(("d0000010c3e4d0462|NUM|S|user4|S|"
-                           "S8f3da29cfc463220T5454537|S|stop+logging"))
+        self.send_request("d0000010c3e4d0462|NUM|S|user4|S|"
+                          "S8f3da29cfc463220T5454537|S|stop+logging")
         self.assert_reply("d0000010c3e4d0462|NUM|E|Exception")
 
     def test_malformed_notify_user_message(self):
         self.do_init_and_skip()
         self.send_request("d0000010c3e4d0462|NUM|S|")
-        self.assert_caught_exception(("Token not found while parsing NUM "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NUM "
+                                     "request")
 
         self.send_request("d0000010c3e4d0462|NUM|S1|user4")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " NUM request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NUM request")
 
     def test_notify_new_tables(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NNT|S|#|S|"
-                           "S8f3da29cfc463220T5454537|I|1|M|M|S|"
-                           "nasdaq100_AA_AL|S|short|I|1|I|5|S|#|I|2|M|D|S|"
-                           "nasdaq100_AA_AL|S|medium|I|4|I|3|S|selector"))
+        self.send_request("f0000010c3e4d0462|NNT|S|#|S|"
+                          "S8f3da29cfc463220T5454537|I|1|M|M|S|"
+                          "nasdaq100_AA_AL|S|short|I|1|I|5|S|#|I|2|M|D|S|"
+                          "nasdaq100_AA_AL|S|medium|I|4|I|3|S|selector")
 
         self.assert_reply("f0000010c3e4d0462|NNT|V")
         self.assertDictEqual({"user": None,
@@ -1382,10 +1381,10 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_new_tables_with_null_mode(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NNT|S|#|S|"
-                           "S8f3da29cfc463220T5454537|I|1|M|#|S|"
-                           "nasdaq100_AA_AL|S|short|I|1|I|5|S|#|I|2|M|D|S|"
-                           "nasdaq100_AA_AL|S|medium|I|4|I|3|S|selector"))
+        self.send_request("f0000010c3e4d0462|NNT|S|#|S|"
+                          "S8f3da29cfc463220T5454537|I|1|M|#|S|"
+                          "nasdaq100_AA_AL|S|short|I|1|I|5|S|#|I|2|M|D|S|"
+                          "nasdaq100_AA_AL|S|medium|I|4|I|3|S|selector")
         self.assert_reply("f0000010c3e4d0462|NNT|V")
         self.assertDictEqual({"user": None,
                               "sessionId": "S8f3da29cfc463220T5454537",
@@ -1406,10 +1405,10 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_new_tables_with_empty_mode(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NNT|S|#|S|"
-                           "S8f3da29cfc463220T5454537|I|1|M|$|S|"
-                           "nasdaq100_AA_AL|S|short|I|1|I|5|S|#|I|2|M|D|S|"
-                           "nasdaq100_AA_AL|S|medium|I|4|I|3|S|selector"))
+        self.send_request("f0000010c3e4d0462|NNT|S|#|S|"
+                          "S8f3da29cfc463220T5454537|I|1|M|$|S|"
+                          "nasdaq100_AA_AL|S|short|I|1|I|5|S|#|I|2|M|D|S|"
+                          "nasdaq100_AA_AL|S|medium|I|4|I|3|S|selector")
         self.assert_reply("f0000010c3e4d0462|NNT|V")
         self.assertDictEqual({"user": None,
                               "sessionId": "S8f3da29cfc463220T5454537",
@@ -1430,40 +1429,40 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
     def test_notify_new_tables_with_credits_exception(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NNT|S|user1|S|"
-                           "S8f3da29cfc463220T5454537|I|1|M|M|S|"
-                           "nasdaq100_AA_AL|S|short|I|1|I|5|S|#"))
-        self.assert_reply(("f0000010c3e4d0462|NNT|EC|CreditsError|10|"
-                           "clientErrorMsg"))
+        self.send_request("f0000010c3e4d0462|NNT|S|user1|S|"
+                          "S8f3da29cfc463220T5454537|I|1|M|M|S|"
+                          "nasdaq100_AA_AL|S|short|I|1|I|5|S|#")
+        self.assert_reply("f0000010c3e4d0462|NNT|EC|CreditsError|10|"
+                          "clientErrorMsg")
 
     def test_notify_new_tables_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NNT|S|user2|S|"
-                           "S8f3da29cfc463220T5454537|I|1|M|M|S|"
-                           "nasdaq100_AA_AL|S|short|I|1|I|5|S|#"))
+        self.send_request("f0000010c3e4d0462|NNT|S|user2|S|"
+                          "S8f3da29cfc463220T5454537|I|1|M|M|S|"
+                          "nasdaq100_AA_AL|S|short|I|1|I|5|S|#")
         self.assert_reply("f0000010c3e4d0462|NNT|EN|NotificationError")
 
     def test_notify_new_tables_with_exception(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NNT|S|user3|S|"
-                           "S8f3da29cfc463220T5454537|I|1|M|M|S|"
-                           "nasdaq100_AA_AL|S|short|I|1|I|5|S|#"))
+        self.send_request("f0000010c3e4d0462|NNT|S|user3|S|"
+                          "S8f3da29cfc463220T5454537|I|1|M|M|S|"
+                          "nasdaq100_AA_AL|S|short|I|1|I|5|S|#")
         self.assert_reply("f0000010c3e4d0462|NNT|E|Exception")
 
     def test_malformed_notify_new_tables(self):
         self.do_init_and_skip()
         self.send_request("f0000010c3e4d0462|NNT|S|#|S")
-        self.assert_caught_exception(("Token not found while parsing NNT "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing NNT "
+                                     "request")
 
         self.send_request("f0000010c3e4d0462|NNT|S1|#")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing "
-                                      "NNT request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NNT request")
 
     def test_notify_tables_close(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454537|"
-                           "I|1|M|M|S|nasdaq100_AA_AL|S|short|I|1|I|5|S|#"))
+        self.send_request("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454537|"
+                          "I|1|M|M|S|nasdaq100_AA_AL|S|short|I|1|I|5|S|#")
         self.assert_reply("f0000010c3e4d0462|NTC|V")
         self.assertDictEqual({"sessionId": "S8f3da29cfc463220T5454537",
                               "tableInfos": [TableInfo(win_index=1,
@@ -1479,107 +1478,105 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.send_request("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454537")
         self.assert_reply("f0000010c3e4d0462|NTC|V")
         self.assertDictEqual({"sessionId": "S8f3da29cfc463220T5454537",
-                              "tableInfos": []},
-                             self.collector)
+                              "tableInfos": []}, self.collector)
 
     def test_notify_tables_close_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454539|"
-                           "I|1|M|M|S|nasdaq100_AA_AL|S|short|I|1|I|5|S|#"))
+        self.send_request("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454539|"
+                          "I|1|M|M|S|nasdaq100_AA_AL|S|short|I|1|I|5|S|#")
         self.assert_reply("f0000010c3e4d0462|NTC|EN|NotificationError")
 
     def test_notify_tables_close_with_generic_exception(self):
         self.do_init_and_skip()
-        self.send_request(("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454540|"
-                           "I|1|M|M|S|nasdaq100_AA_AL|S|short|I|1|I|5|S|#"))
+        self.send_request("f0000010c3e4d0462|NTC|S|S8f3da29cfc463220T5454540|"
+                          "I|1|M|M|S|nasdaq100_AA_AL|S|short|I|1|I|5|S|#")
         self.assert_reply("f0000010c3e4d0462|NTC|E|Exception")
 
     def test_malformed_notify_tables_close(self):
         self.do_init_and_skip()
         # A "S" token type is expected.
         self.send_request("f0000010c3e4d0462|NTC|S1|#")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " NTC request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NTC request")
 
         # A "I" token type is expected.
         self.send_request("f0000010c3e4d0462|NTC|S|#|S1")
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " NTC request"))
+        self.assert_caught_exception("Unknown type 'S1' found while parsing "
+                                     "NTC request")
 
     def test_notify_device_access(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|user1"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1"))
+        self.send_request("b00000147c9bc4c74|MDA|S|user1"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1")
         self.assert_reply("b00000147c9bc4c74|MDA|V")
         self.assertDictEqual({"user": "user1",
                               "sessionId": "S8f3da29cfc463220T5454537",
                               "mpnDeviceInfo":
                               MpnDeviceInfo(
                                   platform_type=MpnPlatformType.APPLE,
-                                  application_id=("com.lightstreamer"
-                                                  ".demo.ios."
-                                                  "stocklistdemo"),
-                                  device_token=("f780e9d8ffc86a5ec9a"
-                                                "329e7745aa8fb3a1ecc"
-                                                "e77c09e202ec24cff14"
-                                                "a9906f1"))},
-                             self.collector)
+                                  application_id="com.lightstreamer"
+                                                 ".demo.ios."
+                                                 "stocklistdemo",
+                                  device_token="f780e9d8ffc86a5ec9a"
+                                               "329e7745aa8fb3a1ecc"
+                                               "e77c09e202ec24cff14"
+                                               "a9906f1")}, self.collector)
 
     def test_notify_device_access_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|#"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1"))
+        self.send_request("b00000147c9bc4c74|MDA|S|#"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1")
         self.assert_reply("b00000147c9bc4c74|MDA|EN|NotificationError")
 
     def test_notify_device_access_with_credits_exception(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|$"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1"))
-        self.assert_reply(("b00000147c9bc4c74|MDA|EC|CreditsError|10|"
-                           "clientErrorMsg"))
+        self.send_request("b00000147c9bc4c74|MDA|S|$"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1")
+        self.assert_reply("b00000147c9bc4c74|MDA|EC|CreditsError|10|"
+                          "clientErrorMsg")
 
     def test_malformed_notify_device_access(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|#"
-                           "|S|S8f3da29cfc463220T5454537|P"))
-        self.assert_caught_exception(("Token not found while parsing MDA "
-                                      "request"))
+        self.send_request("b00000147c9bc4c74|MDA|S|#"
+                          "|S|S8f3da29cfc463220T5454537|P")
+        self.assert_caught_exception("Token not found while parsing MDA "
+                                     "request")
 
-        self.send_request(("b00000147c9bc4c74|MDA|S1|#"
-                           "|S|S8f3da29cfc463220T5454537|P"))
-        self.assert_caught_exception(("Unknown type 'S1' found while parsing"
-                                      " MDA request"))
+        self.send_request("b00000147c9bc4c74|MDA|S1|#"
+                          "|S|S8f3da29cfc463220T5454537|P")
+        self.assert_caught_exception("Unknown type 'S1' found while parsing"
+                                     " MDA request")
 
-        self.send_request(("b00000147c9bc4c74|MDA|S|#"
-                           "|S|S8f3da29cfc463220T5454537|P|Q"))
-        self.assert_caught_exception(("Unknown platform type 'Q' while parsing"
-                                      " MDA request"))
+        self.send_request("b00000147c9bc4c74|MDA|S|#"
+                          "|S|S8f3da29cfc463220T5454537|P|Q")
+        self.assert_caught_exception("Unknown platform type 'Q' while parsing "
+                                     "MDA request")
 
     def test_notify_device_access_with_generic_exception(self):
         self.do_init_and_skip()
-        self.send_request(("b00000147c9bc4c74|MDA|S|user2"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1"))
+        self.send_request("b00000147c9bc4c74|MDA|S|user2"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1")
         self.assert_reply("b00000147c9bc4c74|MDA|E|Exception")
 
-    def test_notify_mpn_subscription_activation_APN(self):
+    def test_notify_mpn_subscription_activation_apn(self):
         self.do_init_and_skip()
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # I|<win. index>|M|<pub. mode>|S|<item_name group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
+                   # I|<first item_name idx.>|I|<last item_name idx.>|
                    "I|1|I|2|"
                    # P|A|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|A|S|com.lightstreamer.demo.ios.stocklistdemo|S|"
@@ -1597,14 +1594,14 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         device = MpnDeviceInfo(
             platform_type=MpnPlatformType.APPLE,
             application_id="com.lightstreamer.demo.ios.stocklistdemo",
-            device_token=("f74d8ffc5ee7cb31749a329a8f9202867c0a9906e8"
-                          "0ee7f9eeccca1f24c5aaf1"))
+            device_token="f74d8ffc5ee7cb31749a329a8f9202867c0a9906e8"
+                         "0ee7f9eeccca1f24c5aaf1")
 
         subscription = MpnSubscriptionInfo(
             device=device,
-            notification_format=("{\"aps\":{\"alert\":\"${message}\","
-                                 "\"badge\":\"AUTO\"},\"acme2\":"
-                                 "[\"${tag1}\",\"${tag2}\"]}"),
+            notification_format="{\"aps\":{\"alert\":\"${message}\","
+                                "\"badge\":\"AUTO\"},\"acme2\":"
+                                "[\"${tag1}\",\"${tag2}\"]}",
             trigger="Double.parseDouble(${last_price}) > 1000.0")
 
         table_info = TableInfo(win_index=1, mode=Mode.MERGE,
@@ -1619,65 +1616,65 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
         self.assertDictEqual(expected_dict, self.collector)
 
-    def test_notify_mpn_subscription_activation_APN_with_ne_exception(self):
+    def test_notify_mpn_subscription_activation_apn_with_ne_exception(self):
         # Expect a NotificationError because NULL user is specified:
         # "c00000147c9bc4c74|MSA|S|#|..."
         self.do_init_and_skip()
-        self.send_request(("c00000147c9bc4c74|MSA|S|#|S|"
-                           "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
-                           "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
-                           "ccca1f24c5aaf1|S|"
-                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
-                           "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
-                           "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
-                           "%24%7Btag2%7D%22%5D%7D"))
+        self.send_request("c00000147c9bc4c74|MSA|S|#|S|"
+                          "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
+                          "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
+                          "ccca1f24c5aaf1|S|"
+                          "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                          "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
+                          "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
+                          "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
+                          "%24%7Btag2%7D%22%5D%7D")
         self.assert_reply("c00000147c9bc4c74|MSA|EN|NotificationError")
 
-    def test_notify_mpn_subscription_activation_APN_with_ce_exception(self):
+    def test_notify_mpn_subscription_activation_apn_with_ce_exception(self):
         # Expect a NotificationError because EMPTY user is specified:
         # "c00000147c9bc4c74|MSA|S|$|..."
         self.do_init_and_skip()
-        self.send_request(("c00000147c9bc4c74|MSA|S|$|S|"
-                           "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
-                           "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
-                           "ccca1f24c5aaf1|S|"
-                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
-                           "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
-                           "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
-                           "%24%7Btag2%7D%22%5D%7D"))
-        self.assert_reply(("c00000147c9bc4c74|MSA|EC|CreditsError|10|"
-                           "clientErrorMsg"))
+        self.send_request("c00000147c9bc4c74|MSA|S|$|S|"
+                          "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
+                          "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
+                          "ccca1f24c5aaf1|S|"
+                          "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                          "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
+                          "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
+                          "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
+                          "%24%7Btag2%7D%22%5D%7D")
+        self.assert_reply("c00000147c9bc4c74|MSA|EC|CreditsError|10|"
+                          "clientErrorMsg")
 
-    def test_notify_mpn_subscription_activation_APN_with_exception(self):
+    def test_notify_mpn_subscription_activation_apn_with_exception(self):
         # Expect a NotificationError because "user2" user is specified:
         # "c00000147c9bc4c74|MSA|S|user2|..."
         self.do_init_and_skip()
-        self.send_request(("c00000147c9bc4c74|MSA|S|user2|S|"
-                           "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
-                           "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
-                           "ccca1f24c5aaf1|S|"
-                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
-                           "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
-                           "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
-                           "%24%7Btag2%7D%22%5D%7D"))
+        self.send_request("c00000147c9bc4c74|MSA|S|user2|S|"
+                          "Sc4a1769b6bb83a4aT2852044|I|1|M|M|S|item4+item19|"
+                          "S|stock_name+last_price+time|I|1|I|2|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f74d8ffc5ee7cb31749a329a8f9202867c0a9906e80ee7f9ee"
+                          "ccca1f24c5aaf1|S|"
+                          "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                          "1000.0|S|%7B%22aps%22%3A%7B%22alert%22%3A%22"
+                          "%24%7Bmessage%7D%22%2C%22badge%22%3A%22AUTO%22"
+                          "%7D%2C%22acme2%22%3A%5B%22%24%7Btag1%7D%22%2C%22"
+                          "%24%7Btag2%7D%22%5D%7D")
         self.assert_reply("c00000147c9bc4c74|MSA|E|Exception")
 
-    def test_notify_mpn_subscription_activation_GCM(self):
+    def test_notify_mpn_subscription_activation_gcm(self):
         self.do_init_and_skip()
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # I|<win. index>|M|<pub. mode>|S|<item_name group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
+                   # I|<first item_name idx.>|I|<last item_name idx.>|
                    "I|1|I|2|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|G|S|com.lightstreamer.demo.android.stocklistdemo|S|"
@@ -1700,8 +1697,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
 
         subscription = MpnSubscriptionInfo(
             device=device,
-            notification_format=("{\"data\":{\"score\":\"${score}\","
-                                 "\"time\":\"${time}\"}}"),
+            notification_format="{\"data\":{\"score\":\"${score}\","
+                                "\"time\":\"${time}\"}}",
             trigger="Double.parseDouble(${last_price}) > 1000.0")
 
         expected_dict = {"user": "user1",
@@ -1710,44 +1707,44 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                          "mpn_subscription": subscription}
         self.assertDictEqual(expected_dict, self.collector)
 
-    def test_notify_mpn_subscription_activation_Google_with_ne_exception(self):
+    def test_notify_mpn_subscription_activation_google_with_ne_exception(self):
         self.do_init_and_skip()
-        self.send_request(("c00000147cac69643|MSA|S|#|S|"
-                           "S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19|S|"
-                           "stock_name+last_price+time|I|1|I|2|P|G|S|"
-                           "com.lightstreamer.demo.android.stocklistdemo|S|"
-                           "2082055669|S|"
-                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
-                           "%24%7Bscore%7D%22%2C%22time%22%3A%22"
-                           "%24%7Btime%7D%22%7D%7D"))
+        self.send_request("c00000147cac69643|MSA|S|#|S|"
+                          "S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19|S|"
+                          "stock_name+last_price+time|I|1|I|2|P|G|S|"
+                          "com.lightstreamer.demo.android.stocklistdemo|S|"
+                          "2082055669|S|"
+                          "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                          "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
+                          "%24%7Bscore%7D%22%2C%22time%22%3A%22"
+                          "%24%7Btime%7D%22%7D%7D")
         self.assert_reply("c00000147cac69643|MSA|EN|NotificationError")
 
-    def test_notify_mpn_subscription_activation_Google_with_ce_exception(self):
+    def test_notify_mpn_subscription_activation_google_with_ce_exception(self):
         self.do_init_and_skip()
-        self.send_request(("c00000147cac69643|MSA|S|$|S|"
-                           "S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19|S|"
-                           "stock_name+last_price+time|I|1|I|2|P|G|S|"
-                           "com.lightstreamer.demo.android.stocklistdemo|S|"
-                           "2082055669|S|"
-                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
-                           "%24%7Bscore%7D%22%2C%22time%22%3A%22"
-                           "%24%7Btime%7D%22%7D%7D"))
-        self.assert_reply(("c00000147cac69643|MSA|EC|CreditsError|10|"
-                           "clientErrorMsg"))
+        self.send_request("c00000147cac69643|MSA|S|$|S|"
+                          "S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19|S|"
+                          "stock_name+last_price+time|I|1|I|2|P|G|S|"
+                          "com.lightstreamer.demo.android.stocklistdemo|S|"
+                          "2082055669|S|"
+                          "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                          "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
+                          "%24%7Bscore%7D%22%2C%22time%22%3A%22"
+                          "%24%7Btime%7D%22%7D%7D")
+        self.assert_reply("c00000147cac69643|MSA|EC|CreditsError|10|"
+                          "clientErrorMsg")
 
-    def test_notify_mpn_subscription_activation_Google_with_exception(self):
+    def test_notify_mpn_subscription_activation_google_with_exception(self):
         self.do_init_and_skip()
-        self.send_request(("c00000147cac69643|MSA|S|user2|S"
-                           "|S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19"
-                           "|S|stock_name+last_price+time|I|1|I|2|P|G|S|"
-                           "com.lightstreamer.demo.android.stocklistdemo|S|"
-                           "2082055669|S|"
-                           "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
-                           "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
-                           "%24%7Bscore%7D%22%2C%22time%22%3A%22"
-                           "%24%7Btime%7D%22%7D%7D"))
+        self.send_request("c00000147cac69643|MSA|S|user2|S"
+                          "|S401e2449d3b79feT1213883|I|1|M|M|S|item4+item19"
+                          "|S|stock_name+last_price+time|I|1|I|2|P|G|S|"
+                          "com.lightstreamer.demo.android.stocklistdemo|S|"
+                          "2082055669|S|"
+                          "Double.parseDouble%28%24%7Blast_price%7D%29+%3E+"
+                          "1000.0|S|%7B%22data%22%3A%7B%22score%22%3A%22"
+                          "%24%7Bscore%7D%22%2C%22time%22%3A%22"
+                          "%24%7Btime%7D%22%7D%7D")
         self.assert_reply("c00000147cac69643|MSA|E|Exception")
 
     def test_malformed_mpn_subscription_activation(self):
@@ -1755,49 +1752,49 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         # Invalid "P" token as mpn platform type
 
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # I|<win. index>|M|<pub. mode>|S|<item_name group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
+                   # I|<first item_name idx.>|I|<last item_name idx.>|
                    "I|1|I|2|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|R|")
         self.send_request(request)
-        self.assert_caught_exception(("Unknown platform type 'R' while"
-                                      " parsing MSA request"))
+        self.assert_caught_exception("Unknown platform type 'R' while parsing "
+                                     "MSA request")
 
         # Missing next token to P
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # I|<win. index>|M|<pub. mode>|S|<item_name group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
+                   # I|<first item_name idx.>|I|<last item_name idx.>|
                    "I|1|I|2|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|")
         self.send_request(request)
-        self.assert_caught_exception(("Token not found while parsing MSA "
-                                      "request"))
+        self.assert_caught_exception("Token not found while parsing MSA "
+                                     "request")
 
         # Invalid next literal token to "P"
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # I|<win. index>|M|<pub. mode>|S|<item_name group>|S|
                    # <field schema>|
                    "I|1|M|M|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
+                   # I|<first item_name idx.>|I|<last item_name idx.>|
                    "I|1|I|R|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|G")
         self.send_request(request)
-        self.assert_caught_exception(("An unexpected exception caught while "
-                                      "parsing MSA request"))
+        self.assert_caught_exception("An unexpected exception caught while "
+                                     "parsing MSA request")
 
         # Invalid "H" token as mode type
         request = ("c00000147c9bc4c74|MSA|S|user1|S|Sc4a1769b6bb83a4aT2852044|"
-                   # I|<win. index>|M|<pub. mode>|S|<item group>|S|
+                   # I|<win. index>|M|<pub. mode>|S|<item_name group>|S|
                    # <field schema>|
                    "I|1|M|H|S|item4+item19|S|stock_name+last_price+time|"
-                   # I|<first item idx.>|I|<last item idx.>|
+                   # I|<first item_name idx.>|I|<last item_name idx.>|
                    "I|1|I|2|"
                    # P|G|S|<application ID>|S|<device token>|S|<trigger>|
                    "P|G|S|com.lightstreamer.demo.android.stocklistdemo|S|"
@@ -1807,118 +1804,118 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                    "S|%7B%22data%22%3A%7B%22score%22%3A%22%24%7Bscore%7D%22"
                    "%2C%22time%22%3A%22%24%7Btime%7D%22%7D%7D")
         self.send_request(request)
-        self.assert_caught_exception(("Unknown mode 'H' found while parsing"
-                                      " MSA request"))
+        self.assert_caught_exception("Unknown mode 'H' found while parsing "
+                                     "MSA request")
 
     def test_notify_mpn_device_token_change(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
-                           "fc56635c89c566dda3c6708fd893549"))
+        self.send_request("3700000147c9bc4c74|MDC|S|user1"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
+                          "fc56635c89c566dda3c6708fd893549")
         self.assert_reply("3700000147c9bc4c74|MDC|V")
         device = MpnDeviceInfo(
             platform_type=MpnPlatformType.APPLE,
             application_id="com.lightstreamer.demo.ios.stocklistdemo",
-            device_token=("f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec2"
-                          "4cff14a9906f1"))
+            device_token="f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec2"
+                         "4cff14a9906f1")
 
         expected_dict = {"user": "user1",
                          "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
-                         "newDeviceToken": ("0849781a0afe0311f58bbfee1fcde031b"
-                                            "fc56635c89c566dda3c6708fd893549")}
+                         "newDeviceToken": "0849781a0afe0311f58bbfee1fcde031b"
+                                           "fc56635c89c566dda3c6708fd893549"}
         self.assertDictEqual(expected_dict, self.collector)
 
     def test_notify_mpn_device_token_change_with_null_platform_type(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
-                           "|S|S8f3da29cfc463220T5454537|P|#|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
-                           "fc56635c89c566dda3c6708fd893549"))
+        self.send_request("3700000147c9bc4c74|MDC|S|user1"
+                          "|S|S8f3da29cfc463220T5454537|P|#|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
+                          "fc56635c89c566dda3c6708fd893549")
         self.assert_reply("3700000147c9bc4c74|MDC|V")
         device = MpnDeviceInfo(platform_type=None,
-                               application_id=("com.lightstreamer.demo.ios."
-                                               "stocklistdemo"),
-                               device_token=("f780e9d8ffc86a5ec9a329e7745aa8fb"
-                                             "3a1ecce77c""09e202ec24cff14a9906"
-                                             "f1"))
+                               application_id="com.lightstreamer.demo.ios."
+                                              "stocklistdemo",
+                               device_token="f780e9d8ffc86a5ec9a329e7745aa8fb"
+                                            "3a1ecce77c""09e202ec24cff14a9906"
+                                            "f1")
         expected_dict = {"user": "user1",
                          "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
-                         "newDeviceToken": ("0849781a0afe0311f58bbfee1fcde031b"
-                                            "fc56635c89c566dda3c6708fd893549")}
+                         "newDeviceToken": "0849781a0afe0311f58bbfee1fcde031b"
+                                           "fc56635c89c566dda3c6708fd893549"}
         self.assertDictEqual(expected_dict, self.collector)
 
     def test_notify_mpn_device_token_change_with_empty_platform_type(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
-                           "|S|S8f3da29cfc463220T5454537|P|$|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
-                           "fc56635c89c566dda3c6708fd893549"))
+        self.send_request("3700000147c9bc4c74|MDC|S|user1"
+                          "|S|S8f3da29cfc463220T5454537|P|$|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
+                          "fc56635c89c566dda3c6708fd893549")
         self.assert_reply("3700000147c9bc4c74|MDC|V")
 
         device = MpnDeviceInfo(platform_type="",
                                application_id=("com.lightstreamer.demo.ios."
                                                "stocklistdemo"),
-                               device_token=("f780e9d8ffc86a5ec9a329e7745aa8fb"
-                                             "3a1ecce77c""09e202ec24cff14a9906"
-                                             "f1"))
+                               device_token="f780e9d8ffc86a5ec9a329e7745aa8fb"
+                                            "3a1ecce77c""09e202ec24cff14a9906"
+                                            "f1")
         expected_dict = {"user": "user1",
                          "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
-                         "newDeviceToken": ("0849781a0afe0311f58bbfee1fcde031b"
-                                            "fc56635c89c566dda3c6708fd893549")}
+                         "newDeviceToken": "0849781a0afe0311f58bbfee1fcde031b"
+                                           "fc56635c89c566dda3c6708fd893549"}
         self.assertDictEqual(expected_dict, self.collector)
 
     def test_notify_mpn_device_token_change_with_notification_exception(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|#"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
-                           "fc56635c89c566dda3c6708fd893549"))
+        self.send_request("3700000147c9bc4c74|MDC|S|#"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
+                          "fc56635c89c566dda3c6708fd893549")
         self.assert_reply("3700000147c9bc4c74|MDC|EN|NotificationError")
 
     def test_notify_mpn_device_token_change_with_credits_exception(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|$"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
-                           "fc56635c89c566dda3c6708fd893549"))
-        self.assert_reply(("3700000147c9bc4c74|MDC|EC|CreditsError|10|"
-                           "clientErrorMsg"))
+        self.send_request("3700000147c9bc4c74|MDC|S|$"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
+                          "fc56635c89c566dda3c6708fd893549")
+        self.assert_reply("3700000147c9bc4c74|MDC|EC|CreditsError|10|"
+                          "clientErrorMsg")
 
     def test_notify_mpn_device_token_change_with_generic_exception(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user2"
-                           "|S|S8f3da29cfc463220T5454537|P|A|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
-                           "fc56635c89c566dda3c6708fd893549"))
+        self.send_request("3700000147c9bc4c74|MDC|S|user2"
+                          "|S|S8f3da29cfc463220T5454537|P|A|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|0849781a0afe0311f58bbfee1fcde031b"
+                          "fc56635c89c566dda3c6708fd893549")
         self.assert_reply("3700000147c9bc4c74|MDC|E|Exception")
 
     def test_malformed_notify_mpn_device_token_change(self):
         self.do_init_and_skip()
-        self.send_request(("3700000147c9bc4c74|MDC|S|user1"
-                           "|S|S8f3da29cfc463220T5454537|P|B1|S|"
-                           "com.lightstreamer.demo.ios.stocklistdemo|S|"
-                           "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
-                           "24cff14a9906f1|S|"
-                           "0849781a0afe0311f58bbfee1fcde031bfc56635c89c566dda"
-                           "3c6708fd893549"))
-        self.assert_caught_exception(("Unknown platform type 'B1' while "
-                                      "parsing MDC request"))
+        self.send_request("3700000147c9bc4c74|MDC|S|user1"
+                          "|S|S8f3da29cfc463220T5454537|P|B1|S|"
+                          "com.lightstreamer.demo.ios.stocklistdemo|S|"
+                          "f780e9d8ffc86a5ec9a329e7745aa8fb3a1ecce77c09e202ec"
+                          "24cff14a9906f1|S|"
+                          "0849781a0afe0311f58bbfee1fcde031bfc56635c89c566dda"
+                          "3c6708fd893549")
+        self.assert_caught_exception("Unknown platform type 'B1' while parsing"
+                                     " MDC request")
 
 
 if __name__ == "__main__":
