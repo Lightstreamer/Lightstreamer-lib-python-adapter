@@ -179,7 +179,8 @@ class _RequestReceiver():
             try:
                 self._log.debug("Reading from socket...")
                 data = sock.recv(1024)
-                self._log.debug("Received %d bytes of request data [%s]", len(data), data)
+                self._log.debug("Received %d bytes of request data [%s]",
+                                len(data), data)
                 if not data:
                     raise EOFError('Socket connection broken')
                 buffer += data.decode('ascii')
@@ -227,9 +228,9 @@ class _RequestReceiver():
 
 
 class Server(metaclass=ABCMeta):
-    """An abstract class meant to be extended, which represents a generic Remote
-    Server object, which can run a Remote Data or Metadata Adapter and connect
-    it to the Proxy Adapter running on Lightstreamer Server.
+    """An abstract class meant to be extended, which represents a generic
+    Remote Server object, which can run a Remote Data or Metadata Adapter and
+    connect it to the Proxy Adapter running on Lightstreamer Server.
 
     The object should be provided with a suitable Adapter instance and with
     suitable initialization parameters, then activated through its own
@@ -237,14 +238,14 @@ class Server(metaclass=ABCMeta):
     reuse of the same instance is not supported.
 
     The Remote Server will take care of sending keepalive packets on the
-    connections when needed. The interval can be configured through the provider
-    ``keep_alive`` parameter, where a value of 0 or negative means no
+    connections when needed. The interval can be configured through the
+    provider ``keep_alive`` parameter, where a value of 0 or negative means no
     keepalives. By default, it is set to 10 sec.
 
     However, if a stricter interval is requested by the Proxy Adapter on
-    startup, it  will be obeyed (with a safety minimum of 1 second). This should
-    ensure that the Proxy Adapter activity checks will always succeed, but for
-    some old versions of the Proxy Adapter.
+    startup, it  will be obeyed (with a safety minimum of 1 second). This
+    should ensure that the Proxy Adapter activity checks will always succeed,
+    but for some old versions of the Proxy Adapter.
     """
 
     _DEFAULT_POOL_SIZE = 4
@@ -362,9 +363,9 @@ class Server(metaclass=ABCMeta):
                                self.name, self._STRICT_KEEPALIVE)
                 self._change_keep_alive(Server._STRICT_KEEPALIVE)
             # else:
-                # For backward compatibility we keep the setting; it is possible
-                # that the setting is too long and the Proxy Adapter activity
-                # check is triggered
+                # For backward compatibility we keep the setting; it is
+                # possible that the setting is too long and the Proxy Adapter
+                # activity check is triggered
         else:
             keepalive_time = float(keepalive_hint)
             if keepalive_time <= 0:
@@ -379,11 +380,12 @@ class Server(metaclass=ABCMeta):
 
                         self._change_keep_alive(keepalive_time)
                     else:
-                        self._log.warning("Keepalive time for %s finally set to"
-                                          " %d milliseconds, despite a Proxy "
-                                          "Adapter suggestion of %d "
+                        self._log.warning("Keepalive time for %s finally set "
+                                          "to %d milliseconds, despite a Proxy"
+                                          " Adapter suggestion of %d "
                                           "milliseconds", self.name,
-                                          Server._MIN_KEEPALIVE, keepalive_time)
+                                          Server._MIN_KEEPALIVE,
+                                          keepalive_time)
                         self._change_keep_alive(Server._MIN_KEEPALIVE)
                 else:
                     # The default setting is stricter, so it's ok
@@ -404,7 +406,8 @@ class Server(metaclass=ABCMeta):
                                           " milliseconds, despite a Proxy "
                                           "Adapter suggestion of %d "
                                           "milliseconds", self.name,
-                                          Server._MIN_KEEPALIVE, keepalive_time)
+                                          Server._MIN_KEEPALIVE,
+                                          keepalive_time)
                         self._change_keep_alive(Server._MIN_KEEPALIVE)
                 else:
                     # Our setting is stricter, so it's ok
@@ -434,8 +437,8 @@ class Server(metaclass=ABCMeta):
         the Proxy Adapter are received and forwarded to the Remote Adapter.
         """
         if self.keep_alive > 0:
-            self._log.info("Keepalive time for %s set to %d seconds", self.name,
-                           self.keep_alive)
+            self._log.info("Keepalive time for %s set to %d seconds",
+                           self.name, self.keep_alive)
         else:
             self._log.info("Keepalive for %s disabled", self.name)
 
@@ -699,7 +702,8 @@ class MetadataProviderServer(Server):
         del parsed_data["keepalive_hint.millis"]
         try:
             if proxy_version == "1.8.1":
-                raise Exception("Unsupported reserved protocol version number: {}".format(proxy_version))
+                raise Exception("Unsupported reserved protocol version "
+                                "number: {}".format(proxy_version))
             if self._params is not None:
                 init_params = self._params.copy()
                 parsed_data.update(init_params)
@@ -847,12 +851,12 @@ class MetadataProviderServer(Server):
             try:
                 items = [{"allowedModeList":
                           [mode for mode in list(Mode)
-                           if self._adapter.mode_may_be_allowed(item, mode)],
+                           if self._adapter.mode_may_be_allowed(item_name, mode)],
                           "distinctSnapshotLength":
-                          self._adapter.get_distinct_snapshot_length(item),
+                          self._adapter.get_distinct_snapshot_length(item_name),
                           "minSourceFrequency":
-                          self._adapter.get_min_source_frequency(item)}
-                         for item in parsed_data]
+                          self._adapter.get_min_source_frequency(item_name)}
+                         for item_name in parsed_data]
             except Exception as err:
                 res = meta_protocol.write_get_item_data(exception=err)
             else:
@@ -870,13 +874,13 @@ class MetadataProviderServer(Server):
             try:
                 items = [{"allowedModeList":
                           [mode for mode in list(Mode)
-                           if self._adapter.ismode_allowed(user, item, mode)],
+                           if self._adapter.ismode_allowed(user, item_name, mode)],
                           "allowedBufferSize":
-                          self._adapter.get_allowed_buffer_size(user, item),
+                          self._adapter.get_allowed_buffer_size(user, item_name),
                           "allowedMaxFrequency":
                           self._adapter.get_allowed_max_item_frequency(user,
-                                                                       item)}
-                         for item in user_items]
+                                                                       item_name)}
+                         for item_name in user_items]
             except Exception as err:
                 res = meta_protocol.write_get_user_item_data(exception=err)
             else:
@@ -1076,7 +1080,7 @@ class DataProviderServer(Server):
     supported by the Metadata Adapter. A value of 0, negative or ``None`` also
     implies the default behaviour as stated above.
 
-    Note that :meth;Subscribe and Unsubscribe invocations for the same item are
+    Note that :meth;Subscribe and Unsubscribe invocations for the same item_name are
     always guaranteed to be sequentialized in the right way, although they may
     not occur in the same thread.
     """
@@ -1118,7 +1122,7 @@ class DataProviderServer(Server):
         self.init_expected = True
         self._notify_sender = None
         self.notify_address = (address[0], address[2])
-        self._notify_sock = None
+        self._ntfy_sock = None
 
     def _send_remote_credentials(self):
         """Invoked for sending the remote credentials to the Proxy Metadata
@@ -1192,12 +1196,12 @@ class DataProviderServer(Server):
         from the Remote Data Adapter to the Proxy Adapter, in order to send
         data over the notification channel.
         """
-        self._notify_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._notify_sock.connect(self.notify_address)
+        self._ntfy_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._ntfy_sock.connect(self.notify_address)
         notify_sender_log = logging.getLogger(("lightstreamer-adapter."
                                                "requestreply.notifications."
                                                "NotifySender"))
-        self._notify_sender = _Sender(sock=self._notify_sock, server=self,
+        self._notify_sender = _Sender(sock=self._ntfy_sock, server=self,
                                       keepalive=self.keep_alive,
                                       log=notify_sender_log)
         self._notify_sender.start()
@@ -1212,7 +1216,8 @@ class DataProviderServer(Server):
         del parsed_data["keepalive_hint.millis"]
         try:
             if proxy_version == "1.8.1":
-                raise Exception("Unsupported reserved protocol version number: {}".format(proxy_version))
+                raise Exception("Unsupported reserved protocol version "
+                                "number: {}".format(proxy_version))
             if self._params:
                 init_params = self._params.copy()
                 parsed_data.update(init_params)
@@ -1296,7 +1301,7 @@ class DataProviderServer(Server):
             except RemotingException as err:
                 self.on_exception(err)
         else:
-            DATA_LOGGER.warning("Unexpected update for item %s", item_name)
+            DATA_LOGGER.warning("Unexpected update for item_name %s", item_name)
 
     def end_of_snapshot(self, item_name):
         request_id = self._subscription_mgr.get_active_item(item_name)
@@ -1307,7 +1312,7 @@ class DataProviderServer(Server):
             except RemotingException as err:
                 self.on_exception(err)
         else:
-            DATA_LOGGER.warning(("Unexpected end_of_snapshot notify for item "
+            DATA_LOGGER.warning(("Unexpected end_of_snapshot notify for item_name "
                                  "%s"), item_name)
 
     def clear_snapshot(self, item_name):
@@ -1319,7 +1324,7 @@ class DataProviderServer(Server):
             except RemotingException as err:
                 self.on_exception(err)
         else:
-            DATA_LOGGER.warning(("Unexpected clear_snapshot for item %s"),
+            DATA_LOGGER.warning(("Unexpected clear_snapshot for item_name %s"),
                                 item_name)
 
     def failure(self, exception):
@@ -1374,14 +1379,14 @@ class DataProviderServer(Server):
         the Notify Sender object.
         """
         super(DataProviderServer, self).close()
-        self._notify_sock.close()
+        self._ntfy_sock.close()
         self._notify_sender.quit()
 
 
 class ExceptionHandler(metaclass=ABCMeta):
-    """An abstract class meatn to to be implemented in order to provide a Remote
-    Server instance with a custom handler for error conditions occurring on the
-    Remote Server.
+    """An abstract class meatn to to be implemented in order to provide a
+    Remote Server instance with a custom handler for error conditions occurring
+    on the     Remote Server.
 
     Note that multiple redundant invocations on the same Remote Server instance
     are possible.
@@ -1398,8 +1403,8 @@ class ExceptionHandler(metaclass=ABCMeta):
         This can be the signal of a normal termination of Lightstreamer Server.
         If this is not the case, then this Remote Server should be closed and a
         new one should be created and initialized. This may mean closing and
-        restarting the process or just creating a new instance, depending on the
-        implementation choice. This will be detected by the Proxy Adapter,
+        restarting the process or just creating a new instance, depending on
+        the implementation choice. This will be detected by the Proxy Adapter,
         which will react accordingly.
 
         The default handling just terminates the process.
@@ -1416,9 +1421,9 @@ class ExceptionHandler(metaclass=ABCMeta):
         compromised.
         If this is the case, then this Remote Server instance should be closed
         and a new one should be created and initialized. This may mean closing
-        and restarting the process or just creating a new instance, depending on
-        the implementation choice. This will be detected by the Proxy Adapter,
-        which will react accordingly.
+        and restarting the process or just creating a new instance, depending
+        on the implementation choice. This will be detected by the Proxy
+        Adapter, which will react accordingly.
 
         The default handling, in case of a Remote Data Adapter, issues an
         asynchronous failure notification to the Proxy Adapter.
