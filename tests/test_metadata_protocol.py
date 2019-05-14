@@ -43,7 +43,7 @@ class MetadataProtocolTest(unittest.TestCase):
 
     def test_mpi_with_parameters(self):
         """Tests the response to an MPI request with a list of parameters."""
-        parameters = {'param1':'value1', 'param2':'value2'}
+        parameters = {'param1': 'value1', 'param2': 'value2'}
         res = metadata_protocol.write_init(parameters)
         self.assertEqual("MPI|S|param1|S|value1|S|param2|S|value2", res)
 
@@ -56,9 +56,11 @@ class MetadataProtocolTest(unittest.TestCase):
         self.assertEqual("MPI|EM|MetaProvider+Error", res)
 
     def test_mpi_generic_exception(self):
-        """Tests the response to an MPI request in the case of a generic exception.
+        """Tests the response to an MPI request in the case of a generic
+        exception.
         """
-        res = metadata_protocol.write_init(exception=RuntimeError("Generic Error"))
+        res = metadata_protocol.write_init(
+            exception=RuntimeError("Generic Error"))
         self.assertEqual("MPI|E|Generic+Error", res)
 
     def test_nns(self):
