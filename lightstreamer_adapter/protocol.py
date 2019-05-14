@@ -114,23 +114,23 @@ def read(packet, data_type, index):
     """Reads and decode a single sequence of '<type>|<segment>', located at
     the specified index in the provided packet, where:
 
-    type is the native type of the segment and must match the provided
+    <type> is the native type of the segment and must match the provided
     data_type;
-    segment is the content of a field or argument of a method.
+    <segment> is the content of a field or argument of a method.
     """
-    current_data_type = read_token(packet, index)
+    read_data_type = read_token(packet, index)
 
-    if current_data_type == data_type:
+    if read_data_type == data_type:
         current_token = read_token(packet, index + 1)
-        if current_data_type == 'S':
+        if read_data_type == 'S':
             return decode_string(current_token)
-        elif current_data_type == 'M':
+        if read_data_type == 'M':
             return decode_modes(current_token)
-        elif current_data_type == "I":
+        if read_data_type == "I":
             return int(current_token)
-        elif current_data_type == "P":
+        if read_data_type == "P":
             return decode_nobile_platform_type(current_token)
-    raise RemotingException("Unknown type '{}' found".format(current_data_type))
+    raise RemotingException("Unknown type '{}' found".format(read_data_type))
 
 
 def read_map(tokens, start, length=None):
@@ -246,8 +246,7 @@ def decode_modes(modes):
     for mode in modes:
         if mode in list(m.value for m in Mode):
             return Mode(mode)
-        else:
-            raise RemotingException("Unknown mode '{}' found".format(mode))
+        raise RemotingException("Unknown mode '{}' found".format(mode))
 
     raise RemotingException("Unknown mode '{}' found".format(modes))
 
@@ -261,9 +260,7 @@ def decode_nobile_platform_type(platform_type):
 
     if platform_type in [c.value for c in MpnPlatformType]:
         return MpnPlatformType(platform_type)
-    else:
-        raise RemotingException("Unknown platform type '{}'"
-                                .format(platform_type))
+    raise RemotingException("Unknown platform type '{}'".format(platform_type))
 
 
 def _append_exceptions(response, error, subtype=True):
@@ -315,4 +312,3 @@ def write_credentials(username, password):
     method = Method.RAC
     return join(str(method), 'S', encode_string(username), 'S',
                 encode_string(password))
-
