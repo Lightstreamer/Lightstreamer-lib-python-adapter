@@ -135,8 +135,8 @@ def write_get_items(items=None, exception=None):
         return _handle_exception(exception, join(method, 'E'),
                                  ItemsError)
     if items:
-        return join(method, 'S|') + '|S|'.join([enc_str(item) for
-                                                item in items])
+        return join(method, 'S|') + '|S|'.join([enc_str(item_name) for
+                                                item_name in items])
     return join(method)
 
 
