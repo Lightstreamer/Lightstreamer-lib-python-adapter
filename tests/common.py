@@ -5,9 +5,9 @@ import queue
 import unittest
 from enum import Enum
 from lightstreamer_adapter.server import ExceptionHandler
-from sphinx.ext.inheritance_diagram import skip
+
 logging.basicConfig(level=logging.DEBUG)
-log = logging.getLogger("lightstreamer-test_server")
+LOG = logging.getLogger("lightstreamer-test_server")
 
 
 class LightstreamerServerSimulator():
@@ -20,73 +20,73 @@ class LightstreamerServerSimulator():
         self._rr_sock.bind(req_reply_adr)
         self._rr_sock.listen(1)
         self._rr_client_socket = None
-        self._notify_sock, self._ntfy_client_socket = None, None
+        self._ntfy_sock, self._ntfy_client_sock = None, None
         if enable_notify is True:
-            self._notify_sock = socket.socket(socket.AF_INET,
-                                              socket.SOCK_STREAM)
-            self._notify_sock.setsockopt(socket.SOL_SOCKET,
-                                         socket.SO_REUSEADDR, 1)
-            self._notify_sock.bind(notify_adr)
-            self._notify_sock.listen(1)
+            self._ntfy_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._ntfy_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,
+                                       1)
+            self._ntfy_sock.bind(notify_adr)
+            self._ntfy_sock.listen(1)
 
     def _accept_connections(self):
-        log.info("Listening at %s", self._rr_sock.getsockname())
+        LOG.info("Listening at %s", self._rr_sock.getsockname())
         self._rr_client_socket, rr_client_addr = self._rr_sock.accept()
-        log.info("Accepted connection from %s on %s", rr_client_addr,
+        LOG.info("Accepted connection from %s on %s", rr_client_addr,
                  self._rr_sock.getsockname())
-        log.info("Listener at %s closed", self._rr_sock.getsockname())
+        LOG.info("Listener at %s closed", self._rr_sock.getsockname())
         self._rr_sock.close()
 
-        if self._notify_sock is not None:
-            log.info("Listening at %s", self._notify_sock.getsockname())
-            self._ntfy_client_socket, ntfy_client_addr = self._notify_sock.accept()
-            log.info("Accepted a connection from %s on %s", ntfy_client_addr,
-                             self._notify_sock.getsockname())
-            log.info("Listener at %s closed", self._notify_sock.getsockname())
-            self._notify_sock.close()
+        if self._ntfy_sock is not None:
+            LOG.info("Listening at %s", self._ntfy_sock.getsockname())
+            self._ntfy_client_sock, ntfy_client_addr = self._ntfy_sock.accept()
+            LOG.info("Accepted a connection from %s on %s", ntfy_client_addr,
+                     self._ntfy_sock.getsockname())
+            LOG.info("Listener at %s closed", self._ntfy_sock.getsockname())
+            self._ntfy_sock.close()
 
     def set_rr_socket_timeout(self, timeout):
         self._rr_client_socket.settimeout(timeout)
 
     def set_notify_socket_timeout(self, timeout):
-        self._ntfy_client_socket.settimeout(timeout)
+        self._ntfy_client_sock.settimeout(timeout)
 
     def start(self):
         self.main_thread = threading.Thread(target=self._accept_connections,
                                             name="Simple Server Thread")
         self.main_thread.start()
-        log.info("Started accepting new connections")
+        LOG.info("Started accepting new connections")
 
     def send_request(self, request):
         protocol_request = request + '\r\n'
         self._rr_client_socket.sendall(bytes(protocol_request, "utf-8"))
-        log.info("Sent request: %s", protocol_request)
+        LOG.info("Sent request: %s", protocol_request)
 
     def receive_replies(self, skip_keepalive):
         reply = self._read_from_socket(self._rr_client_socket, skip_keepalive,
                                        split=False)
-        log.info("Received reply: %s", reply)
+        LOG.info("Received reply: %s", reply)
         return reply
 
     def receive_notifications(self, skip_keepalive):
-        notify = self._read_from_socket(self._ntfy_client_socket, skip_keepalive,
-                                        split=True)
-        log.info("Received notify: %s", notify)
+        notify = self._read_from_socket(self._ntfy_client_sock,
+                                        skip_keepalive, split=True)
+        LOG.info("Received notify: %s", notify)
         return notify
 
     def _read_from_socket(self, sock, skip_keepalive, split):
         buffer = ''
         notifications = []
         while True:
-            log.debug("Reading from socket...")
+            LOG.debug("Reading from socket...")
             more = sock.recv(1024)
-            log.debug("Received %d bytes of data", len(more))
+            LOG.debug("Received %d bytes of data", len(more))
             if not more:
                 raise EOFError('Socket connection broken')
             buffer += more.decode()
             tokens = buffer.splitlines(keepends=True)
             for notify in tokens:
-                if notify.endswith('\r\n') and (not skip_keepalive or notify.strip() != 'KEEPALIVE'):
+                if notify.endswith('\r\n') and (not skip_keepalive or
+                                                notify.strip() != 'KEEPALIVE'):
                     if split is True:
                         notify = '|'.join(notify.split("|")[1:])
                     notifications.append(notify.rstrip())
@@ -99,8 +99,8 @@ class LightstreamerServerSimulator():
 
     def stop(self):
         self._rr_client_socket.close()
-        if self._ntfy_client_socket is not None:
-            self._ntfy_client_socket.shutdown(socket.SHUT_WR)
+        if self._ntfy_client_sock is not None:
+            self._ntfy_client_sock.shutdown(socket.SHUT_WR)
 
 
 class RemoteAdapterBase(unittest.TestCase):
@@ -112,17 +112,17 @@ class RemoteAdapterBase(unittest.TestCase):
     PROXY_DATA_ADAPTER_ADDRESS = (_HOST, _REQ_REPLY_PORT, _NOTIFY_PORT)
 
     def setUp(self):
-        log.info("\n\nStarting new test...")
+        LOG.info("\n\nStarting new test...")
         self._remote_server = None
         self._exception_handler = None
         # Configures and starts the Lightstreamer Server simulator
         self._ls_server = LightstreamerServerSimulator(
-                                                  RemoteAdapterBase._REQUEST_REPLY_ADDRESS,
-                                                  RemoteAdapterBase._NOTIFY_ADDRESS,
-                                                  self.is_enable_notify())
+            RemoteAdapterBase._REQUEST_REPLY_ADDRESS,
+            RemoteAdapterBase._NOTIFY_ADDRESS,
+            self.is_enable_notify())
         self._ls_server.start()
         self.on_setup()
-        log.info("setUp completed\n\n")
+        LOG.info("setUp completed\n\n")
 
     def is_enable_notify(self):
         return False
@@ -151,7 +151,7 @@ class RemoteAdapterBase(unittest.TestCase):
 
         # Stops the Lightstreamer Server Simulator
         self._ls_server.stop()
-        log.info("Test completed")
+        LOG.info("Test completed")
 
     def send_request(self, request, skip_reply=False):
         self._ls_server.send_request(request)
@@ -170,7 +170,8 @@ class RemoteAdapterBase(unittest.TestCase):
         self.assertEqual(len(reply), 1)
         self.assertEqual(expected, reply[0])
 
-    def assert_not_reply(self, not_expected=None, timeout=0.2, skip_keepalive=True):
+    def assert_not_reply(self, not_expected=None, timeout=0.2,
+                         skip_keepalive=True):
         self._ls_server.set_rr_socket_timeout(timeout)
         reply = self._ls_server.receive_replies(skip_keepalive)
         self.assertEqual(len(reply), 1)
@@ -178,7 +179,7 @@ class RemoteAdapterBase(unittest.TestCase):
 
     def assert_notify(self, expected=None):
         self._ls_server.set_notify_socket_timeout(3.5)
-        notifications = self._ls_server.receive_notifications(skip_keepalive=True)
+        notifications = self._ls_server.receive_notifications(True)
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
 
