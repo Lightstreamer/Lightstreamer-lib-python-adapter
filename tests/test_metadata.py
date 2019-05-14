@@ -857,8 +857,8 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
                                      " MPI request")
 
     def test_remote_credentials(self):
-        self.setup_remote_adapter(username="username", password="password")
-        self.assert_reply("1|RAC|S|username|S|password")
+        self.setup_remote_adapter(username="remote1", password="fdhjkslghak")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak")
 
 
 class MetadataProviderServerTest(RemoteAdapterBase):
