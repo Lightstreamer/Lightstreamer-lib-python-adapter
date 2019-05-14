@@ -1,5 +1,4 @@
 import unittest
-import logging
 import time
 from multiprocessing import cpu_count
 from common import (RemoteAdapterBase, KeepaliveConstants)
@@ -17,8 +16,6 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnPlatformType,
                                                        TableInfo,
                                                        MpnSubscriptionInfo)
-
-log = logging.getLogger(__name__)
 
 # Specify here the number of your CPU cores
 EXPECTED_CPU_CORES = cpu_count()
