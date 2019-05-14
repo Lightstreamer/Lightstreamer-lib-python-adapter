@@ -95,7 +95,7 @@ class MetadataProvider():
         **IMPLEMENTATION NOTE:** does nothing.
         """
 
-    def notify_user(self, user, password, http_headers, client_principal=None):
+    def notify_user(self, user, password, http_headers):
         """Called by Lightstreamer Kernel through the Remote Server as a
         preliminary check that a user is enabled to make Requests to the
         related Data Providers. It is invoked upon each session request and it
