@@ -38,16 +38,6 @@ def read_init(data):
 
 def write_init(proxy_parameters=None, exception=None):
     """Encodes and returns a DPI ('Data Init') response."""
-#     if not exception:
-#         if proxy_parameters:
-#             parameters = []
-#             for key, value in proxy_parameters.items():
-#                 parameters.append(key)
-#                 parameters.append(enc_str(value))
-#             return join(str(Method.DPI), 'S|') + '|S|'.join(parameters)
-#         return join(str(Method.DPI), "V")
-#     return _handle_exception(exception, join(str(Method.DPI), 'E'),
-#                              DataProviderError)
     return _write_init(Method.DPI, DataProviderError, proxy_parameters,
                        exception)
 
@@ -85,7 +75,7 @@ def _encode_value(value):
     """
     if value is None or isinstance(value, str):
         return "S|" + enc_str(value)
-    elif isinstance(value, bytes):
+    if isinstance(value, bytes):
         return "Y|" + enc_byte(value)
     raise RemotingException(("Found value '{}' of an unsupported type while "
                              "building a {} request").format(str(value),
@@ -106,14 +96,14 @@ def write_update_map(item_name, request_id, issnapshot, events_map):
     return update
 
 
-def write_eos(item, request_id):
+def write_eos(item_name, request_id):
     """Encodes and returns an EOS ('End Of Snapshot') response."""
-    return join(str(Method.EOS), "S", enc_str(item), "S", enc_str(request_id))
+    return join(str(Method.EOS), "S", enc_str(item_name), "S", enc_str(request_id))
 
 
-def write_cls(item, request_id):
+def write_cls(item_name, request_id):
     """Encodes and returns a CLS ('Clear Snapshot') response string."""
-    return join(str(Method.CLS), "S", enc_str(item), "S", enc_str(request_id))
+    return join(str(Method.CLS), "S", enc_str(item_name), "S", enc_str(request_id))
 
 
 def write_failure(exception):
