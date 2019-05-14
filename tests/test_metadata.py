@@ -70,67 +70,67 @@ class MetadataProviderTestClass(MetadataProvider):
     def wants_tables_notification(self, user):
         return True
 
-    def get_distinct_snapshot_length(self, item_name):
-        if item_name == "item_1":
+    def get_distinct_snapshot_length(self, item):
+        if item == "item_1":
             return 10
 
-        if item_name == "item_2":
+        if item == "item_2":
             return 20
 
-        if item_name == "item_4":
-            raise RuntimeError("Error for provided item_name")
+        if item == "item_4":
+            raise RuntimeError("Error for provided item")
 
-        if item_name == "get invalid":
+        if item == "get invalid":
             return "Wrong Distinct Snapshot Length Type"
 
         return 0
 
-    def get_min_source_frequency(self, item_name):
-        if item_name == "item_1":
+    def get_min_source_frequency(self, item):
+        if item == "item_1":
             return 4.5
 
-        if item_name == "item_2":
+        if item == "item_2":
             return 7.3
 
         return 0.0
 
-    def mode_may_be_allowed(self, item_name, mode):
-        if item_name == "item_1":
+    def mode_may_be_allowed(self, item, mode):
+        if item == "item_1":
             if mode in [Mode.MERGE, Mode.DISTINCT]:
                 return True
 
-        if item_name == "item_2":
+        if item == "item_2":
             if mode in [Mode.RAW, Mode.MERGE, Mode.COMMAND]:
                 return True
 
         return False
 
-    def get_allowed_max_item_frequency(self, user, item_name):
-        if item_name == "item_1":
+    def get_allowed_max_item_frequency(self, user, item):
+        if item == "item_1":
             return 170.5
 
-        if item_name == "item_2":
+        if item == "item_2":
             return 27.3
 
         return 0.0
 
-    def get_allowed_buffer_size(self, user, item_name):
-        if item_name == "item_1":
+    def get_allowed_buffer_size(self, user, item):
+        if item == "item_1":
             return 30
 
-        if item_name == "item_2":
+        if item == "item_2":
             return 40
 
-        if item_name == "get invalid":
+        if item == "get invalid":
             return "Wrong Allowed Buffer Size"
 
         return 0
 
-    def ismode_allowed(self, user, item_name, mode):
-        if item_name == "item_1":
+    def ismode_allowed(self, user, item, mode):
+        if item == "item_1":
             return True
 
-        if item_name == "item_2" and mode in [Mode.RAW, Mode.MERGE]:
+        if item == "item_2" and mode in [Mode.RAW, Mode.MERGE]:
             return True
 
         if user == "user2":
@@ -1255,7 +1255,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         # Testing generic Error provoked by item_4
         self.do_init_and_skip()
         self.send_request("70000010c3e4d0462|GIT|S|item_1|S|item_2|S|item_4")
-        self.assert_reply("70000010c3e4d0462|GIT|E|Error+for+provided+item_name")
+        self.assert_reply("70000010c3e4d0462|GIT|E|Error+for+provided+item")
 
     def test_invalid_get_item_data(self):
         self.do_init_and_skip()
