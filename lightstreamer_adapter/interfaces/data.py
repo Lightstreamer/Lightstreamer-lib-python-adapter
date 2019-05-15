@@ -41,7 +41,7 @@ class DataProvider(metaclass=ABCMeta):
     have been produced for an Item by the Data Adapter since subscription time,
     then the support for the Item Snapshot can be leveraged.
 
-    Lightstreamer1 ensures that calls to
+    Lightstreamer Kernel ensures that calls to
     :meth:`.subscribe` and
     :meth:`.unsubscribe` for
     the same Item will be interleaved, without redundant calls; whenever
