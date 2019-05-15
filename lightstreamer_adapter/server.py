@@ -372,6 +372,37 @@ class Server(metaclass=ABCMeta):
         """
         self._exception_handler = handler
 
+    def _on_init(self, subprotocol, params, config_file, data, adapter,
+                 invoke_listener=False):
+        parsed_data = subprotocol.read_init(data)
+        parsed_data.setdefault(protocol.ARI_VERSION, "1.8.0")
+        parsed_data.setdefault(protocol.KEEPALIVE_HINTS, None)
+        proxy_version = parsed_data[protocol.ARI_VERSION]
+        keep_alive_hint = parsed_data[protocol.KEEPALIVE_HINTS]
+        del parsed_data[protocol.ARI_VERSION]
+        del parsed_data[protocol.KEEPALIVE_HINTS]
+        try:
+            if proxy_version == "1.8.1":
+                raise Exception("Unsupported reserved protocol version "
+                                "number: {}".format(proxy_version))
+            if params is not None:
+                init_params = params.copy()
+                parsed_data.update(init_params)
+
+            adapter.initialize(parsed_data, config_file)
+            if invoke_listener is True:
+                adapter.set_listener(self)
+        except Exception as err:
+            res = subprotocol.write_init(exception=err)
+        else:
+            proxy_parameters = None
+            if proxy_version != "1.8.0":
+                proxy_parameters = {}
+                proxy_parameters[protocol.ARI_VERSION] = "1.8.2"
+            res = subprotocol.write_init(proxy_parameters)
+        self._use_keep_alive_hint(keep_alive_hint)
+        return res
+
     def _use_keep_alive_hint(self, keepalive_hint=None):
         if keepalive_hint is None:
             # No information provided, we stick to a stricter default
@@ -709,38 +740,8 @@ class MetadataProviderServer(Server):
         self._executor.submit(execute_and_reply)
 
     def _on_mpi(self, data):
-        parsed_data = meta_protocol.read_init(data)
-        # "ARI.version" is the new parameter sent by the Proxy Adapter to carry
-        # the protocol version that the Remote Adapter is willing to use.
-        # If the parameter is not present, it means that an we are connected
-        # with an old Proxy Adapter, therefore we can assume version 1.8.0 or
-        # earlier.
-        parsed_data.setdefault("ARI.version", "1.8.0")
-        parsed_data.setdefault("keepalive_hint.millis", None)
-        proxy_version = parsed_data["ARI.version"]
-        keep_alive_hint = parsed_data["keepalive_hint.millis"]
-        del parsed_data["ARI.version"]
-        del parsed_data["keepalive_hint.millis"]
-        try:
-            if proxy_version == "1.8.1":
-                raise Exception("Unsupported reserved protocol version "
-                                "number: {}".format(proxy_version))
-            if self._params is not None:
-                init_params = self._params.copy()
-                parsed_data.update(init_params)
-            self._adapter.initialize(parsed_data, self._config_file)
-        except Exception as err:
-            res = meta_protocol.write_init(exception=err)
-        else:
-            proxy_parameters = {}
-            if proxy_version != "1.8.0":
-                # If connected with a Proxy that support protocol version 1.8.2
-                # and above, specify which protocol version is currently
-                # supported by this lib: 1.8.2
-                proxy_parameters["ARI.version"] = "1.8.2"
-            res = meta_protocol.write_init(proxy_parameters)
-        self._use_keep_alive_hint(keep_alive_hint)
-        return res
+        return self._on_init(meta_protocol, self._params, self._config_file,
+                             data, self._adapter)
 
     def _on_nus(self, data):
         parsed_data = meta_protocol.read_notify_user(data)
@@ -1230,33 +1231,8 @@ class DataProviderServer(Server):
         self._notify_sender.start()
 
     def _on_dpi(self, data):
-        parsed_data = data_protocol.read_init(data)
-        parsed_data.setdefault("ARI.version", "1.8.0")
-        parsed_data.setdefault("keepalive_hint.millis", None)
-        proxy_version = parsed_data["ARI.version"]
-        keep_alive_hint = parsed_data["keepalive_hint.millis"]
-        del parsed_data["ARI.version"]
-        del parsed_data["keepalive_hint.millis"]
-        try:
-            if proxy_version == "1.8.1":
-                raise Exception("Unsupported reserved protocol version "
-                                "number: {}".format(proxy_version))
-            if self._params:
-                init_params = self._params.copy()
-                parsed_data.update(init_params)
-
-            self._adapter.initialize(parsed_data, self._config_file)
-            self._adapter.set_listener(self)
-        except Exception as err:
-            res = data_protocol.write_init(exception=err)
-        else:
-            proxy_parameters = None
-            if proxy_version != "1.8.0":
-                proxy_parameters = {}
-                proxy_parameters["ARI.version"] = "1.8.2"
-            res = data_protocol.write_init(proxy_parameters)
-        self._use_keep_alive_hint(keep_alive_hint)
-        return res
+        return self._on_init(data_protocol, self._params, self._config_file,
+                             data, self._adapter, True)
 
     def _on_sub(self, request_id, data):
         item_name = data_protocol.read_sub(data)
