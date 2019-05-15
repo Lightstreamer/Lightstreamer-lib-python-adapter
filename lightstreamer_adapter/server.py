@@ -49,6 +49,22 @@ def notify(function):
     return wrap
 
 
+def create_socket_and_connect(address, ssl_context=None):
+    """Connect to the Proxy Adapter listening on the provided address, and
+    return the socket object.
+    If an SSLContext is specified, the connection is established by using the
+    wrapped socket.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if ssl_context is not None:
+        hostname = address[0]
+        client_socket = ssl_context.wrap_socket(sock, server_hostname=hostname)
+    else:
+        client_socket = sock
+    client_socket.connect(address)
+    return client_socket
+
+
 class _Sender():
     """Helper class which manages the communications from the Remote Adapter to
     the ProxyAdapter, sending data over the "request/replies" or
@@ -259,7 +275,8 @@ class Server(metaclass=ABCMeta):
     # Number of current instances of Server' subclasses.
     _number = 0
 
-    def __init__(self, address, name, keep_alive, thread_pool_size):
+    def __init__(self, address, name, keep_alive, thread_pool_size,
+                 ssl_context):
         Server._number += 1
 
         # Logger actually overridden by subclasses.
@@ -288,6 +305,7 @@ class Server(metaclass=ABCMeta):
         self._executor = ThreadPoolExecutor(self._config['thread_pool_size'])
         self._server_sock = None
         self._request_receiver = None
+        self._ssl_context = ssl_context
 
     @property
     def name(self):
@@ -442,8 +460,8 @@ class Server(metaclass=ABCMeta):
         else:
             self._log.info("Keepalive for %s disabled", self.name)
 
-        self._server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_sock.connect(self._config['address'])
+        self._server_sock = create_socket_and_connect(self._config['address'],
+                                                      self._ssl_context)
 
         # Creates and starts the Request Receiver.
         self._request_receiver = _RequestReceiver(sock=self._server_sock,
@@ -596,7 +614,7 @@ class MetadataProviderServer(Server):
     """
 
     def __init__(self, adapter, address, name=None, keep_alive=None,
-                 thread_pool_size=0):
+                 thread_pool_size=0, ssl_context=None):
         """Creates a server with the supplied configuration parameters. The
         :meth:`lightstreamer_adapter.interfaces.metadata.MetadataProvider.initialize`
         method will be invoked only upon a Proxy Adapter request.
@@ -612,12 +630,15 @@ class MetadataProviderServer(Server):
         :param float keep_alive: the keepalive interval expressed in seconds
          (or fractions)
         :param int thread_pool_size: the thread pool size
+        :param SSLContext ssl_context: the SSL context to be used in the case
+         of encrypted communications with the Proxy Adapter
         :raises TypeError: if the supplied Remote Adapter is not an instance of
          a subclass of
          :class:`lightstreamer_adapter.interfaces.metadata.MetadataProvider`.
         """
         super(MetadataProviderServer, self).__init__(address, name, keep_alive,
-                                                     thread_pool_size)
+                                                     thread_pool_size,
+                                                     ssl_context)
         if not isinstance(adapter, MetadataProvider):
             raise TypeError("The provided adapter is not a subclass of "
                             "lightstreamer_adapter.interfaces."
@@ -650,7 +671,8 @@ class MetadataProviderServer(Server):
                                     .format(str(meta_protocol.Method.MPI)))
         elif not init_request and self.init_expected:
             raise RemotingException("Unexpected request {} while waiting for "
-                                    "{} request".format(method_name,
+                                    "{} request"
+                                    .format(method_name,
                                             meta_protocol.Method.MPI))
         if init_request:
             self.init_expected = False
@@ -849,12 +871,12 @@ class MetadataProviderServer(Server):
             try:
                 items = [{"allowedModeList":
                           [mode for mode in list(Mode)
-                           if self._adapter.mode_may_be_allowed(item_name, mode)],
+                           if self._adapter.mode_may_be_allowed(item, mode)],
                           "distinctSnapshotLength":
-                          self._adapter.get_distinct_snapshot_length(item_name),
+                          self._adapter.get_distinct_snapshot_length(item),
                           "minSourceFrequency":
-                          self._adapter.get_min_source_frequency(item_name)}
-                         for item_name in parsed_data]
+                          self._adapter.get_min_source_frequency(item)}
+                         for item in parsed_data]
             except Exception as err:
                 res = meta_protocol.write_get_item_data(exception=err)
             else:
@@ -872,13 +894,13 @@ class MetadataProviderServer(Server):
             try:
                 items = [{"allowedModeList":
                           [mode for mode in list(Mode)
-                           if self._adapter.ismode_allowed(user, item_name, mode)],
+                           if self._adapter.ismode_allowed(user, item, mode)],
                           "allowedBufferSize":
-                          self._adapter.get_allowed_buffer_size(user, item_name),
+                          self._adapter.get_allowed_buffer_size(user, item),
                           "allowedMaxFrequency":
                           self._adapter.get_allowed_max_item_frequency(user,
-                                                                       item_name)}
-                         for item_name in user_items]
+                                                                       item)}
+                         for item in user_items]
             except Exception as err:
                 res = meta_protocol.write_get_user_item_data(exception=err)
             else:
@@ -1077,13 +1099,13 @@ class DataProviderServer(Server):
     supported by the Metadata Adapter. A value of 0, negative or ``None`` also
     implies the default behaviour as stated above.
 
-    Note that :meth;Subscribe and Unsubscribe invocations for the same item_name are
-    always guaranteed to be sequentialized in the right way, although they may
-    not occur in the same thread.
+    Note that :meth:`.subscribe` and :meth:`.unsubscribe` invocations for the
+    same item are always guaranteed to be sequentialized in the right way,
+    although they may not occur in the same thread.
     """
 
     def __init__(self, adapter, address, name=None, keep_alive=None,
-                 thread_pool_size=0):
+                 thread_pool_size=0, ssl_context=None):
         """Creates a server with the supplied configuration parameters. The
         initialize method of the Remote Adapter will be invoked only upon a
         Proxy Adapter request.
@@ -1100,6 +1122,8 @@ class DataProviderServer(Server):
         :param float keep_alive: the keepalive interval expressed in seconds
          (or fractions)
         :param int thread_pool_size: the thread pool size
+        :param SSLContext ssl_context: the SSL context to be used in the
+         case of encrypted communications with the Proxy Adapter
         :raises TypeError: if the supplied Remote Adapter is not an instance of
          a subclass of
          :class:`lightstreamer_adapter.interfaces.data.DataProvider`.
@@ -1107,7 +1131,8 @@ class DataProviderServer(Server):
         super(DataProviderServer, self).__init__((address[0], address[1]),
                                                  name,
                                                  keep_alive,
-                                                 thread_pool_size)
+                                                 thread_pool_size,
+                                                 ssl_context)
 
         if not isinstance(adapter, DataProvider):
             raise TypeError("The provided adapter is not a subclass of "
@@ -1118,7 +1143,7 @@ class DataProviderServer(Server):
         self._subscription_mgr = SubscriptionManager(self._executor)
         self.init_expected = True
         self._notify_sender = None
-        self.notify_address = (address[0], address[2])
+        self._notify_address = (address[0], address[2])
         self._ntfy_sock = None
 
     def _send_remote_credentials(self):
@@ -1138,7 +1163,8 @@ class DataProviderServer(Server):
                                     .format(str(data_protocol.Method.DPI)))
         elif not init_request and self.init_expected:
             raise RemotingException("Unexpected request {} while waiting for "
-                                    "{} request".format(method_name,
+                                    "{} request"
+                                    .format(method_name,
                                             data_protocol.Method.DPI))
         if init_request:
             self.init_expected = False
@@ -1192,8 +1218,9 @@ class DataProviderServer(Server):
         from the Remote Data Adapter to the Proxy Adapter, in order to send
         data over the notification channel.
         """
-        self._ntfy_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._ntfy_sock.connect(self.notify_address)
+
+        self._ntfy_sock = create_socket_and_connect(self._notify_address,
+                                                    self._ssl_context)
         notify_sender_log = logging.getLogger("lightstreamer-adapter."
                                               "requestreply.notifications."
                                               "NotifySender")
@@ -1297,7 +1324,8 @@ class DataProviderServer(Server):
             except RemotingException as err:
                 self.on_exception(err)
         else:
-            DATA_LOGGER.warning("Unexpected update for item_name %s", item_name)
+            DATA_LOGGER.warning("Unexpected update for item_name %s",
+                                item_name)
 
     def end_of_snapshot(self, item_name):
         request_id = self._subscription_mgr.get_active_item(item_name)
