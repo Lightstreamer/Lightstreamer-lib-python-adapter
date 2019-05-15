@@ -18,13 +18,12 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
 class Method(Enum):
     """Enum for representing the methods of the Data Provider Protocol."""
     DPI = 1
-    DPNI = 2
-    SUB = 3
-    USB = 4
-    UD3 = 5
-    EOS = 6
-    CLS = 7
-    FAL = 8
+    SUB = 2
+    USB = 3
+    UD3 = 4
+    EOS = 5
+    CLS = 6
+    FAL = 7
 
     def __str__(self):
         return self.name
