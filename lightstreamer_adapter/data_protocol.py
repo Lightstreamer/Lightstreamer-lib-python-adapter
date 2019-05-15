@@ -77,15 +77,15 @@ def _encode_value(value):
         return "S|" + enc_str(value)
     if isinstance(value, bytes):
         return "Y|" + enc_byte(value)
-    raise RemotingException(("Found value '{}' of an unsupported type while "
-                             "building a {} request").format(str(value),
-                                                             str(Method.UD3)))
+    raise RemotingException("Found value '{}' of an unsupported type while "
+                            "building a {} request".format(str(value),
+                                                           str(Method.UD3)))
 
 
-def write_update_map(item_name, request_id, issnapshot, events_map):
+def write_update_map(item, request_id, issnapshot, events_map):
     """Encodes and returns a UD3 ('Update By Map') response."""
     update = join(str(Method.UD3),
-                  'S', enc_str(item_name),
+                  'S', enc_str(item),
                   'S', enc_str(request_id),
                   'B', enc_bool(issnapshot),
                   append_separator=events_map)
@@ -96,14 +96,14 @@ def write_update_map(item_name, request_id, issnapshot, events_map):
     return update
 
 
-def write_eos(item_name, request_id):
+def write_eos(item, request_id):
     """Encodes and returns an EOS ('End Of Snapshot') response."""
-    return join(str(Method.EOS), "S", enc_str(item_name), "S", enc_str(request_id))
+    return join(str(Method.EOS), "S", enc_str(item), "S", enc_str(request_id))
 
 
-def write_cls(item_name, request_id):
+def write_cls(item, request_id):
     """Encodes and returns a CLS ('Clear Snapshot') response string."""
-    return join(str(Method.CLS), "S", enc_str(item_name), "S", enc_str(request_id))
+    return join(str(Method.CLS), "S", enc_str(item), "S", enc_str(request_id))
 
 
 def write_failure(exception):
