@@ -34,6 +34,9 @@ _EXCEPTIONS_MAP = {str(MetadataProviderError): 'M',
                    str(SubscribeError): 'U',
                    str(FailureError): 'F'}
 
+KEEPALIVE_HINTS = "keepalive_hint.millis"
+ARI_VERSION = "ARI.version"
+
 
 class Method(Enum):
     """Enum for representing common methods of the protocol.
