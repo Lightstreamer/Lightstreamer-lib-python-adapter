@@ -1,7 +1,7 @@
 import unittest
 import time
 from multiprocessing import cpu_count
-from common import (RemoteAdapterBase, KeepaliveConstants)
+from .common import (RemoteAdapterBase, KeepaliveConstants)
 from lightstreamer_adapter.server import MetadataProviderServer
 from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnDeviceInfo,

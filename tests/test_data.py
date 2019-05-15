@@ -10,7 +10,7 @@ from lightstreamer_adapter.interfaces.data import (DataProviderError,
                                                    FailureError,
                                                    DataProvider)
 
-from common import KeepaliveConstants, RemoteAdapterBase
+from .common import KeepaliveConstants, RemoteAdapterBase
 
 logging.basicConfig(level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
