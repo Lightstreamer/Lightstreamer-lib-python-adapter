@@ -129,7 +129,7 @@ def read(packet, data_type, index):
         if read_data_type == "I":
             return int(current_token)
         if read_data_type == "P":
-            return decode_nobile_platform_type(current_token)
+            return decode_mobile_platform_type(current_token)
     raise RemotingException("Unknown type '{}' found".format(read_data_type))
 
 
@@ -237,6 +237,7 @@ def encode_byte(byte_str):
 
 
 def decode_modes(modes):
+    """Return the Mode corresponding to the provided token."""
     if modes in (NULL_VALUE, EMPTY_VALUE):
         return None
 
@@ -251,7 +252,8 @@ def decode_modes(modes):
     raise RemotingException("Unknown mode '{}' found".format(modes))
 
 
-def decode_nobile_platform_type(platform_type):
+def decode_mobile_platform_type(platform_type):
+    """Return the MpnPlatformType corresponding to the provided token."""
     if platform_type == NULL_VALUE:
         return None
 
