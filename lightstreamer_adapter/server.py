@@ -1384,7 +1384,7 @@ class DataProviderServer(Server):
 
 
 class ExceptionHandler(metaclass=ABCMeta):
-    """An abstract class meatn to to be implemented in order to provide a
+    """An abstract class meant to to be implemented in order to provide a
     Remote Server instance with a custom handler for error conditions occurring
     on the     Remote Server.
 
