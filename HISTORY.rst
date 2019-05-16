@@ -7,6 +7,48 @@ Release History
 1.2.0 (2019-MM-DD)
 +++++++++++++++++++
 
+**Improvements**
+
+- Extended DataProviderServer and MetadataProviderServer (through the Server
+  superclass) with settings of credentials, to be sent to the Proxy Adapter
+  upon each connection. Credential check is an optional configuration of the
+  Proxy Adapter; if not leveraged, the credentials will be ignored.
+
+- Modified the handling of the keepalives when connected to a Proxy Adapter
+  (i.e. Adapter Remoting Infrastructure) version 1.9 or higher: the preferred
+  keepalive interval requested by the Proxy Adapter, when stricter than the
+  configured one, is now obeyed (with a safety minimun of 1 second). Moreover,
+  in that case, the default interval configuration is now 10 seconds instead of
+  1. If an existing installation relies on a very short keepalive interval to
+  keep the connection alive due to intermediate nodes, the time should now be
+  explicitly configured.
+
+- Added full support for ARI protocol extensions introduced in Adapter Remoting
+  Infrastructure version 1.9.
+
+- Added full support for TLS/SSL encrypted connections the Proxy Adapters.
+
+- Added clarifications in the documentation of the exception handlers and fix
+  a few obsolete notes.
+
+- Added clarifications in the documentation of MetadataProviderServer and
+  DataProviderServer classes.
+
+- Improved code layout as per pylint/pycodestyle outputs.
+
+- Remove useless "pass" statement from classes of the interfaces package.
+
+- Updated unit tests according to new features
+
+**Bug Fixes**
+
+- Removed useless optional client_principal parameter from the
+  MetadataProvider.notify_user method.
+
+- Fixed documentation of the DataProvider class, where "Lightstreamer Kernel"
+  was erroneously referred as "Lightstreamer1".
+
+- Fixed broken links in the documentation of the DataProviderServer class.
 
 **Lightstreamer Compatibility Notes**
 
