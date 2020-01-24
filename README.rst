@@ -7,7 +7,7 @@ The adapters will run in a separate process, communicating with the Server throu
 
 .. _Lightstreamer Server: http://www.lightstreamer.com
 
-.. image:: architecture.png
+.. image:: https://raw.githubusercontent.com/Lightstreamer/Lightstreamer-lib-python-adapter/master/architecture.png
 
 Use
 ===
