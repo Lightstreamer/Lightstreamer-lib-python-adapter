@@ -30,7 +30,7 @@ class MetadataProvider():
     A Metadata Provider is used by Lightstreamer Kernel in combination with one
     or multiple Data Providers, uniquely associated with it; it is consulted
     in order to manage the push Requests intended for the associated Data
-    Providers. A Metadata Provider supplies informations for several different
+    Providers. A Metadata Provider supplies information for several different
     goals:
 
     * the resolution of the Group/Schema names used in the Requests;
@@ -644,7 +644,7 @@ class MetadataProvider():
          Subscriptions) to the Session.
         :raises lightstreamer_adapter.interfaces.metadata.NotificationError: in
          case something is wrong in the parameters, such as the ID of a Session
-         that is not currently open or inconsistent informations about a Table
+         that is not currently open or inconsistent information about a Table
          (i.e. Subscription).
 
         **IMPLEMENTATION NOTE:** unless the :meth:`wants_tables_notification`
@@ -731,7 +731,7 @@ class MetadataProvider():
         :param str user: User name.
         :param str session_id: The ID of a Session owned by the User. The
          session ID is provided for a thorough validation of the Table
-         informations, but Push Notification subscriptions are persistent and
+         information, but Push Notification subscriptions are persistent and
          survive the session. Thus, any association between this Session ID and
          this Push Notification subscription should be considered temporary.
         :param TableInfo table: A ``TableInfo`` instance, containing the
