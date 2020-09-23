@@ -22,7 +22,7 @@ Configure Lightstreamer
 
 1) Download and install Lightstreamer
 2) Go to the ``adapters`` folder of your Lightstreamer Server installation. Create a new folder to deploy the remote adapters in, let's call it ``PythonAdapter``
-3) Create an ``adapters.xml`` file inside the ``PythonAdapter`` folder and use the following contents (this is an example configuration, you can modify it to your liking by using the generic template, `DOCS-SDKs/adapter_remoting_infrastructure/doc/adapter_conf_template/adapters.xml` or `DOCS-SDKs/adapter_remoting_infrastructure/doc/adapter_robust_conf_template/adapters.xml`, as a reference):
+3) Create an ``adapters.xml`` file inside the ``PythonAdapter`` folder and use the following contents (this is an example configuration, you can modify it to your liking by using the generic template, https://lightstreamer.com/docs/ls-ARI/latest/adapter_conf_template/adapters.xml or https://lightstreamer.com/docs/ls-ARI/latest/adapter_robust_conf_template/adapters.xml, as a reference):
 
    .. code-block:: xml
 
@@ -173,7 +173,7 @@ See Also
 - `Adapter Remoting Infrastructure Network Protocol Specification`_
 - `Lightstreamer Chat Demo adapter for Python`_
 
-.. _Adapter Remoting Infrastructure Network Protocol Specification: http://www.lightstreamer.com/latest/Lightstreamer_Allegro-Presto-Vivace_7_0/Lightstreamer/DOCS-SDKs/sdk_adapter_generic/doc/ARI%20Protocol.pdf
+.. _Adapter Remoting Infrastructure Network Protocol Specification: https://lightstreamer.com/api/ls-generic-adapter/latest/ARI%20Protocol.pdf
 .. _Lightstreamer Chat Demo adapter for Python: https://github.com/Lightstreamer/Lightstreamer-example-Chat-adapter-python
 
 
