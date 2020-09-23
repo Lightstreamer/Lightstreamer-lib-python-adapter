@@ -180,7 +180,7 @@ See Also
 Lightstreamer Compatibility Notes
 =================================
 
-Compatible with Adapter Remoting Infrastructure since 1.8
+Compatible with Adapter Remoting Infrastructure since Server version 7.0 (which corresponded to Adapter Remoting Infrastructure 1.8).
 
 - For a version of this library compatible with Adapter Remoting Infrastructure version 1.7, please refer to `this tag`_.
 

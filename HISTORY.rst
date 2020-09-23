@@ -4,6 +4,18 @@ Release History
 ---------------
 
 
+[current state]
+++++++++++++++++
+
+**Improvements**
+
+Reformulated the compatibility constraint with respect to the Server version.
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since Server version 7.0.
+
+
 1.2.0 (2020-01-24)
 +++++++++++++++++++
 
@@ -23,7 +35,7 @@ Release History
   keep the connection alive due to intermediate nodes, the time should now be
   explicitly configured.
 
-- Added full support for ARI protocol extensions introduced in Adapter Remoting
+- Added full support for ARI Protocol extensions introduced in Adapter Remoting
   Infrastructure version 1.9.
 
 - Added full support for TLS/SSL encrypted connections the Proxy Adapters.
