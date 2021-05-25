@@ -22,7 +22,7 @@ Configure Lightstreamer
 
 1) Download and install Lightstreamer
 2) Go to the ``adapters`` folder of your Lightstreamer Server installation. Create a new folder to deploy the remote adapters in, let's call it ``PythonAdapter``
-3) Create an ``adapters.xml`` file inside the ``PythonAdapter`` folder and use the following contents (this is an example configuration, you can modify it to your liking by using the generic template, `DOCS-SDKs/adapter_remoting_infrastructure/doc/adapter_conf_template/adapters.xml` or `DOCS-SDKs/adapter_remoting_infrastructure/doc/adapter_robust_conf_template/adapters.xml`, as a reference):
+3) Create an ``adapters.xml`` file inside the ``PythonAdapter`` folder and use the following contents (this is an example configuration, you can modify it to your liking by using the generic template, https://lightstreamer.com/docs/ls-ARI/latest/adapter_conf_template/adapters.xml or https://lightstreamer.com/docs/ls-ARI/latest/adapter_robust_conf_template/adapters.xml, as a reference):
 
    .. code-block:: xml
 
@@ -156,7 +156,7 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-API Reference is available at `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/version-1.2.0>`_.
+API Reference is available at `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/version-1.2.1>`_.
 
 You can generate it by executing the following command from the ``doc`` folder:
 
@@ -173,15 +173,15 @@ See Also
 - `Adapter Remoting Infrastructure Network Protocol Specification`_
 - `Lightstreamer Chat Demo adapter for Python`_
 
-.. _Adapter Remoting Infrastructure Network Protocol Specification: http://www.lightstreamer.com/latest/Lightstreamer_Allegro-Presto-Vivace_7_0/Lightstreamer/DOCS-SDKs/sdk_adapter_generic/doc/ARI%20Protocol.pdf
+.. _Adapter Remoting Infrastructure Network Protocol Specification: https://lightstreamer.com/api/ls-generic-adapter/latest/ARI%20Protocol.pdf
 .. _Lightstreamer Chat Demo adapter for Python: https://github.com/Lightstreamer/Lightstreamer-example-Chat-adapter-python
 
 
 Lightstreamer Compatibility Notes
 =================================
 
-Compatible with Adapter Remoting Infrastructure since 1.8
+Compatible with Adapter Remoting Infrastructure since Server version 7.0 (corresponding to Adapter Remoting Infrastructure 1.8).
 
-- For a version of this library compatible with Adapter Remoting Infrastructure version 1.7, please refer to `this tag`_.
+- For a version of this library compatible with Adapter Remoting Infrastructure for Server version 6.0 (corresponding to Adapter Remoting Infrastructure 1.7), please refer to `this tag`_.
 
 .. _this tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.0.0post1-27
