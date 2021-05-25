@@ -4,6 +4,19 @@ Release History
 ---------------
 
 
+1.2.1 (2021-05-25)
++++++++++++++++++++
+
+**Improvements**
+
+- Reformulated the compatibility constraint with respect to the Server version,
+  instead of the Adapter Remoting Infrastructure version.
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since Server version 7.0.
+
+
 1.2.0 (2020-01-24)
 +++++++++++++++++++
 
@@ -15,7 +28,8 @@ Release History
   Proxy Adapter; if not leveraged, the credentials will be ignored.
 
 - Modified the handling of the keepalives when connected to a Proxy Adapter
-  (i.e. Adapter Remoting Infrastructure) version 1.9 or higher: the preferred
+  (i.e. Adapter Remoting Infrastructure) version 1.9
+  (corresponding to Server 7.1) or higher: the preferred
   keepalive interval requested by the Proxy Adapter, when stricter than the
   configured one, is now obeyed (with a safety minimun of 1 second). Moreover,
   in that case, the default interval configuration is now 10 seconds instead of
@@ -23,8 +37,8 @@ Release History
   keep the connection alive due to intermediate nodes, the time should now be
   explicitly configured.
 
-- Added full support for ARI protocol extensions introduced in Adapter Remoting
-  Infrastructure version 1.9.
+- Added full support for ARI Protocol extensions introduced in Adapter Remoting
+  Infrastructure version 1.9 (corresponding to Server 7.1).
 
 - Added full support for TLS/SSL encrypted connections the Proxy Adapters.
 
@@ -52,7 +66,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.8.
+- Compatible with Adapter Remoting Infrastructure since 1.8
+  (corresponding to Server 7.0).
 
 
 1.1.4 (2019-03-29)
@@ -65,7 +80,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.8.
+- Compatible with Adapter Remoting Infrastructure since 1.8
+  (corresponding to Server 7.0).
 
 
 1.1.3 (2019-03-28)
@@ -77,7 +93,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.8.
+- Compatible with Adapter Remoting Infrastructure since 1.8
+  (corresponding to Server 7.0).
 
 
 1.1.2 (2018-02-22)
@@ -93,7 +110,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.8.
+- Compatible with Adapter Remoting Infrastructure since 1.8
+  (corresponding to Server 7.0).
 
 
 1.1.1 (2017-12-22)
@@ -111,7 +129,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.8.
+- Compatible with Adapter Remoting Infrastructure since 1.8
+  (corresponding to Server 7.0).
 
 
 1.1.0 (2017-12-19)
@@ -152,7 +171,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.8.
+- Compatible with Adapter Remoting Infrastructure since 1.8
+  (corresponding to Server 7.0).
 
 
 1.0.0.post1 (2016-11-22)
@@ -178,7 +198,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.7.
+- Compatible with Adapter Remoting Infrastructure since 1.7
+  (corresponding to Server 6.0).
 
 
 1.0.0b1 (2016-04-15)
@@ -194,7 +215,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.7.
+- Compatible with Adapter Remoting Infrastructure since 1.7
+  (corresponding to Server 6.0).
 
 
 1.0.0a2 (2016-04-08)
@@ -210,7 +232,8 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.7.
+- Compatible with Adapter Remoting Infrastructure since 1.7
+  (corresponding to Server 6.0).
 
 
 1.0.0a1 (2016-04-08)
@@ -220,5 +243,6 @@ Release History
 
 **Lightstreamer Compatibility Notes**
 
-- Compatible with Adapter Remoting Infrastructure since 1.7.
+- Compatible with Adapter Remoting Infrastructure since 1.7
+  (corresponding to Server 6.0).
 
