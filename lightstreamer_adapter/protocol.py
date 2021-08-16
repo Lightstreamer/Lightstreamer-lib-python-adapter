@@ -36,13 +36,14 @@ _EXCEPTIONS_MAP = {str(MetadataProviderError): 'M',
 
 KEEPALIVE_HINTS = "keepalive_hint.millis"
 ARI_VERSION = "ARI.version"
-
+KEY_CLOSE_REASON = "reason"
 
 class Method(Enum):
     """Enum for representing common methods of the protocol.
     """
     KEEPALIVE = 1
     RAC = 2
+    CLOSE = 3
 
     def __str__(self):
         return self.name
@@ -159,6 +160,8 @@ def read_seq(tokens, offset, length=None):
     sequence = [read(data, 'S', i) for i in range(0, len(data), 2)]
     return sequence
 
+def read_close(tokens):
+    return read_map(tokens, 0)
 
 def decode_string(string):
     """Decodes the provided URL-encoded string.
@@ -311,9 +314,21 @@ def _write_init(method, excepted_error, proxy_parameters=None, exception=None):
     return _handle_exception(exception, join(str(method), 'E'), excepted_error)
 
 
-def write_credentials(username, password):
+def write_credentials(username=None, password=None):
     """Encodes and returns a RAC packet, for protocol version 1.8.2 and above.
     """
     method = Method.RAC
-    return join(str(method), 'S', 'user', 'S', encode_string(username), 'S',
-                'password', 'S', encode_string(password))
+    parameters = []
+
+    if username is not None:
+        parameters.append('user')
+        parameters.append(encode_string(username))
+
+    if password is not None:
+        parameters.append('password')
+        parameters.append(encode_string(password))
+
+    parameters.append('enclosedParameter')
+    parameters.append(encode_string("true"))
+
+    return join(str(method), 'S|') + '|S|'.join(parameters)
