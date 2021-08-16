@@ -98,7 +98,7 @@ class LightstreamerServerSimulator():
         return notifications
 
     def stop(self):
-        self._rr_client_socket.close()
+        self._rr_client_socket.shutdown(socket.SHUT_WR)
         if self._ntfy_client_sock is not None:
             self._ntfy_client_sock.shutdown(socket.SHUT_WR)
 
@@ -178,13 +178,16 @@ class RemoteAdapterBase(unittest.TestCase):
         self.assertNotEqual(not_expected, reply[0])
 
     def assert_notify(self, expected=None):
-        self._ls_server.set_notify_socket_timeout(3.5)
+        self._ls_server.set_notify_socket_timeout(0.5)
         notifications = self._ls_server.receive_notifications(True)
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
 
     def assert_caught_exception(self, msg):
         self.assertEqual(msg, self._remote_server._exception_handler.get())
+
+    def assert_no_caught_exception(self):
+        self.assertTrue(self._remote_server._exception_handler.empty())
 
 
 class MyExceptionHandler(ExceptionHandler):
@@ -209,6 +212,9 @@ class MyExceptionHandler(ExceptionHandler):
 
     def join(self):
         self._caught_exception_queue.join()
+
+    def empty(self):
+        return self._caught_exception_queue.empty()
 
 
 class KeepaliveConstants(Enum):
