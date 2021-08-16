@@ -284,6 +284,7 @@ class Server(metaclass=ABCMeta):
         self._exception_handler = None
         self._remote_user = None
         self._remote_password = None
+        self._close_expected = True
         self._config = {}
         self._config['address'] = address
         self._config['name'] = "#{}".format(Server._number) if (name is
@@ -329,7 +330,6 @@ class Server(metaclass=ABCMeta):
         """The username credential to be sent to the Proxy Adapter upon
         connection. The credentials are needed only if the Proxy Adapter is
         configured to require Remote Adapter authentication.
-        The credentials will be sent only if both are non-null.
 
         :type: str
         """
@@ -344,7 +344,6 @@ class Server(metaclass=ABCMeta):
         """The password credential to be sent to the Proxy Adapter upon
         connection. The credentials are needed only if the Proxy Adapter is
         configured to require Remote Adapter authentication.
-        The credentials will be sent only if both are non-null.
 
         :type: str
         """
@@ -374,17 +373,40 @@ class Server(metaclass=ABCMeta):
 
     def _on_init(self, subprotocol, params, config_file, data, adapter,
                  invoke_listener=False):
+
+        max_version = '1.8.3'
         parsed_data = subprotocol.read_init(data)
-        parsed_data.setdefault(protocol.ARI_VERSION, "1.8.0")
+        parsed_data.setdefault(protocol.ARI_VERSION, None)
         parsed_data.setdefault(protocol.KEEPALIVE_HINTS, None)
         proxy_version = parsed_data[protocol.ARI_VERSION]
         keep_alive_hint = parsed_data[protocol.KEEPALIVE_HINTS]
         del parsed_data[protocol.ARI_VERSION]
         del parsed_data[protocol.KEEPALIVE_HINTS]
         try:
-            if proxy_version == "1.8.1":
+            if proxy_version is None:
+                proxy_version = '1.8.0'
+                self._log.info("Received no Proxy Adapter protocol version "
+                               "information; assuming 1.8.0: accepted.")
+            elif proxy_version == '1.8.0':
+                raise Exception("Unsupported protocol version number: {}"
+                                .format(proxy_version))
+            elif proxy_version == '1.8.1':
                 raise Exception("Unsupported reserved protocol version "
                                 "number: {}".format(proxy_version))
+            elif proxy_version == '1.8.2':
+                self._log.info("Received Proxy Adapter protocol version as %s "
+                               "for %s: accepted downgrade.", proxy_version,
+                               self.name)
+            elif proxy_version == max_version:
+                self._log.info("Received Proxy Adapter protocol version as %s "
+                               "for %s: versions match", proxy_version,
+                               self.name)
+            else:
+                proxy_version = max_version
+                self._log.info("Received Proxy Adapter protocol version as %s "
+                               "for %s: requesting %s", proxy_version,
+                               self.name, max_version)
+
             if params is not None:
                 init_params = params.copy()
                 parsed_data.update(init_params)
@@ -396,9 +418,11 @@ class Server(metaclass=ABCMeta):
             res = subprotocol.write_init(exception=err)
         else:
             proxy_parameters = None
-            if proxy_version != "1.8.0":
+            if proxy_version in ('1.8.0', '1.8.2'):
+                self._close_expected = False
+            if proxy_version != '1.8.0':
                 proxy_parameters = {}
-                proxy_parameters[protocol.ARI_VERSION] = "1.8.2"
+                proxy_parameters[protocol.ARI_VERSION] = proxy_version
             res = subprotocol.write_init(proxy_parameters)
         self._use_keep_alive_hint(keep_alive_hint)
         return res
@@ -504,8 +528,7 @@ class Server(metaclass=ABCMeta):
         # started.
         self._on_request_receiver_started()
 
-        if self.remote_user is not None and self.remote_password is not None:
-            self._send_remote_credentials()
+        self._send_remote_credentials()
 
     def close(self):
         """Stops the management of the Remote Adapter and destroys the threads
@@ -522,7 +545,7 @@ class Server(metaclass=ABCMeta):
         self._server_sock.close()
 
     def on_received_request(self, request):
-        """Invoked when the RequestReciver gets a new request coming from the
+        """Invoked when the RequestReceiver gets a new request coming from the
         Proxy Adapter.
 
         This method takes the responsibility to proceed with a first
@@ -549,9 +572,24 @@ class Server(metaclass=ABCMeta):
             request_id = parsed_request["id"]
             method_name = parsed_request["method"]
             data = parsed_request["data"]
+            self._handle_close_request(request_id, data, method_name)
             self._handle_request(request_id, data, method_name)
         except RemotingException as err:
             self.on_exception(err)
+
+    def _handle_close_request(self, request_id, data, method_name):
+        close_request = method_name == str(protocol.Method.CLOSE)
+        if close_request and self._close_expected:
+            if request_id != '0':
+                raise RemotingException("Unexpected id found while parsing a {}"
+                                        "request".format(method_name))
+            close_data = protocol.read_close(data)
+            close_data.setdefault(protocol.KEY_CLOSE_REASON, None)
+            closed_reason = close_data[protocol.KEY_CLOSE_REASON]
+            if closed_reason is not None:
+                raise RemotingException("Close requested by the counterpart with "
+                                        "reason: {}".format(closed_reason))
+            raise RemotingException("Close requested by the counterpart")
 
     def _send_reply(self, request_id, response):
         self._log.debug("Sending reply for request: %s", request_id)
@@ -700,7 +738,7 @@ class MetadataProviderServer(Server):
         if init_request and not self.init_expected:
             raise RemotingException("Unexpected late {} request"
                                     .format(str(meta_protocol.Method.MPI)))
-        elif not init_request and self.init_expected:
+        if not init_request and self.init_expected:
             raise RemotingException("Unexpected request {} while waiting for "
                                     "{} request"
                                     .format(method_name,
@@ -1162,7 +1200,7 @@ class DataProviderServer(Server):
         if init_request and not self.init_expected:
             raise RemotingException("Unexpected late {} request"
                                     .format(str(data_protocol.Method.DPI)))
-        elif not init_request and self.init_expected:
+        if not init_request and self.init_expected:
             raise RemotingException("Unexpected request {} while waiting for "
                                     "{} request"
                                     .format(method_name,
@@ -1351,9 +1389,9 @@ class DataProviderServer(Server):
 
         return False
 
-    def _change_keep_alive(self, keepalive):
-        super(DataProviderServer, self)._change_keep_alive(keepalive)
-        self._notify_sender.change_keep_alive(keepalive, True)
+    def _change_keep_alive(self, keep_alive_milliseconds):
+        super(DataProviderServer, self)._change_keep_alive(keep_alive_milliseconds)
+        self._notify_sender.change_keep_alive(keep_alive_milliseconds, True)
 
     def start(self):
         """Starts the Remote Data Adapter. A connection to the Proxy Adapter is
