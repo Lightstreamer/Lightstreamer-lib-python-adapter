@@ -18,6 +18,9 @@ LOG = logging.getLogger(__name__)
 # Specify here the number of your CPU cores
 EXPECTED_CPU_CORES = cpu_count()
 
+def assert_credentials_response(remote_adapter):
+    remote_adapter.assert_reply("1|RAC|S|enclosedParameter|S|true")
+    remote_adapter.assert_notify("RAC|S|enclosedParameter|S|true")
 
 class DataProviderTestClass(DataProvider):
 
@@ -159,6 +162,13 @@ class DataProviderServerConstructionTest(unittest.TestCase):
             keep_alive=None)
         self.assertEqual(10, server.keep_alive)
 
+    def test_unset_remote_credentials(self):
+        server = DataProviderServer(
+            DataProviderTestClass({}),
+            address=RemoteAdapterBase.PROXY_DATA_ADAPTER_ADDRESS)
+        self.assertIsNone(server.remote_user)
+        self.assertIsNone(server.remote_password)
+
     def test_remote_credentials(self):
         server = DataProviderServer(
             DataProviderTestClass({}),
@@ -193,6 +203,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_no_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST")
         self.assert_reply('10000010c3e4d0462|DPI|V')
@@ -202,6 +213,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
     def test_no_kalive_hint_and_configured_kalive(self):
         configured_keepalive = 5
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST")
         self.assert_reply('10000010c3e4d0462|DPI|V')
@@ -210,6 +222,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_negative_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST|"
                           "|S|keepalive_hint.millis|S|-510")
@@ -221,6 +234,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
     def test_negative_kalive_hint_and_configured_kalive(self):
         configured_keepalive = 6
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST|"
                           "|S|keepalive_hint.millis|S|-500")
@@ -231,6 +245,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
     def test_kalive_hint_lt_default_and_no_configured_kalive(self):
         expected_keepalive = 9
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST"
                           "|S|keepalive_hint.millis|S|9000")
@@ -240,6 +255,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_kalive_hint_lt_default_and_min_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST"
                           "|S|keepalive_hint.millis|S|500")
@@ -250,6 +266,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_kalive_hint_gt_default_and_no_configured_klive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|11000"
                           "|S|data_provider.name|S|STOCKLIST")
@@ -262,6 +279,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         expected_keepalive = 4
         configured_keepalive = 5
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|4000"
                           "|S|data_provider.name|S|STOCKLIST")
@@ -272,6 +290,7 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
     def test_kalive_lt_configured_kalive_and_min(self):
         configured_keepalive = 5
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|500"
                           "|S|data_provider.name|S|STOCKLIST")
@@ -280,10 +299,27 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.MIN.value,
                          self.remote_server.keep_alive)
 
-    def test_remote_credentials(self):
+    def test_remote_credentials_with_user_and_password(self):
         self.setup_remote_adapter(username="remote1", password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak")
-        self.assert_notify("RAC|S|user|S|remote1|S|password|S|fdhjkslghak")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
+                          "enclosedParameter|S|true")
+        self.assert_notify("RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
+                           "enclosedParameter|S|true")
+
+    def test_remote_credentials_with_user(self):
+        self.setup_remote_adapter(username="remote1")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|enclosedParameter|S|true")
+        self.assert_notify("RAC|S|user|S|remote1|S|enclosedParameter|S|true")
+
+    def test_remote_credentials_with_password(self):
+        self.setup_remote_adapter(password="fdhjkslghak")
+        self.assert_reply("1|RAC|S|password|S|fdhjkslghak|S|enclosedParameter|S|true")
+        self.assert_notify("RAC|S|password|S|fdhjkslghak|S|enclosedParameter|S|true")
+
+    def test_remote_credentials_with_no_credentials(self):
+        self.setup_remote_adapter()
+        self.assert_reply("1|RAC|S|enclosedParameter|S|true")
+        self.assert_notify("RAC|S|enclosedParameter|S|true")
 
 
 class DataProviderServerTest(RemoteAdapterBase):
@@ -320,9 +356,11 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.send_request("10000010c3e4d0462|DPI")
 
     def do_init_and_skip(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI", True)
 
     def test_default_keep_alive(self):
+        assert_credentials_response(self)
         # Receive a KEEPALIVE message because no requests have been issued
         for _ in range(0, 1):
             start = time.time()
@@ -348,6 +386,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.assert_reply("KEEPALIVE", timeout=1.1, skip_keepalive=False)
 
     def test_init(self):
+        assert_credentials_response(self)
         self.do_init()
         self.assert_reply("10000010c3e4d0462|DPI|V")
         self.assertDictEqual({}, self.collector['params'])
@@ -360,6 +399,7 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def test_init_with_local_params(self):
         self.remote_server.adapter_params = {"par1": "val1", "par2": "val2"}
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|")
 
         self.assert_reply("10000010c3e4d0462|DPI|V")
@@ -368,6 +408,7 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
     def test_init_with_remote_params(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
                           "data_provider.name|S|STOCKLIST")
         self.assert_reply("10000010c3e4d0462|DPI|V")
@@ -379,6 +420,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.remote_server.adapter_params = {"my_param.name": "my_local_param"}
         request = ("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
+        assert_credentials_response(self)
         self.send_request(request)
 
         self.assert_reply("10000010c3e4d0462|DPI|V")
@@ -387,9 +429,32 @@ class DataProviderServerTest(RemoteAdapterBase):
                               "my_param.name": "my_local_param"},
                              self.collector['params'])
 
-    def test_init_with_protocol_version(self):
+    def test_init_with_protocol_1_8_0(self):
         self.remote_server.adapter_params = {"data_provider.name":
                                              "my_local_provider"}
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.0|S|"
+                          "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                          "STOCKLIST")
+        self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+protocol+"
+                          "version+number%3A+1.8.0")
+        self.assertFalse('params' in self.collector)
+
+    def test_init_with_protocol_1_8_1(self):
+        self.remote_server.adapter_params = {"data_provider.name":
+                                             "my_local_provider"}
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
+                          "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                          "STOCKLIST")
+        self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+reserved+"
+                          "protocol+version+number%3A+1.8.1")
+        self.assertFalse('params' in self.collector)
+
+    def test_init_with_protocol_1_8_2(self):
+        self.remote_server.adapter_params = {"data_provider.name":
+                                             "my_local_provider"}
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2|S|"
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
@@ -400,49 +465,74 @@ class DataProviderServerTest(RemoteAdapterBase):
                               "data_provider.name": "my_local_provider"},
                              self.collector['params'])
 
-    def test_init_with_unsupported_protocol_version(self):
+    def test_init_with_protocol_1_8_3(self):
         self.remote_server.adapter_params = {"data_provider.name":
                                              "my_local_provider"}
-        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3|S|"
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
-        self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+reserved+"
-                          "protocol+version+number%3A+1.8.1")
-        self.assertFalse('params' in self.collector)
+
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
+
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "my_local_provider"},
+                             self.collector['params'])
+
+    def test_init_with_protocol_1_8_4(self):
+        self.remote_server.adapter_params = {"data_provider.name":
+                                             "my_local_provider"}
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.4|S|"
+                          "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                          "STOCKLIST")
+
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
+
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "my_local_provider"},
+                             self.collector['params'])
 
     def test_malformed_init_for_unkown_token_type(self):
         request = ("10000010c3e4d0462|DPI|H|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
+        assert_credentials_response(self)
         self.send_request(request)
         self.assert_notify("FAL|E|Unknown+type+%27H%27+found+while+parsing+"
                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|")
         self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S||")
         self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|  |")
         self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
                            "DPI+request")
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|id|S")
         self.assert_notify("FAL|E|Invalid+number+of+tokens+while+parsing+"
                            "DPI+request")
 
     def test_init_with_data_provider_exception(self):
+        assert_credentials_response(self)
         request = "10000010c3e4d0462|DPI|S|data_provider.name|S|STOCKLIST"
         self.send_request(request)
         self.assert_reply("10000010c3e4d0462|DPI|ED|The+ID+must+be+supplied")
 
     def test_init_with_generic_exception(self):
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO")
         self.assert_reply("10000010c3e4d0462|DPI|E|RuntimeError")
 
@@ -452,10 +542,49 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.assert_notify("FAL|E|Unexpected+late+DPI+request")
 
     def test_init_miss(self):
+        assert_credentials_response(self)
         # Test error when the very first request is not a DPI request
         self.do_subscription('aapl%5F')
         self.assert_notify("FAL|E|Unexpected+request+SUB+while+waiting+for+DPI"
                            "+request")
+
+    def test_close(self):
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
+                          "data_provider.name|S|STOCKLIST|S|ARI.version|S|1.8.3")
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "STOCKLIST"},
+                             self.collector['params'])
+
+        self.send_request("0|CLOSE|S|reason|S|any-reason")
+        self.assert_notify("FAL|E|Close+requested+by+the+counterpart+with+reason%3A+any-reason")
+
+    def test_close_not_recognized_because_of_protocol_1_8_0(self):
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
+                          "data_provider.name|S|STOCKLIST")
+        self.assert_reply("10000010c3e4d0462|DPI|V")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "STOCKLIST"},
+                             self.collector['params'])
+
+        self.send_request("0|CLOSE|S|reason|S|any-reason")
+        with self.assertRaises(Exception):
+            self.assert_notify("FAL|E|Close+requested+by+the+counterpart+with+reason%3A+any-reason")
+
+    def test_close_not_recognized_because_of_protocol_1_8_2(self):
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
+                          "data_provider.name|S|STOCKLIST|S|ARI.version|S|1.8.2")
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "data_provider.name": "STOCKLIST"},
+                             self.collector['params'])
+
+        self.send_request("0|CLOSE|S|reason|S|any-reason")
+        with self.assertRaises(Exception):
+            self.assert_notify("FAL|E|Close+requested+by+the+counterpart+with+reason%3A+any-reason")
 
     def test_subscribe(self):
         self.do_init_and_skip()
@@ -537,13 +666,11 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.assert_reply("10000010c3e4d0463|USB|E|Error")
 
     def test_unsubscribe_without_subscription(self):
+        self.do_init_and_skip()
         self.do_unsubscription('aapl%5F')
-        try:
+        with self.assertRaises(Exception):
             self.assert_reply(timeout=0.5)
-            self.fail("A reply has been received!")
-        except Exception:
-            LOG.exception("Timeout expired")
-            self.assertTrue(True)
+        LOG.exception("Timeout expired")
 
     def test_malformed_unsubscribe(self):
         self.do_init_and_skip()
@@ -559,7 +686,6 @@ class DataProviderServerTest(RemoteAdapterBase):
         # As snapshot is not available, an EOS is expected on the notify
         # channel
         self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
-
         self.adapter.listener.end_of_snapshot("aapl_")
         self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
 

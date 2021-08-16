@@ -1,7 +1,6 @@
 import unittest
 import time
 from multiprocessing import cpu_count
-from .common import (RemoteAdapterBase, KeepaliveConstants)
 from lightstreamer_adapter.server import MetadataProviderServer
 from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnDeviceInfo,
@@ -16,10 +15,15 @@ from lightstreamer_adapter.interfaces.metadata import (MetadataProvider,
                                                        MpnPlatformType,
                                                        TableInfo,
                                                        MpnSubscriptionInfo)
+from .common import (RemoteAdapterBase, KeepaliveConstants)
 
 # Specify here the number of your CPU cores
 EXPECTED_CPU_CORES = cpu_count()
 
+
+
+def assert_credentials_response(remote_adapter):
+    remote_adapter.assert_reply("1|RAC|S|enclosedParameter|S|true")
 
 class MetadataProviderTestClass(MetadataProvider):
 
@@ -568,6 +572,13 @@ class MetadataProviderServerConstructionTest(unittest.TestCase):
             keep_alive=None)
         self.assertEqual(KeepaliveConstants.DEFAULT.value, server.keep_alive)
 
+    def test_unset_remote_credentials(self):
+        server = MetadataProviderServer(
+            MetadataProviderTestClass({}),
+            address=RemoteAdapterBase.PROXY_METADATA_ADAPTER_ADDRESS)
+        self.assertIsNone(server.remote_user)
+        self.assertIsNone(server.remote_password)
+
     def test_remote_credentialis(self):
         server = MetadataProviderServer(
             MetadataProviderTestClass({}),
@@ -599,10 +610,13 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.launch_remote_server(remote_server, set_exception_handler=True)
 
     def do_init_and_skip(self):
+        # RAC reply always received.
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI", True)
 
     def test_no_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply('10000010c3e4d0462|MPI|V')
@@ -616,6 +630,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_no_kalive_hint_and_configured_kalive(self):
         configured_keepalive = 5
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
         self.assert_reply('10000010c3e4d0462|MPI|V')
@@ -626,6 +641,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_negative_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|-510"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -639,6 +655,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_negative_kalive_hint_and_configured_kalive(self):
         configured_keepalive = 6
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|-500"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -651,6 +668,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_kalive_hint_lt_default_and_no_configured_kalive(self):
         expected_keepalive = 9
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|9000"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -662,6 +680,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_kalive_hint_lt_default_and_min_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|500"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -674,6 +693,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_kalive_hint_gt_default_and_no_configured_kalive(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|11000"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -688,6 +708,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         expected_keepalive = 4
         configured_keepalive = 5
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|4000"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -700,6 +721,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_kalive_less_then_configured_kalive_and_min(self):
         configured_keepalive = 5
         self.setup_remote_adapter(configured_keepalive)
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|500"
                           "|S|proxy.instance_id|S|hewbc3ikbbctyui")
@@ -710,8 +732,9 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assertEqual(KeepaliveConstants.MIN.value,
                          self.remote_server.keep_alive)
 
-    def test_keep_alive(self):
+    def test_default_keep_alive(self):
         self.setup_remote_adapter(2)
+        assert_credentials_response(self)
         # Receive a KEEPALIVE message because no request has been issued
         for _ in range(0, 1):
             start = time.time()
@@ -721,8 +744,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "proxy.instance_id|S|hewbc3ikbbctyui")
+
         self.assert_reply('10000010c3e4d0462|MPI|V')
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
@@ -735,6 +760,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_with_local_params(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.remote_server.adapter_params = {"par1": "val1", "par2": "val2"}
         self.send_request("10000010c3e4d0462|MPI")
 
@@ -745,6 +771,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_with_remote_params(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "proxy.instance_id|S|hewbc3ikbbctyui")
 
@@ -755,6 +782,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_with_local_and_remote_params(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.remote_server.adapter_params = {"proxy.instance_id":
                                              "my_local_meta_provider"}
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
@@ -768,6 +796,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_with_protocol_version(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2|S|"
                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                           "hewbc3ikbbctyui")
@@ -780,10 +809,11 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_with_protocol_version_above_1_8_2(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.4|S|"
                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                           "hewbc3ikbbctyui")
-        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2")
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
                               "my_local_meta_provider"},
@@ -792,6 +822,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_init_with_unsupported_protocol_version(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                           "hewbc3ikbbctyui")
@@ -801,41 +832,48 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_with_metadata_provider_exception(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
                           "hewbc3ikbbctyui")
         self.assert_reply("10000010c3e4d0462|MPI|EM|The+ID+must+be+supplied")
 
     def test_init_with_generic_exception(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO")
         self.assert_reply("10000010c3e4d0462|MPI|E|Exception")
 
     def test_malformed_init_for_unkown_token_type(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request('10000010c3e4d0462|MPI|S|adapters_conf.id|S1|DEMO')
         self.assert_caught_exception("Unknown type 'S1' found while parsing "
                                      "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request('10000010c3e4d0462|MPI|S|')
         self.assert_caught_exception("Invalid number of tokens while parsing "
                                      "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens2(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request('10000010c3e4d0462|MPI|S||')
         self.assert_caught_exception("Invalid number of tokens while parsing "
                                      "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens3(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request('10000010c3e4d0462|MPI|S|  |')
         self.assert_caught_exception("Invalid number of tokens while parsing "
                                      "MPI request")
 
     def test_malformed_init_for_invalid_number_of_tokens4(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         self.send_request('10000010c3e4d0462|MPI|S|id|S')
         self.assert_caught_exception("Invalid number of tokens while parsing "
                                      "MPI request")
@@ -849,6 +887,7 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_init_miss(self):
         self.setup_remote_adapter()
+        assert_credentials_response(self)
         # Test error when the very first request is not a MPI request
         self.send_request("10000010c3e4d0462|NUS|S|userX|S|remote_password|S|"
                           "host|S|www.mycompany.com")
@@ -856,9 +895,53 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assert_caught_exception("Unexpected request NUS while waiting for"
                                      " MPI request")
 
-    def test_remote_credentials(self):
+    def test_close(self):
+        self.setup_remote_adapter()
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3")
+        self.assert_reply('10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3')
+
+        self.send_request("0|CLOSE|S|reason|S|any-reason")
+        self.assert_caught_exception("Close requested by the counterpart with reason: any-reason")
+
+    def test_close_not_recognized_because_of_protocol_1_8_0(self):
+        self.setup_remote_adapter()
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI")
+        self.assert_reply('10000010c3e4d0462|MPI|V')
+
+        self.send_request("0|CLOSE|S|reason|S|any-reason")
+        self.assert_no_caught_exception()
+        with self.assertRaises(Exception):
+            self.assert_reply()
+
+    def test_close_not_recognized_because_of_protocol_1_8_2(self):
+        self.setup_remote_adapter()
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2")
+        self.assert_reply('10000010c3e4d0462|MPI|S|ARI.version|S|1.8.2')
+
+        self.send_request("0|CLOSE|S|reason|S|any-reason")
+        self.assert_no_caught_exception()
+        with self.assertRaises(Exception):
+            self.assert_reply()
+
+    def test_remote_credentials_with_user_and_password(self):
         self.setup_remote_adapter(username="remote1", password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
+                          "enclosedParameter|S|true")
+
+    def test_remote_credentials_with_user(self):
+        self.setup_remote_adapter(username="remote1")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|enclosedParameter|S|true")
+
+    def test_remote_credentials_with_password(self):
+        self.setup_remote_adapter(password="fdhjkslghak")
+        self.assert_reply("1|RAC|S|password|S|fdhjkslghak|S|enclosedParameter|S|true")
+
+    def test_remote_credentials_with_no_credentials(self):
+        self.setup_remote_adapter()
+        assert_credentials_response(self)
 
 
 class MetadataProviderServerTest(RemoteAdapterBase):
@@ -873,6 +956,8 @@ class MetadataProviderServerTest(RemoteAdapterBase):
         self.launch_remote_server(remote_server, set_exception_handler=True)
 
     def do_init_and_skip(self):
+        # RAC reply always received.
+        assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI", True)
 
     def test_notify_user(self):
@@ -1839,8 +1924,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                                application_id="com.lightstreamer.demo.ios."
                                               "stocklistdemo",
                                device_token="f780e9d8ffc86a5ec9a329e7745aa8fb"
-                                            "3a1ecce77c""09e202ec24cff14a9906"
-                                            "f1")
+                                            "3a1ecce77c""09e202ec24cff14a9906""f1")
         expected_dict = {"user": "user1",
                          "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
@@ -1862,8 +1946,7 @@ class MetadataProviderServerTest(RemoteAdapterBase):
                                application_id=("com.lightstreamer.demo.ios."
                                                "stocklistdemo"),
                                device_token="f780e9d8ffc86a5ec9a329e7745aa8fb"
-                                            "3a1ecce77c""09e202ec24cff14a9906"
-                                            "f1")
+                                            "3a1ecce77c""09e202ec24cff14a9906""f1")
         expected_dict = {"user": "user1",
                          "sessionId": "S8f3da29cfc463220T5454537",
                          "mpnDeviceInfo": device,
