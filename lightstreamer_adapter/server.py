@@ -587,9 +587,9 @@ class Server(metaclass=ABCMeta):
             close_data.setdefault(protocol.KEY_CLOSE_REASON, None)
             closed_reason = close_data[protocol.KEY_CLOSE_REASON]
             if closed_reason is not None:
-                raise RemotingException("Close requested by the counterpart with "
-                                        "reason: {}".format(closed_reason))
-            raise RemotingException("Close requested by the counterpart")
+                self._log.info("Close requested by the counterpart with "
+                                        "reason: %s", closed_reason)
+            self.close()
 
     def _send_reply(self, request_id, response):
         self._log.debug("Sending reply for request: %s", request_id)
