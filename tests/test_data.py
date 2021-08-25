@@ -558,7 +558,8 @@ class DataProviderServerTest(RemoteAdapterBase):
                              self.collector['params'])
 
         self.send_request("0|CLOSE|S|reason|S|any-reason")
-        self.assert_notify("FAL|E|Close+requested+by+the+counterpart+with+reason%3A+any-reason")
+        with self.assertRaises(Exception):
+            self.assert_reply()
 
     def test_close_not_recognized_because_of_protocol_1_8_0(self):
         assert_credentials_response(self)

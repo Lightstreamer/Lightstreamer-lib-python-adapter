@@ -902,7 +902,9 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.assert_reply('10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3')
 
         self.send_request("0|CLOSE|S|reason|S|any-reason")
-        self.assert_caught_exception("Close requested by the counterpart with reason: any-reason")
+        self.assert_no_caught_exception()
+        with self.assertRaises(Exception):
+            self.assert_reply()
 
     def test_close_not_recognized_because_of_protocol_1_8_0(self):
         self.setup_remote_adapter()
