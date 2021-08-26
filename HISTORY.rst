@@ -4,6 +4,21 @@ Release History
 ---------------
 
 
+1.2.2 (2021-08-XX)
+++++++++++++++++++
+
+**Improvements**
+
+- Introduced full support for Server version 7.2. Now the library can log any
+  message sent by the Proxy Adapter when forcibly closing the connection.
+
+- Modified the behavior when incomplete credentials are configured: now they
+  are sent to the Proxy Adapter, whereas previously they were not sent.
+  Note that, if the Proxy Adapter has credentials configured, they cannot be
+  incomplete; hence the Proxy Adapter is expected to refuse the connection in
+  all cases.
+
+
 1.2.1 (2021-05-25)
 +++++++++++++++++++
 
