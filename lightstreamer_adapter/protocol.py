@@ -328,7 +328,7 @@ def write_credentials(username=None, password=None):
         parameters.append('password')
         parameters.append(encode_string(password))
 
-    parameters.append('enclosedParameter')
+    parameters.append('enableClosePacket')
     parameters.append(encode_string("true"))
 
     return join(str(method), 'S|') + '|S|'.join(parameters)

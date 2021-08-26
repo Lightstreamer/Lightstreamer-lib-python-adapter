@@ -19,8 +19,8 @@ LOG = logging.getLogger(__name__)
 EXPECTED_CPU_CORES = cpu_count()
 
 def assert_credentials_response(remote_adapter):
-    remote_adapter.assert_reply("1|RAC|S|enclosedParameter|S|true")
-    remote_adapter.assert_notify("RAC|S|enclosedParameter|S|true")
+    remote_adapter.assert_reply("1|RAC|S|enableClosePacket|S|true")
+    remote_adapter.assert_notify("RAC|S|enableClosePacket|S|true")
 
 class DataProviderTestClass(DataProvider):
 
@@ -302,24 +302,24 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
     def test_remote_credentials_with_user_and_password(self):
         self.setup_remote_adapter(username="remote1", password="fdhjkslghak")
         self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
-                          "enclosedParameter|S|true")
+                          "enableClosePacket|S|true")
         self.assert_notify("RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
-                           "enclosedParameter|S|true")
+                           "enableClosePacket|S|true")
 
     def test_remote_credentials_with_user(self):
         self.setup_remote_adapter(username="remote1")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|enclosedParameter|S|true")
-        self.assert_notify("RAC|S|user|S|remote1|S|enclosedParameter|S|true")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|enableClosePacket|S|true")
+        self.assert_notify("RAC|S|user|S|remote1|S|enableClosePacket|S|true")
 
     def test_remote_credentials_with_password(self):
         self.setup_remote_adapter(password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|password|S|fdhjkslghak|S|enclosedParameter|S|true")
-        self.assert_notify("RAC|S|password|S|fdhjkslghak|S|enclosedParameter|S|true")
+        self.assert_reply("1|RAC|S|password|S|fdhjkslghak|S|enableClosePacket|S|true")
+        self.assert_notify("RAC|S|password|S|fdhjkslghak|S|enableClosePacket|S|true")
 
     def test_remote_credentials_with_no_credentials(self):
         self.setup_remote_adapter()
-        self.assert_reply("1|RAC|S|enclosedParameter|S|true")
-        self.assert_notify("RAC|S|enclosedParameter|S|true")
+        self.assert_reply("1|RAC|S|enableClosePacket|S|true")
+        self.assert_notify("RAC|S|enableClosePacket|S|true")
 
 
 class DataProviderServerTest(RemoteAdapterBase):
