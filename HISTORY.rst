@@ -18,6 +18,13 @@ Release History
   incomplete; hence the Proxy Adapter is expected to refuse the connection in
   all cases.
 
+**Bug Fixes**
+
+- Fixed a bug on the handling of keepalives on the notification channel of the
+  Data Adapter, which may have caused the Proxy Adapter to close the connection
+  due to a keepalive timeout, if configured. This had the highest probability
+  to happen in case of a reduced overall data flow, or during the startup phase.
+
 
 1.2.1 (2021-05-25)
 +++++++++++++++++++
