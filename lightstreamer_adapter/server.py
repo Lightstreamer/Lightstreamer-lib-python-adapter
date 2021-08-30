@@ -75,9 +75,10 @@ class _Sender():
 
     _KEEPALIVE_PILL = "KEEPALIVE_PILL"
 
-    def __init__(self, sock, server, keepalive, log):
+    def __init__(self, name, sock, server, keepalive, log):
         self._sock = sock
         self._server = server
+        self._name = name
         self._log = log
         self._keepalive = keepalive
         self._keep_alive_log = logging.getLogger(log.name + ".keep_alives")
@@ -95,23 +96,24 @@ class _Sender():
         # Starts new thread for dequeuing replies/notifications and then
         # sending to the ProxyAdapter.
         self._send_thread = Thread(target=self._do_run, name="Sender-Thread-{}"
-                                   .format(self._server.name))
+                                   .format(self._name))
         self._send_thread.start()
 
     def send(self, notification):
         """Enqueues a reply or notification to be sent to the Proxy Adapter."""
-        self._log.debug("Enqueing line: %s", notification)
+        self._log.debug("%s Enqueing line: %s", self._name, notification)
         self._send_queue.put(notification)
 
     def _do_run(self):
         """Target method for the Sender-Thread-XXX, started in the start'
         method."""
-        self._log.info("'%s' starting", self._server.name)
+        self._log.info("%s starting", self._name)
         while True:
             try:
                 to_send = None
                 current_log = self._log
-                current_log.debug("Waiting for a line to send...")
+                current_log.debug("%s Waiting for a line to send...",
+                                  self._name)
                 if self._keepalive > 0:
                     try:
                         to_send = self._send_queue.get(timeout=self._keepalive)
@@ -131,15 +133,17 @@ class _Sender():
                     current_log = self._keep_alive_log
 
                 # Send to_send over the network.
-                current_log.debug("Sending line: %s", to_send)
+                current_log.debug("%s Sending line: %s", self._name,  to_send)
                 self._sock.sendall(bytes(to_send + '\r\n', 'utf-8'))
             except OSError as err:
                 self._server.on_ioexception(err)
                 break
-        self._log.info("'%s' stopped", self._server.name)
+        self._log.info("'%s' stopped", self._name)
 
     def change_keep_alive(self, keepalive, also_interrupt=False):
         self._keepalive = keepalive
+        self._log.debug("%s Changing keepalive to: %d", self._name,
+                        self._keepalive)
         if also_interrupt:
             # Interrupts the current wait as though a keepalive were needed;
             # in most cases, this keepalive will be redundant
@@ -166,7 +170,8 @@ class _RequestReceiver():
         reply_sender_log = logging.getLogger("lightstreamer-adapter."
                                              "requestreply.replies."
                                              "ReplySender")
-        self._reply_sender = _Sender(sock=sock, server=self._server,
+        self._reply_sender = _Sender(sock=sock, name=self._server.name,
+                                     server=self._server,
                                      keepalive=keepalive, log=reply_sender_log)
         self._stop_request = Event()
 
@@ -193,28 +198,33 @@ class _RequestReceiver():
         buffer = ''
         while not self._stop_request.is_set():
             try:
-                self._log.debug("Reading from socket...")
+                self._log.debug("%s Reading from socket...",
+                                self._server.name)
                 data = sock.recv(1024)
-                self._log.debug("Received %d bytes of request data [%s]",
-                                len(data), data)
+                self._log.debug("%s Received %d bytes of request data [%s]",
+                                self._server.name, len(data), data)
                 if not data:
                     raise EOFError('Socket connection broken')
                 buffer += data.decode('ascii')
-                self._log.debug("Current buffer [%s]", buffer)
+                self._log.debug("%s Current buffer [%s]", self._server.name,
+                                buffer)
                 tokens = buffer.splitlines(keepends=True)
                 buffer = ''
                 for token in tokens:
                     if token.endswith('\n'):
-                        self._log.debug("Request line: %s", token)
+                        self._log.debug("%s Request line: %s",
+                                        self._server.name, token)
                         self._server.on_received_request(token)
                         buffer = ''
                     else:
-                        self._log.debug("Buffering remaining token %s", token)
+                        self._log.debug("'%s' Buffering remaining token %s",
+                                        self._server.name, token)
                         buffer = token
             except (OSError, EOFError) as err:
                 if self._stop_request.is_set():
-                    self._log.debug("Error raised because of explicitly closed"
-                                    " socket, no issue")
+                    self._log.debug("'%s' Error raised because of explicitly "
+                                    "closed socket, no issue",
+                                    self._server.name)
                     break
                 # An exception has been raised, due to some issue in the
                 # network communication.
@@ -572,12 +582,11 @@ class Server(metaclass=ABCMeta):
             request_id = parsed_request["id"]
             method_name = parsed_request["method"]
             data = parsed_request["data"]
-            self._handle_close_request(request_id, data, method_name)
-            self._handle_request(request_id, data, method_name)
+            self._handle_received_request(request_id, data, method_name)
         except RemotingException as err:
             self.on_exception(err)
 
-    def _handle_close_request(self, request_id, data, method_name):
+    def _handle_received_request(self, request_id, data, method_name):
         close_request = method_name == str(protocol.Method.CLOSE)
         if close_request and self._close_expected:
             if request_id != '0':
@@ -590,6 +599,8 @@ class Server(metaclass=ABCMeta):
                 self._log.info("Close requested by the counterpart with "
                                         "reason: %s", closed_reason)
             self.close()
+            return
+        self._handle_request(request_id, data, method_name)
 
     def _send_reply(self, request_id, response):
         self._log.debug("Sending reply for request: %s", request_id)
@@ -1264,6 +1275,7 @@ class DataProviderServer(Server):
                                               "requestreply.notifications."
                                               "NotifySender")
         self._notify_sender = _Sender(sock=self._ntfy_sock, server=self,
+                                      name=self.name + " (Notify)",
                                       keepalive=self.keep_alive,
                                       log=notify_sender_log)
         self._notify_sender.start()
@@ -1391,7 +1403,7 @@ class DataProviderServer(Server):
 
     def _change_keep_alive(self, keep_alive_milliseconds):
         super(DataProviderServer, self)._change_keep_alive(keep_alive_milliseconds)
-        self._notify_sender.change_keep_alive(keep_alive_milliseconds, True)
+        self._notify_sender.change_keep_alive(keep_alive_milliseconds / 1000, True)
 
     def start(self):
         """Starts the Remote Data Adapter. A connection to the Proxy Adapter is
