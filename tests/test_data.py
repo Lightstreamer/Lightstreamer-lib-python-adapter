@@ -599,22 +599,16 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_subscribe_to_more_items(self):
         self.do_init_and_skip()
         self.do_subscription_with_request_id("10000010c3e4d0462", 'aapl%5F')
+        self.assert_reply("10000010c3e4d0462|SUB|V")
+        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
+
         self.do_subscription_with_request_id("20000010c3e4d0462", 'saals%5F')
+        self.assert_reply("20000010c3e4d0462|SUB|V")
+        self.assert_notify("EOS|S|saals_|S|20000010c3e4d0462")
+
         self.do_subscription_with_request_id("30000010c3e4d0462", 'paals%5F')
-
-        # Ensure buffer is full before reading from it
-        time.sleep(1)
-
-        replies = self.receive_replies()
-        self.assertEqual(3, len(replies))
-        self.assertEqual("10000010c3e4d0462|SUB|V", replies[0])
-        self.assertEqual("20000010c3e4d0462|SUB|V", replies[1])
-        self.assertEqual("30000010c3e4d0462|SUB|V", replies[2])
-
-        notifications = self.receive_notifications()
-        self.assertEqual("EOS|S|aapl_|S|10000010c3e4d0462", notifications[0])
-        self.assertEqual("EOS|S|saals_|S|20000010c3e4d0462", notifications[1])
-        self.assertEqual("EOS|S|paals_|S|30000010c3e4d0462", notifications[2])
+        self.assert_reply("30000010c3e4d0462|SUB|V")
+        self.assert_notify("EOS|S|paals_|S|30000010c3e4d0462")
 
     def test_subscribe_with_subscribe_exception(self):
         self.do_init_and_skip()
