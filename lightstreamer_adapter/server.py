@@ -302,7 +302,7 @@ class Server(metaclass=ABCMeta):
         self._configured_keep_alive = keep_alive * 1000 if (keep_alive is not
                                                             None) else None
         self._config['keep_alive'] = max(0, keep_alive) if (keep_alive is not
-                                                            None) else Server._DEFAULT_KEEPALIVE / 1000
+                                  None) else Server._DEFAULT_KEEPALIVE / 1000
 
         pool = max(0, thread_pool_size) if thread_pool_size is not None else 0
         if pool == 0:
@@ -590,8 +590,8 @@ class Server(metaclass=ABCMeta):
         close_request = method_name == str(protocol.Method.CLOSE)
         if close_request and self._close_expected:
             if request_id != '0':
-                raise RemotingException("Unexpected id found while parsing a {}"
-                                        "request".format(method_name))
+                raise RemotingException("Unexpected id found while parsing"
+                                        " a {} request".format(method_name))
             close_data = protocol.read_close(data)
             close_data.setdefault(protocol.KEY_CLOSE_REASON, None)
             closed_reason = close_data[protocol.KEY_CLOSE_REASON]
@@ -738,7 +738,7 @@ class MetadataProviderServer(Server):
         self._send_reply("1", unsolicited_message)
 
     def _on_request_receiver_started(self):
-        """Invoked to notify this subclass the the Request Receiver has been
+        """Invoked to notify this subclass that the Request Receiver has been
         started.
 
         This class has a void implementation.
@@ -1261,12 +1261,13 @@ class DataProviderServer(Server):
         self._params = value
 
     def _on_request_receiver_started(self):
-        """Invoked to notify this subclass the the Request Receiver has been
+        """Invoked to notify this subclass that the Request Receiver has been
         started.
 
-        This class creates an additional socket to enable the communication
+        This method takes care of enabling the communication
         from the Remote Data Adapter to the Proxy Adapter, in order to send
-        data over the notification channel.
+        data over the "notifications" channel.
+        This requires creating an additional socket.
         """
 
         self._ntfy_sock = create_socket_and_connect(self._notify_address,
@@ -1402,8 +1403,10 @@ class DataProviderServer(Server):
         return False
 
     def _change_keep_alive(self, keep_alive_milliseconds):
-        super(DataProviderServer, self)._change_keep_alive(keep_alive_milliseconds)
-        self._notify_sender.change_keep_alive(keep_alive_milliseconds / 1000, True)
+        super(DataProviderServer, self)._change_keep_alive(
+                                                    keep_alive_milliseconds)
+        self._notify_sender.change_keep_alive(
+                                        keep_alive_milliseconds / 1000, True)
 
     def start(self):
         """Starts the Remote Data Adapter. A connection to the Proxy Adapter is
