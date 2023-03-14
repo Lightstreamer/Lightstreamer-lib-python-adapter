@@ -87,7 +87,7 @@ class LightstreamerServerSimulator():
             for notify in tokens:
                 if notify.endswith('\r\n') and (not skip_keepalive or
                                                 notify.strip() != 'KEEPALIVE'):
-                    if split is True:
+                    if split is True and notify.strip() != 'KEEPALIVE':
                         notify = '|'.join(notify.split("|")[1:])
                     notifications.append(notify.rstrip())
                     buffer = ''
@@ -161,8 +161,8 @@ class RemoteAdapterBase(unittest.TestCase):
     def receive_replies(self):
         return self._ls_server.receive_replies(skip_keepalive=True)
 
-    def receive_notifications(self):
-        return self._ls_server.receive_notifications(skip_keepalive=True)
+    def receive_notifications(self, skip_keepalive=True):
+        return self._ls_server.receive_notifications(skip_keepalive)
 
     def assert_reply(self, expected=None, timeout=0.2, skip_keepalive=True):
         self._ls_server.set_rr_socket_timeout(timeout)
@@ -177,9 +177,9 @@ class RemoteAdapterBase(unittest.TestCase):
         self.assertEqual(len(reply), 1)
         self.assertNotEqual(not_expected, reply[0])
 
-    def assert_notify(self, expected=None):
-        self._ls_server.set_notify_socket_timeout(0.5)
-        notifications = self._ls_server.receive_notifications(True)
+    def assert_notify(self, expected=None, timeout=0.5, skip_keepalive=True):
+        self._ls_server.set_notify_socket_timeout(timeout)
+        notifications = self._ls_server.receive_notifications(skip_keepalive)
         self.assertEqual(len(notifications), 1)
         self.assertEqual(expected, notifications[0])
 

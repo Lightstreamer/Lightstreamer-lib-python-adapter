@@ -359,13 +359,23 @@ class DataProviderServerTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI", True)
 
-    def test_default_keep_alive(self):
+    def test_default_keep_alive_on_reply(self):
         assert_credentials_response(self)
         # Receive a KEEPALIVE message because no requests have been issued
         for _ in range(0, 1):
             start = time.time()
             self.assert_reply(expected="KEEPALIVE", timeout=11.1,
                               skip_keepalive=False)
+            end = time.time()
+            self.assertGreaterEqual(end - start, 0.99)
+
+    def test_default_keep_alive_on_notify(self):
+        assert_credentials_response(self)
+        # Receive a KEEPALIVE message because no updates have been issued
+        for _ in range(0, 1):
+            start = time.time()
+            self.assert_notify(expected="KEEPALIVE", timeout=11.1,
+                               skip_keepalive=False)
             end = time.time()
             self.assertGreaterEqual(end - start, 0.99)
 

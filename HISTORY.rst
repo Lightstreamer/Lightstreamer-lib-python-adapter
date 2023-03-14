@@ -4,6 +4,13 @@ Release History
 ---------------
 
 
+[current state]
+
+**Improvements**
+
+- Added a unit test on keepalive packets for the notify connection.
+
+
 1.2.2 (2021-08-30)
 ++++++++++++++++++
 
