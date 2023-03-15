@@ -175,7 +175,10 @@ class _RequestReceiver():
                                      keepalive=keepalive, log=reply_sender_log)
         self._stop_request = Event()
 
-    def start(self):
+        # Starts the reply sender.
+        self._reply_sender.start()
+
+    def startReceiving(self):
         """Starts the management of bidirectional communications with the Proxy
         Adapter: requests coming form the Proxy Adapter, and the responses
         coming from the Remote Adapters.
@@ -186,9 +189,6 @@ class _RequestReceiver():
                         .format(self._server.name),
                         args=(self._sock,))
         thread.start()
-
-        # Starts the reply sender.
-        self._reply_sender.start()
 
     def _do_run(self, sock):
         """Target method for the RequestReceiver-Thread-XXX, started in the
@@ -532,13 +532,12 @@ class Server(metaclass=ABCMeta):
         self._request_receiver = _RequestReceiver(sock=self._server_sock,
                                                   keepalive=self.keep_alive,
                                                   server=self)
-        self._request_receiver.start()
+        self._send_remote_credentials()
+        self._request_receiver.startReceiving()
 
         # Invokes hook to notify subclass that the Request Receiver has been
         # started.
         self._on_request_receiver_started()
-
-        self._send_remote_credentials()
 
     def close(self):
         """Stops the management of the Remote Adapter and destroys the threads
@@ -660,11 +659,14 @@ class Server(metaclass=ABCMeta):
         received request, already splitted into the supplied parameters.
         """
 
-    @abstractmethod
     def _send_remote_credentials(self):
-        """Intended to be overridden by subclasses, invoked for sending the
-        remote credentials to the Proxy Adapter.
+        """Invoked for sending the remote credentials to the Proxy Adapter
+        on the reply channel.
         """
+
+        unsolicited_message = protocol.write_credentials(self.remote_user,
+                                                         self.remote_password)
+        self._send_reply("1", unsolicited_message)
 
 
 class MetadataProviderServer(Server):
@@ -727,15 +729,6 @@ class MetadataProviderServer(Server):
         self._params = None
         self._adapter = adapter
         self.init_expected = True
-
-    def _send_remote_credentials(self):
-        """Invoked for sending the remote credentials to the Proxy Metadata
-        Adapter.
-        """
-
-        unsolicited_message = protocol.write_credentials(self.remote_user,
-                                                         self.remote_password)
-        self._send_reply("1", unsolicited_message)
 
     def _on_request_receiver_started(self):
         """Invoked to notify this subclass that the Request Receiver has been
@@ -1196,14 +1189,13 @@ class DataProviderServer(Server):
         self._notify_address = (address[0], address[2])
         self._ntfy_sock = None
 
-    def _send_remote_credentials(self):
-        """Invoked for sending the remote credentials to the Proxy Metadata
-        Adapter.
+    def _send_remote_credentials_on_notify(self):
+        """Invoked for sending the remote credentials to the Proxy Data
+        Adapter also on the notify channel.
         """
 
         unsolicited_message = protocol.write_credentials(self.remote_user,
                                                          self.remote_password)
-        self._send_reply("1", unsolicited_message)
         self._send_notify(unsolicited_message)
 
     def _handle_request(self, request_id, data, method_name):
@@ -1280,6 +1272,7 @@ class DataProviderServer(Server):
                                       keepalive=self.keep_alive,
                                       log=notify_sender_log)
         self._notify_sender.start()
+        self._send_remote_credentials_on_notify()
 
     def _on_dpi(self, data):
         return self._on_init(data_protocol, self._params, self._config_file,

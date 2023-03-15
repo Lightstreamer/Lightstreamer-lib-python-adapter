@@ -10,6 +10,12 @@ Release History
 
 - Added a unit test on keepalive packets for the notify connection.
 
+**Bug Fixes**
+
+- Fixed a race condition which could have caused the RAC message to be sent
+  too late and break the protocol. However, this could only happen when the
+  Proxy Adapter had no credential check configured.
+
 
 1.2.2 (2021-08-30)
 ++++++++++++++++++
