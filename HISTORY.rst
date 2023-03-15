@@ -10,6 +10,9 @@ Release History
 
 - Added a unit test on keepalive packets for the notify connection.
 
+- Added documentation notes regarding the compatibility with Python 3.9 and
+  later. See "start" in MetadataProviderServer and DataProviderServer.
+
 **Bug Fixes**
 
 - Fixed a race condition which could have caused the RAC message to be sent

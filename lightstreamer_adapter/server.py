@@ -1110,6 +1110,10 @@ class MetadataProviderServer(Server):
         issued by the Proxy Adapter are received and forwarded to the Remote
         Adapter.
 
+        The requests are handled through a ThreadPoolExecutor. Since Python
+        3.9, this requires that the main thread is kept active until close
+        is invoked.
+
         :raises \
         lightstreamer_adapter.interfaces.metadata.MetadataProviderError: If an
          error occurred in the initialization phase. The adapter was not
@@ -1405,6 +1409,10 @@ class DataProviderServer(Server):
         """Starts the Remote Data Adapter. A connection to the Proxy Adapter is
         performed (as soon as one is available). Then, requests issued by the
         Proxy Adapter are received and forwarded to the Remote Adapter.
+
+        The requests are handled through a ThreadPoolExecutor. Since Python
+        3.9, this requires that the main thread is kept active until close
+        is invoked.
 
         :raises lightstreamer_adapter.interfaces.data.DataProviderError: If an
          error occurred in the initialization phase. The adapter was not

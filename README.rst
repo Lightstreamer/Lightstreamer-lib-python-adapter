@@ -131,6 +131,17 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
           # Starts the server instance.
           data_provider_sever.start()
 
+5) Ensure that the main thread stays alive. This is needed, since Python 3.9, to allow the SDK library to take advantage of the system's ThreadPoolExecutor class. Here we show a simple way to do so:
+
+   .. code-block:: python
+   
+      from threading import Event
+      
+      .....
+      
+      shutdown_event = Event()
+      shutdown_event.wait()
+
 Run
 ---
 
