@@ -4,7 +4,7 @@ Release History
 ---------------
 
 
-[current state]
+1.2.3 (2023-03-21)
 
 **Improvements**
 
@@ -22,6 +22,10 @@ Release History
 - Fixed a race condition which could have caused the RAC message to be sent
   too late and break the protocol. However, this could only happen when the
   Proxy Adapter had no credential check configured.
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since Server version 7.0.
 
 
 1.2.2 (2021-08-30)
@@ -44,6 +48,10 @@ Release History
   Data Adapter, which may have caused the Proxy Adapter to close the connection
   due to a keepalive timeout, if configured. This had the highest probability
   to happen in case of a reduced overall data flow, or during the startup phase.
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since Server version 7.0.
 
 
 1.2.1 (2021-05-25)
