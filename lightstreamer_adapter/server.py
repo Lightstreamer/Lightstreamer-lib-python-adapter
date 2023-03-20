@@ -617,9 +617,9 @@ class Server(metaclass=ABCMeta):
             # Enable default handling in case the exception handler
             # returns False.
             if not self._exception_handler.handle_ioexception(ioexception):
-                return
+                return False
 
-        self._handle_ioexception(ioexception)
+        return self._handle_ioexception(ioexception)
 
     def on_exception(self, exception):
         """Called by the Remote Server upon an unexpected error.
@@ -633,9 +633,9 @@ class Server(metaclass=ABCMeta):
             # Enable default handling in case the exception handler
             # returns False.
             if not self._exception_handler.handle_exception(exception):
-                return
+                return False
 
-        self._handle_exception(exception)
+        return self._handle_exception(exception)
 
     @abstractmethod
     def _handle_ioexception(self, ioexception):
@@ -643,7 +643,7 @@ class Server(metaclass=ABCMeta):
         return False
 
     def _handle_exception(self, exception):
-        pass
+        return False
 
     @abstractmethod
     def _on_request_receiver_started(self):
@@ -1065,7 +1065,7 @@ class MetadataProviderServer(Server):
     def _handle_ioexception(self, ioexception):
         METADATA_LOGGER.fatal("Exception caught while reading/writing from/to"
                               " network: <%s>, aborting...", str(ioexception))
-        super(MetadataProviderServer, self)._handle_ioexception(ioexception)
+        return super(MetadataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
         METADATA_LOGGER.error("Caught exception: %s", str(exception))
@@ -1385,7 +1385,7 @@ class DataProviderServer(Server):
     def _handle_ioexception(self, ioexception):
         DATA_LOGGER.fatal("Exception caught while reading/writing from/to "
                           "network: <%s>, aborting...", str(ioexception))
-        super(DataProviderServer, self)._handle_ioexception(ioexception)
+        return super(DataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
         DATA_LOGGER.error("Caught exception: %s, trying to notify a "
@@ -1396,7 +1396,6 @@ class DataProviderServer(Server):
         except RemotingException:
             DATA_LOGGER.exception("Caught second-level exception while trying"
                                   " to notify a first-level exception")
-
         return False
 
     def _change_keep_alive(self, keep_alive_milliseconds):
