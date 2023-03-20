@@ -112,7 +112,8 @@ class RemoteAdapterBase(unittest.TestCase):
     PROXY_DATA_ADAPTER_ADDRESS = (_HOST, _REQ_REPLY_PORT, _NOTIFY_PORT)
 
     def setUp(self):
-        LOG.info("\n\nStarting new test...")
+        LOG.info("\n\n========> Starting new test...")
+        LOG.info("setUp for test " + self._testMethodName)
         self._remote_server = None
         self._exception_handler = None
         # Configures and starts the Lightstreamer Server simulator

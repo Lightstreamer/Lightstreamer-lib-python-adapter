@@ -13,6 +13,7 @@ Release History
   exceptions by always showing the stack trace.
 
 - Added a unit test on keepalive packets for the notify connection.
+  Also improved unit tests log to better identify the current test.
 
 - Added documentation notes regarding the compatibility with Python 3.9 and
   later. See "start" in MetadataProviderServer and DataProviderServer.
