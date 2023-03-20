@@ -8,6 +8,10 @@ Release History
 
 **Improvements**
 
+- Added handling of runtime exceptions in the internal threads, by submitting
+  them to the exception handlers and extended the default handling of runtime
+  exceptions by always showing the stack trace.
+
 - Added a unit test on keepalive packets for the notify connection.
 
 - Added documentation notes regarding the compatibility with Python 3.9 and

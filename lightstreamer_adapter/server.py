@@ -7,6 +7,7 @@ import socket
 import queue
 import logging
 import time
+import traceback
 import os
 from multiprocessing import cpu_count
 from threading import Thread, Event
@@ -138,6 +139,9 @@ class _Sender():
             except OSError as err:
                 self._server.on_ioexception(err)
                 break
+            except Exception as err:
+                self._server.on_exception(err)
+                break
         self._log.info("'%s' stopped", self._name)
 
     def change_keep_alive(self, keepalive, also_interrupt=False):
@@ -229,6 +233,9 @@ class _RequestReceiver():
                 # An exception has been raised, due to some issue in the
                 # network communication.
                 self._server.on_ioexception(err)
+                break
+            except Exception as err:
+                self._server.on_exception(err)
                 break
 
         self._log.info("Request receiver '%s' stopped", self._server.name)
@@ -1068,6 +1075,7 @@ class MetadataProviderServer(Server):
         return super(MetadataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
+        traceback.print_exc()
         METADATA_LOGGER.error("Caught exception: %s", str(exception))
         return False
 
@@ -1388,6 +1396,7 @@ class DataProviderServer(Server):
         return super(DataProviderServer, self)._handle_ioexception(ioexception)
 
     def _handle_exception(self, exception):
+        traceback.print_exc()
         DATA_LOGGER.error("Caught exception: %s, trying to notify a "
                           "failure...", str(exception))
         try:
