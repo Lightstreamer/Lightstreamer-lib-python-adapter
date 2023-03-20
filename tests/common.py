@@ -28,6 +28,8 @@ class LightstreamerServerSimulator():
             self._ntfy_sock.bind(notify_adr)
             self._ntfy_sock.listen(1)
 
+        self._semaphore = threading.Semaphore(0)
+
     def _accept_connections(self):
         LOG.info("Listening at %s", self._rr_sock.getsockname())
         self._rr_client_socket, rr_client_addr = self._rr_sock.accept()
@@ -43,6 +45,8 @@ class LightstreamerServerSimulator():
                      self._ntfy_sock.getsockname())
             LOG.info("Listener at %s closed", self._ntfy_sock.getsockname())
             self._ntfy_sock.close()
+
+        self._semaphore.release()
 
     def set_rr_socket_timeout(self, timeout):
         self._rr_client_socket.settimeout(timeout)
@@ -139,6 +143,7 @@ class RemoteAdapterBase(unittest.TestCase):
         if set_exception_handler is True:
             self._remote_server.set_exception_handler(MyExceptionHandler())
         self._remote_server.start()
+        self._ls_server._semaphore.acquire()
 
     @property
     def remote_server(self):

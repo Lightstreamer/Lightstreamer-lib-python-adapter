@@ -24,6 +24,8 @@ Release History
   too late and break the protocol. However, this could only happen when the
   Proxy Adapter had no credential check configured.
 
+- Addressed possible race conditions in the unit tests.
+
 **Lightstreamer Compatibility Notes**
 
 - Compatible with Adapter Remoting Infrastructure since Server version 7.0.
