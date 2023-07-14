@@ -68,8 +68,8 @@ def create_socket_and_connect(address, ssl_context=None):
 
 class _Sender():
     """Helper class which manages the communications from the Remote Adapter to
-    the ProxyAdapter, sending data over the "request/replies" or
-    "notifications" channels.
+    the ProxyAdapter, sending data over the "requests/replies" channels and/or
+    the "notifications" subchannel.
     """
 
     _STOP_WAITING_PILL = "STOP_WAITING_PILL"
@@ -82,9 +82,10 @@ class _Sender():
         self._name = name
         self._log = log
         self._keepalive = keepalive
-        self._keep_alive_log = logging.getLogger(log.name + ".keep_alives")
+        self._keep_alive_log = log
         self._send_queue = None
         self._send_thread = None
+        self._notification_log = log
 
     def start(self):
         """Starts the management of communications from the Remote Adapter to
@@ -100,10 +101,14 @@ class _Sender():
                                    .format(self._name))
         self._send_thread.start()
 
-    def send(self, notification):
+    def send(self, message, is_notif):
         """Enqueues a reply or notification to be sent to the Proxy Adapter."""
-        self._log.debug("%s Enqueing line: %s", self._name, notification)
-        self._send_queue.put(notification)
+        if is_notif:
+            self._notification_log.debug("%s Enqueing line: %s",
+                                         self._name, message)
+        else:
+            self._log.debug("%s Enqueing line: %s", self._name, message)
+        self._send_queue.put(message)
 
     def _do_run(self):
         """Target method for the Sender-Thread-XXX, started in the start'
@@ -161,9 +166,9 @@ class _Sender():
         self._send_thread.join()
 
 
-class _RequestReceiver():
+class _RequestManager():
     """Helper class which manages the bi-directional communications with the
-    Proxy Adpater counterpart over the "request/replies" channel.
+    Proxy Adpater counterpart over the "requests/replies" channels.
     """
 
     def __init__(self, sock, keepalive, server):
@@ -172,11 +177,13 @@ class _RequestReceiver():
         self._sock = sock
         self._server = server
         reply_sender_log = logging.getLogger("lightstreamer-adapter."
-                                             "requestreply.replies."
-                                             "ReplySender")
+                                             "requestreply.replies")
+        keep_alive_log = logging.getLogger("lightstreamer-adapter."
+                                           "requestreply.keep_alives")
         self._reply_sender = _Sender(sock=sock, name=self._server.name,
                                      server=self._server,
                                      keepalive=keepalive, log=reply_sender_log)
+        self._reply_sender._keep_alive_log = keep_alive_log
         self._stop_request = Event()
 
         # Starts the reply sender.
@@ -244,7 +251,12 @@ class _RequestReceiver():
         """Sends a reply to the Proxy Adapter.
         """
         reply = '|'.join((request_id, response))
-        self._reply_sender.send(reply)
+        self._reply_sender.send(reply, False)
+
+    def send_notify(self, ntfy):
+        """Sends a notification to the Proxy Adapter.
+        """
+        self._reply_sender.send(ntfy, True)
 
     def change_keep_alive(self, keepalive):
         self._reply_sender.change_keep_alive(keepalive)
@@ -322,7 +334,7 @@ class Server(metaclass=ABCMeta):
 
         self._executor = ThreadPoolExecutor(self._config['thread_pool_size'])
         self._server_sock = None
-        self._request_receiver = None
+        self._request_manager = None
         self._ssl_context = ssl_context
 
     @property
@@ -397,32 +409,21 @@ class Server(metaclass=ABCMeta):
         parsed_data.setdefault(protocol.KEEPALIVE_HINTS, None)
         proxy_version = parsed_data[protocol.ARI_VERSION]
         keep_alive_hint = parsed_data[protocol.KEEPALIVE_HINTS]
+        advertised_version = None
         del parsed_data[protocol.ARI_VERSION]
         del parsed_data[protocol.KEEPALIVE_HINTS]
         try:
             if proxy_version is None:
                 proxy_version = '1.8.0'
                 self._log.info("Received no Proxy Adapter protocol version "
-                               "information; assuming 1.8.0: accepted.")
+                               "information; assuming 1.8.0.")
             elif proxy_version == '1.8.0':
-                raise Exception("Unsupported protocol version number: {}"
+                raise Exception("Unexpected protocol version number: {}"
                                 .format(proxy_version))
             elif proxy_version == '1.8.1':
                 raise Exception("Unsupported reserved protocol version "
                                 "number: {}".format(proxy_version))
-            elif proxy_version == '1.8.2':
-                self._log.info("Received Proxy Adapter protocol version as %s "
-                               "for %s: accepted downgrade.", proxy_version,
-                               self.name)
-            elif proxy_version == max_version:
-                self._log.info("Received Proxy Adapter protocol version as %s "
-                               "for %s: versions match", proxy_version,
-                               self.name)
-            else:
-                proxy_version = max_version
-                self._log.info("Received Proxy Adapter protocol version as %s "
-                               "for %s: requesting %s", proxy_version,
-                               self.name, max_version)
+            advertised_version = self.getSupportedVersion(proxy_version, max_version)
 
             if params is not None:
                 init_params = params.copy()
@@ -435,14 +436,18 @@ class Server(metaclass=ABCMeta):
             res = subprotocol.write_init(exception=err)
         else:
             proxy_parameters = None
-            if proxy_version in ('1.8.0', '1.8.2'):
+            if advertised_version in ('1.8.0', '1.8.2'):
                 self._close_expected = False
-            if proxy_version != '1.8.0':
+            if advertised_version != '1.8.0':
                 proxy_parameters = {}
-                proxy_parameters[protocol.ARI_VERSION] = proxy_version
+                proxy_parameters[protocol.ARI_VERSION] = advertised_version
             res = subprotocol.write_init(proxy_parameters)
         self._use_keep_alive_hint(keep_alive_hint)
         return res
+
+    @abstractmethod
+    def getSupportedVersion(self, proxy_version, max_version):
+        return None
 
     def _use_keep_alive_hint(self, keepalive_hint=None):
         if keepalive_hint is None:
@@ -518,7 +523,7 @@ class Server(metaclass=ABCMeta):
     def _change_keep_alive(self, keep_alive_milliseconds):
         keep_alive_seconds = keep_alive_milliseconds / 1000
         self._config['keep_alive'] = keep_alive_seconds
-        self._request_receiver.change_keep_alive(keep_alive_seconds)
+        self._request_manager.change_keep_alive(keep_alive_seconds)
 
     @abstractmethod
     def start(self):
@@ -535,16 +540,16 @@ class Server(metaclass=ABCMeta):
         self._server_sock = create_socket_and_connect(self._config['address'],
                                                       self._ssl_context)
 
-        # Creates and starts the Request Receiver.
-        self._request_receiver = _RequestReceiver(sock=self._server_sock,
-                                                  keepalive=self.keep_alive,
-                                                  server=self)
+        # Creates and starts the Request Manager.
+        self._request_manager = _RequestManager(sock=self._server_sock,
+                                                keepalive=self.keep_alive,
+                                                server=self)
         self._send_remote_credentials()
-        self._request_receiver.startReceiving()
+        self._request_manager.startReceiving()
 
-        # Invokes hook to notify subclass that the Request Receiver has been
+        # Invokes hook to notify subclass that the Request Manager has been
         # started.
-        self._on_request_receiver_started()
+        self._on_request_manager_started()
 
     def close(self):
         """Stops the management of the Remote Adapter and destroys the threads
@@ -556,12 +561,12 @@ class Server(metaclass=ABCMeta):
         accessing the supplied Adapter instance directly and calling custom
         methods.
         """
-        self._request_receiver.quit()
+        self._request_manager.quit()
         self._executor.shutdown()
         self._server_sock.close()
 
     def on_received_request(self, request):
-        """Invoked when the RequestReceiver gets a new request coming from the
+        """Invoked when the RequestManager gets a new request coming from the
         Proxy Adapter.
 
         This method takes the responsibility to proceed with a first
@@ -610,7 +615,7 @@ class Server(metaclass=ABCMeta):
 
     def _send_reply(self, request_id, response):
         self._log.debug("Sending reply for request: %s", request_id)
-        self._request_receiver.send_reply(request_id, response)
+        self._request_manager.send_reply(request_id, response)
 
     def on_ioexception(self, ioexception):
         """Called by the Remote Server upon a read or write operation failure.
@@ -653,8 +658,8 @@ class Server(metaclass=ABCMeta):
         return False
 
     @abstractmethod
-    def _on_request_receiver_started(self):
-        """Hook method to notify the subclass that the Request Receiver has
+    def _on_request_manager_started(self):
+        """Hook method to notify the subclass that the Request Manager has
         been started.
 
         This method is intended to be overridden by subclasses.
@@ -667,8 +672,7 @@ class Server(metaclass=ABCMeta):
         """
 
     def _send_remote_credentials(self):
-        """Invoked for sending the remote credentials to the Proxy Adapter
-        on the reply channel.
+        """Invoked for sending the remote credentials to the Proxy Adapter.
         """
 
         unsolicited_message = protocol.write_credentials(self.remote_user,
@@ -679,9 +683,13 @@ class Server(metaclass=ABCMeta):
 class MetadataProviderServer(Server):
     """A Remote Server object which can run a Remote Metadata Adapter and
     connect it to the Proxy Adapter running on Lightstreamer Server.
+    Note that since Server version 7.4 the Proxy Adapter also supports
+    connection inversion, that is, it can be configured to listen for
+    a connection issued by the Remote Server. This option is currently
+    not supported by this library.
 
     The object should be provided with a MetadataProvider instance and with
-    suitable initialization parameters and established connections,
+    suitable initialization parameters,
     then activated through :meth:`MetadataProviderServer.start` and finally
     disposed through :meth:`Server.close`.
     Further reuse of the same instance is not supported.
@@ -714,7 +722,7 @@ class MetadataProviderServer(Server):
          2-tuple ``(host, request_reply_port)`` where:
 
          * host: a string representing the hostname or the IP address
-         * request_reply_port: an int representing the request/reply port
+         * request_reply_port: an int representing the "request/reply" port
         :param str name: the name associated to the Server instance.
         :param float keep_alive: the keepalive interval expressed in seconds
          (or fractions)
@@ -737,8 +745,28 @@ class MetadataProviderServer(Server):
         self._adapter = adapter
         self.init_expected = True
 
-    def _on_request_receiver_started(self):
-        """Invoked to notify this subclass that the Request Receiver has been
+    def getSupportedVersion(self, proxy_version, max_version):
+        # protocol versions up to 1.9.0 identify an old Server version
+        # which doesn't support single connection for Data Adapters;
+        # since this does not affect Metadata Adapters, we can accept
+        if proxy_version in ('1.8.0', '1.8.2'):
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: accepted downgrade.", proxy_version,
+                           self.name)
+            return proxy_version
+        elif proxy_version == max_version:
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: versions match", proxy_version,
+                           self.name)
+            return proxy_version
+        else:
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: requesting %s", proxy_version,
+                           self.name, max_version)
+            return max_version
+
+    def _on_request_manager_started(self):
+        """Invoked to notify this subclass that the Request Manager has been
         started.
 
         This class has a void implementation.
@@ -1139,11 +1167,15 @@ class MetadataProviderServer(Server):
 class DataProviderServer(Server):
     """A Remote Server object which can run a Remote Data Adapter and connect
     it to the Proxy Adapter running on Lightstreamer Server.
+    Note that since Server version 7.4 the Proxy Adapter also supports
+    connection inversion, that is, it can be configured to listen for
+    a connection issued by the Remote Server. This option is currently
+    not supported by this library.
 
     The object should be provided with a DataProvider instance and with
-    suitable initialization parameters and established connections, then
-    activated through :meth:`DataProviderServer.start()` and finally disposed
-    through :meth:`Server.close()`.
+    suitable initialization parameters,
+    then activated through :meth:`DataProviderServer.start()`
+    and finally disposed through :meth:`Server.close()`.
     Further reuse of the same instance is not supported.
 
     By default, the invocations to the Data Adapter methods will be done in
@@ -1151,7 +1183,7 @@ class DataProviderServer(Server):
     cores. The size can be specified through the provided
     ``thread_pool_size`` parameter. A size of 1 enforces strictly sequential
     invocations and can be used if parallelization of the calls is not
-    supported by the Metadata Adapter. A value of 0, negative or ``None`` also
+    supported by the Data Adapter. A value of 0, negative or ``None`` also
     implies the default behaviour as stated above.
 
     Note that :meth:`.subscribe` and :meth:`.unsubscribe` invocations for the
@@ -1167,12 +1199,11 @@ class DataProviderServer(Server):
 
         :param lightstreamer_adapter.interfaces.data.DataProvider adapter: The
          Remote Adapter instance to be run.
-        :param tuple address: the address of the Proxy Adapter supplied as a
-         3-tuple ``(host, request_reply_port, notify_port)`` where:
+        :param tuple address: the address of the Proxy Data Adapter supplied
+         as a 2-tuple ``(host, request_reply_port)`` where:
 
          * host: a string representing the hostname or the IP address
-         * request_reply_port: an int representing the request/reply port
-         * notify_port: an int representing the notify port
+         * request_reply_port: an int representing the "request/reply" port
         :param str name: the name associated to the Server instance.
         :param float keep_alive: the keepalive interval expressed in seconds
          (or fractions)
@@ -1197,18 +1228,40 @@ class DataProviderServer(Server):
         self._adapter = adapter
         self._subscription_mgr = SubscriptionManager(self._executor)
         self.init_expected = True
-        self._notify_sender = None
-        self._notify_address = (address[0], address[2])
-        self._ntfy_sock = None
+        if len(address) > 2:
+            raise TypeError("Address tuple length longer than the expected 2;"
+                            " library upgrade without source code alignment?")
 
-    def _send_remote_credentials_on_notify(self):
-        """Invoked for sending the remote credentials to the Proxy Data
-        Adapter also on the notify channel.
-        """
-
-        unsolicited_message = protocol.write_credentials(self.remote_user,
-                                                         self.remote_password)
-        self._send_notify(unsolicited_message)
+    def getSupportedVersion(self, proxy_version, max_version):
+        # protocol versions up to 1.9.0 identify an old Server version
+        # which doesn't support single connection for Data Adapters;
+        # hence we prefer not to accept them, because, otherwise,
+        # the connection would fail anyway
+        if proxy_version == max_version:
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: versions match but refused "
+                           "for Proxy Adapter incompatibility.",
+                           proxy_version, self.name)
+            raise Exception("Incompatible Proxy Adapter for protocol "
+                            "version: {}".format(proxy_version))
+        elif proxy_version.startswith('1.8.'):
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: compatible but refused for Proxy Adapter "
+                           "incompatibility.", proxy_version, self.name)
+            raise Exception("Incompatible Proxy Adapter for protocol "
+                            "version: {}".format(proxy_version))
+        elif proxy_version == '1.9.0':
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: downgrade possible but refused "
+                           "for Proxy Adapter incompatibility.",
+                           proxy_version, self.name)
+            raise Exception("Incompatible Proxy Adapter for protocol "
+                            "version: {}".format(proxy_version))
+        else:
+            self._log.info("Received Proxy Adapter protocol version as %s "
+                           "for %s: requesting %s", proxy_version,
+                           self.name, max_version)
+            return max_version
 
     def _handle_request(self, request_id, data, method_name):
         init_request = method_name == str(data_protocol.Method.DPI)
@@ -1264,27 +1317,24 @@ class DataProviderServer(Server):
     def adapter_params(self, value):
         self._params = value
 
-    def _on_request_receiver_started(self):
-        """Invoked to notify this subclass that the Request Receiver has been
+    def _on_request_manager_started(self):
+        """Invoked to notify this subclass that the Request Manager has been
         started.
 
         This method takes care of enabling the communication
         from the Remote Data Adapter to the Proxy Adapter, in order to send
-        data over the "notifications" channel.
-        This requires creating an additional socket.
+        data over the "notifications" subchannel.
+        This may require creating an additional socket, if the backward
+        compatibility configuration has been leveraged.
         """
 
-        self._ntfy_sock = create_socket_and_connect(self._notify_address,
-                                                    self._ssl_context)
-        notify_sender_log = logging.getLogger("lightstreamer-adapter."
-                                              "requestreply.notifications."
-                                              "NotifySender")
-        self._notify_sender = _Sender(sock=self._ntfy_sock, server=self,
-                                      name=self.name + " (Notify)",
-                                      keepalive=self.keep_alive,
-                                      log=notify_sender_log)
-        self._notify_sender.start()
-        self._send_remote_credentials_on_notify()
+        notification_log = logging.getLogger("lightstreamer-adapter."
+                                             "requestreply.notifications")
+
+        # we can send notifications through the inherited reply sender;
+        # the only difference is that the notifications
+        # should be logged by a dedicated logger
+        self._request_manager._reply_sender._notification_log = notification_log
 
     def _on_dpi(self, data):
         return self._on_init(data_protocol, self._params, self._config_file,
@@ -1299,6 +1349,12 @@ class DataProviderServer(Server):
             try:
                 snpt_available = self._adapter.issnapshot_available(item_name)
                 if snpt_available is False:
+                    # we have to send an empty snapshot;
+                    # this should be done before letting the Data Adapter start the subscription,
+                    # to ensure that the snapshot precedes the real time updates;
+                    # note that it also precedes the reply to the subscribe request,
+                    # hence it may even precede an unsuccessful reply,
+                    # but this is not forbidden by the ARI protocol
                     self.end_of_snapshot(item_name)
                 self._adapter.subscribe(item_name)
                 success = True
@@ -1344,7 +1400,7 @@ class DataProviderServer(Server):
 
     @notify
     def _send_notify(self, ntfy):
-        self._notify_sender.send(ntfy)
+        self._request_manager.send_notify(ntfy)
 
     def update(self, item_name, events_map, issnapshot):
         request_id = self._subscription_mgr.get_active_item(item_name)
@@ -1407,12 +1463,6 @@ class DataProviderServer(Server):
                                   " to notify a first-level exception")
         return False
 
-    def _change_keep_alive(self, keep_alive_milliseconds):
-        super(DataProviderServer, self)._change_keep_alive(
-                                                    keep_alive_milliseconds)
-        self._notify_sender.change_keep_alive(
-                                        keep_alive_milliseconds / 1000, True)
-
     def start(self):
         """Starts the Remote Data Adapter. A connection to the Proxy Adapter is
         performed (as soon as one is available). Then, requests issued by the
@@ -1433,16 +1483,6 @@ class DataProviderServer(Server):
         except (TypeError, OSError) as err:
             raise DataProviderError("Caught an error during the "
                                     "initialization phase") from err
-
-    def close(self):
-        """Stops the management of the Remote Data Adapter attached to this
-        Server object.
-        The method first invokes the inherited Server.close() and then closes
-        the Notify Sender object.
-        """
-        super(DataProviderServer, self).close()
-        self._ntfy_sock.close()
-        self._notify_sender.quit()
 
 
 class ExceptionHandler(metaclass=ABCMeta):

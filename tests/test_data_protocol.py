@@ -172,14 +172,20 @@ class DataProtocolTest(unittest.TestCase):
 
     def test_credentials(self):
         res = protocol.write_credentials("remote1", "fdhjkslghak")
-        self.assertEqual("RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
-                         "enableClosePacket|S|true", res)
+        self.assertEqual("RAC|S|user|S|remote1|S|password|S|fdhjkslghak"
+                         "|S|enableClosePacket|S|true"
+                         "|S|SDK|S|Python+Adapter+SDK", res)
 
         res = protocol.write_credentials("remote1")
-        self.assertEqual("RAC|S|user|S|remote1|S|enableClosePacket|S|true", res)
+        self.assertEqual("RAC|S|user|S|remote1"
+                         "|S|enableClosePacket|S|true"
+                         "|S|SDK|S|Python+Adapter+SDK", res)
 
         res = protocol.write_credentials(password="fdhjkslghak")
-        self.assertEqual("RAC|S|password|S|fdhjkslghak|S|enableClosePacket|S|true", res)
+        self.assertEqual("RAC|S|password|S|fdhjkslghak"
+                         "|S|enableClosePacket|S|true"
+                         "|S|SDK|S|Python+Adapter+SDK", res)
 
         res = protocol.write_credentials()
-        self.assertEqual("RAC|S|enableClosePacket|S|true", res)
+        self.assertEqual("RAC|S|enableClosePacket|S|true"
+                         "|S|SDK|S|Python+Adapter+SDK", res)

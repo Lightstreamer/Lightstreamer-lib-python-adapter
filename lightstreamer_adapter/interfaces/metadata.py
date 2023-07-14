@@ -1111,8 +1111,10 @@ class CreditsError(MetadataError):
          zero to mean an unspecified problem.
         :param str msg: the detail message.
         :param str user_msg: A detail message to be forwarded to the Client.
-         The message should be in simple ASCII, otherwise it might be altered
-         in order to be sent to the client; multiline text is also not allowed.
+         If ``None`` or missing, an empty string message will be forwarded.
+         The message is free, but if it is not in simple ASCII or if it is
+         multiline, it might be altered in order to be sent to very old
+         non-TLCP clients.
         """
         super(CreditsError, self).__init__(msg)
         self._code = client_error_code
@@ -1158,8 +1160,10 @@ class ConflictingSessionError(CreditsError):
         :param str conflicting_session_id: ID of a Session that can be closed
          in order to eliminate the reported problem. It must not be null.
         :param str user_msg: A detail message to be forwarded to the Client.
-         The message should be in simple ASCII, otherwise it might be altered
-         in order to be sent to the client; multiline text is also not allowed.
+         If ``None`` or missing, an empty string message will be forwarded.
+         The message is free, but if it is not in simple ASCII or if it is
+         multiline, it might be altered in order to be sent to very old
+         non-TLCP clients.
         """
         super(ConflictingSessionError, self).__init__(code, msg, user_msg)
         self._conflicting_session_id = conflicting_session_id

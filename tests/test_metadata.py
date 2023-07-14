@@ -20,10 +20,13 @@ from .common import (RemoteAdapterBase, KeepaliveConstants)
 # Specify here the number of your CPU cores
 EXPECTED_CPU_CORES = cpu_count()
 
+# Keep aligned with the ARI version currently implemented
+basic_version = '1.8.3'
 
 
 def assert_credentials_response(remote_adapter):
-    remote_adapter.assert_reply("1|RAC|S|enableClosePacket|S|true")
+    remote_adapter.assert_reply("1|RAC|S|enableClosePacket|S|true"
+                                "|S|SDK|S|Python+Adapter+SDK")
 
 class MetadataProviderTestClass(MetadataProvider):
 
@@ -612,14 +615,18 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def do_init_and_skip(self):
         # RAC reply always received.
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|MPI", True)
+        self.send_request("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
+        self.skip_messages()
 
     def test_no_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -632,8 +639,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.setup_remote_adapter(configured_keepalive)
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -644,8 +653,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|-510"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -658,8 +669,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|-500"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -671,8 +684,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|9000"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -683,8 +698,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|500"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -696,8 +713,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|11000"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -711,8 +730,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
                           "keepalive_hint.millis|S|4000"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -724,8 +745,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|500"
-                          "|S|proxy.instance_id|S|hewbc3ikbbctyui")
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+                          "|S|proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -746,9 +769,11 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.setup_remote_adapter()
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                          "proxy.instance_id|S|hewbc3ikbbctyui")
+                          "proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
 
-        self.assert_reply('10000010c3e4d0462|MPI|V')
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual({"adapters_conf.id": "DEMO", "proxy.instance_id":
                           "hewbc3ikbbctyui"}, self.collector['params'])
         self.assertIsNone(self.adapter.config_file)
@@ -762,9 +787,11 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.setup_remote_adapter()
         assert_credentials_response(self)
         self.remote_server.adapter_params = {"par1": "val1", "par2": "val2"}
-        self.send_request("10000010c3e4d0462|MPI")
+        self.send_request("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
 
-        self.assert_reply("10000010c3e4d0462|MPI|V")
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({"par1": "val1",
                               "par2": "val2"},
                              self.collector['params'])
@@ -773,9 +800,11 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.setup_remote_adapter()
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                          "proxy.instance_id|S|hewbc3ikbbctyui")
+                          "proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
 
-        self.assert_reply("10000010c3e4d0462|MPI|V")
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id": "hewbc3ikbbctyui"},
                              self.collector['params'])
@@ -786,14 +815,40 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
         self.remote_server.adapter_params = {"proxy.instance_id":
                                              "my_local_meta_provider"}
         self.send_request("10000010c3e4d0462|MPI|S|adapters_conf.id|S|DEMO|S|"
-                          "proxy.instance_id|S|hewbc3ikbbctyui")
+                          "proxy.instance_id|S|hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "proxy.instance_id":
+                              "my_local_meta_provider"},
+                             self.collector['params'])
+
+    def test_init_with_protocol_1_8_0(self):
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                          "my_local_meta_provider"})
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
         self.assert_reply("10000010c3e4d0462|MPI|V")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "proxy.instance_id":
                               "my_local_meta_provider"},
                              self.collector['params'])
 
-    def test_init_with_protocol_version(self):
+    def test_init_with_protocol_1_8_1(self):
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                          "my_local_meta_provider"})
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
+        self.assert_reply("10000010c3e4d0462|MPI|E|Unsupported+reserved+"
+                          "protocol+version+number%3A+1.8.1")
+        self.assertFalse('params' in self.collector)
+
+    def test_init_with_protocol_1_8_2(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
         assert_credentials_response(self)
@@ -806,7 +861,20 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
                               "my_local_meta_provider"},
                              self.collector['params'])
 
-    def test_init_with_protocol_version_above_1_8_2(self):
+    def test_init_with_protocol_1_8_3(self):
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                          "my_local_meta_provider"})
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "proxy.instance_id":
+                              "my_local_meta_provider"},
+                             self.collector['params'])
+
+    def test_init_with_protocol_1_8_4(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
         assert_credentials_response(self)
@@ -819,22 +887,38 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
                               "my_local_meta_provider"},
                              self.collector['params'])
 
-    def test_init_with_unsupported_protocol_version(self):
+    def test_init_with_protocol_1_9_0(self):
         self.setup_remote_adapter(params={"proxy.instance_id":
                                           "my_local_meta_provider"})
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.1|S|"
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.9.0|S|"
                           "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
                           "hewbc3ikbbctyui")
-        self.assert_reply("10000010c3e4d0462|MPI|E|Unsupported+reserved+"
-                          "protocol+version+number%3A+1.8.1")
-        self.assertFalse('params' in self.collector)
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "proxy.instance_id":
+                              "my_local_meta_provider"},
+                             self.collector['params'])
+
+    def test_init_with_protocol_1_9_1(self):
+        self.setup_remote_adapter(params={"proxy.instance_id":
+                                          "my_local_meta_provider"})
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.9.1|S|"
+                          "adapters_conf.id|S|DEMO|S|proxy.instance_id|S|"
+                          "hewbc3ikbbctyui")
+        self.assert_reply("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3")
+        self.assertDictEqual({"adapters_conf.id": "DEMO",
+                              "proxy.instance_id":
+                              "my_local_meta_provider"},
+                             self.collector['params'])
 
     def test_init_with_metadata_provider_exception(self):
         self.setup_remote_adapter()
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|MPI|S|proxy.instance_id|S|"
-                          "hewbc3ikbbctyui")
+                          "hewbc3ikbbctyui"
+                          "|S|ARI.version|S|" + basic_version)
         self.assert_reply("10000010c3e4d0462|MPI|EM|The+ID+must+be+supplied")
 
     def test_init_with_generic_exception(self):
@@ -898,8 +982,10 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
     def test_close(self):
         self.setup_remote_adapter()
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3")
-        self.assert_reply('10000010c3e4d0462|MPI|S|ARI.version|S|1.8.3')
+        self.send_request("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
+        self.assert_reply("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
 
         self.send_request("0|CLOSE|S|reason|S|any-reason")
         self.assert_no_caught_exception()
@@ -930,16 +1016,21 @@ class MetadataProviderServerInitializationTest(RemoteAdapterBase):
 
     def test_remote_credentials_with_user_and_password(self):
         self.setup_remote_adapter(username="remote1", password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
-                          "enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak"
+                          "|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
     def test_remote_credentials_with_user(self):
         self.setup_remote_adapter(username="remote1")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|user|S|remote1"
+                          "|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
     def test_remote_credentials_with_password(self):
         self.setup_remote_adapter(password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|password|S|fdhjkslghak|S|enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|password|S|fdhjkslghak"
+                          "|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
     def test_remote_credentials_with_no_credentials(self):
         self.setup_remote_adapter()
@@ -960,7 +1051,9 @@ class MetadataProviderServerTest(RemoteAdapterBase):
     def do_init_and_skip(self):
         # RAC reply always received.
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|MPI", True)
+        self.send_request("10000010c3e4d0462|MPI"
+                          "|S|ARI.version|S|" + basic_version)
+        self.skip_messages()
 
     def test_notify_user(self):
         self.do_init_and_skip()

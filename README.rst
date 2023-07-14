@@ -38,11 +38,10 @@ Configure Lightstreamer
             <adapter_class>ROBUST_PROXY_FOR_REMOTE_ADAPTER</adapter_class>
             <classloader>log-enabled</classloader>
             <param name="request_reply_port">8001</param>
-            <param name="notify_port">8002</param>
             <param name="timeout">36000000</param>
          </data_provider>
       </adapters_conf>
-    
+
 4) Take note of the ports configured in the adapters.xml file as those are needed to write the remote part of the adapters.
 
 Write the Adapters
@@ -127,7 +126,7 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
           # Creates a new DataProviderServer instance, passing a new MyDataAdpater
           # object and the remote address
           data_provider_sever = DataProviderServer(MyDataAdapter(),
-                                                   (LS_SERVER_HOST, 8001, 8002))
+                                                   (LS_SERVER_HOST, 8001))
           # Starts the server instance.
           data_provider_sever.start()
 
@@ -167,7 +166,7 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-API Reference is available at `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/version-1.2.3>`_.
+API Reference is available at `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/version-1.3.0>`_.
 
 You can generate it by executing the following command from the ``doc`` folder:
 
@@ -191,8 +190,9 @@ See Also
 Lightstreamer Compatibility Notes
 =================================
 
-Compatible with Adapter Remoting Infrastructure since Server version 7.0 (corresponding to Adapter Remoting Infrastructure 1.8).
+Compatible with Adapter Remoting Infrastructure since Server version 7.4.
+- For a version of this library compatible with Adapter Remoting Infrastructure for Server version 7,3, please refer to `this tag`_.
+- For a version of this library compatible with Adapter Remoting Infrastructure for Server version 6.0 (corresponding to Adapter Remoting Infrastructure 1.7), please refer to `this older tag`_.
 
-- For a version of this library compatible with Adapter Remoting Infrastructure for Server version 6.0 (corresponding to Adapter Remoting Infrastructure 1.7), please refer to `this tag`_.
-
-.. _this tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.0.0post1-27
+.. _this tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.2.2
+.. _this older tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.0.0post1-27

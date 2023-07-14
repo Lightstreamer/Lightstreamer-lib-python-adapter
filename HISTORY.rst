@@ -4,6 +4,46 @@ Release History
 ---------------
 
 
+1.3.0 (xxxx-xx-xx)
+++++++++++++++++++
+
+**New Features**
+
+- Introduced the support for a single connection instead of two for the
+  communication of the Remote Data Adapters.
+  In fact, since Server version 7.4, the Proxy Data Adapter can (and should)
+  be configured to use a single connection for the communication.
+  Hence, the "address" argument of __init__ for the DataProviderServer class,
+  which is a tuple, can now have only 2 values (including one port); a tuple
+  with 3-values will now be refused.
+  As a consequence, if an existing Remote Server based on this SDK launches
+  a Remote Data Adapter, it cannot be upgraded to this new SDK version
+  seamlessly. The upgrade will require a change in the code to supply a single
+  port for the connection to the Proxy Data Adapter. This, in turn, will
+  require the configuration of a single port on the Proxy Data Adapter,
+  which is only possible with Lightstreamer Server 7.4 or later.
+  However, if a Remote Server only launches Remote Metadata Adapters,
+  the compatibility with Server version 7.3 is kept.
+
+- Thoroughly modified the supplied unit tests to implement the single-connection
+  behavior and the new compatibility rules.
+
+**Improvements**
+
+- Revised the supplied unit tests to clarifiy dequeueing from the sockets
+  and expected messages.
+
+- Clarified the meaning of a None or missing value for a "userMsg" argument
+  supplied in a CreditsError: an empty string should be sent to the client.
+  Note that, previously, the Server used to send the "null" string as a
+  placeholder. Hence, Adapters relying on this behavior should now supply
+  "null" explicitly.*
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since Server version 7.4.
+
+
 1.2.3 (2023-03-21)
 ++++++++++++++++++
 

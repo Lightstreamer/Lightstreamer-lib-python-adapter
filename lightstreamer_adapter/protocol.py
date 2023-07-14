@@ -331,4 +331,7 @@ def write_credentials(username=None, password=None):
     parameters.append('enableClosePacket')
     parameters.append(encode_string("true"))
 
+    parameters.append('SDK')
+    parameters.append(encode_string("Python Adapter SDK"))
+
     return join(str(method), 'S|') + '|S|'.join(parameters)

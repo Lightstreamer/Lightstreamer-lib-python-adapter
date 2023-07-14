@@ -18,9 +18,14 @@ LOG = logging.getLogger(__name__)
 # Specify here the number of your CPU cores
 EXPECTED_CPU_CORES = cpu_count()
 
+# Keep aligned with the ARI version currently implemented
+basic_version = '1.8.3'
+# Temporarily used because it is the only version accepted
+accepted_version = '1.9.1'
+
 def assert_credentials_response(remote_adapter):
-    remote_adapter.assert_reply("1|RAC|S|enableClosePacket|S|true")
-    remote_adapter.assert_notify("RAC|S|enableClosePacket|S|true")
+    remote_adapter.assert_reply("1|RAC|S|enableClosePacket|S|true"
+                                "|S|SDK|S|Python+Adapter+SDK")
 
 class DataProviderTestClass(DataProvider):
 
@@ -43,28 +48,32 @@ class DataProviderTestClass(DataProvider):
         self.listener = event_listener
 
     def issnapshot_available(self, item_name):
-        return False
+        if "nosnap" in item_name:
+            return False
+            # this will cause the SDK library to send an EOS upon subscribe
+
+        return True
 
     def subscribe(self, item_name):
-        if item_name == "aapl_1":
+        if item_name == "item-err-1":
             raise SubscribeError("Subscription Error")
 
-        if item_name == "aapl_2":
+        if item_name == "item-err-2":
             raise FailureError("Failure Error")
 
-        if item_name == "aapl_3":
+        if item_name == "item-err-3":
             raise RuntimeError("Error")
 
         self.subscribed.put(item_name)
 
     def unsubscribe(self, item_name):
-        if item_name == "aapl_4":
+        if item_name == "item-err-4":
             raise SubscribeError("Subscription Error")
 
-        if item_name == "aapl_5":
+        if item_name == "item-err-5":
             raise FailureError("Failure Error")
 
-        if item_name == "aapl_6":
+        if item_name == "item-err-6":
             raise RuntimeError("Error")
         self.collector.update({'itemName': item_name})
 
@@ -198,15 +207,14 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         remote_server.remote_password = password
         self.launch_remote_server(remote_server)
 
-    def is_enable_notify(self):
-        return True
-
     def test_no_kalive_hint_and_no_configured_kalive(self):
         self.setup_remote_adapter()
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
-                          "|S|data_provider.name|S|STOCKLIST")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertEqual(KeepaliveConstants.STRICTER.value,
                          self.remote_server.keep_alive)
 
@@ -215,8 +223,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         self.setup_remote_adapter(configured_keepalive)
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
-                          "|S|data_provider.name|S|STOCKLIST")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(configured_keepalive, self.remote_server.keep_alive)
 
@@ -225,8 +235,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST|"
-                          "|S|keepalive_hint.millis|S|-510")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|keepalive_hint.millis|S|-510"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(KeepaliveConstants.DEFAULT.value,
                          self.remote_server.keep_alive)
@@ -237,8 +249,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST|"
-                          "|S|keepalive_hint.millis|S|-500")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|keepalive_hint.millis|S|-500"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(configured_keepalive, self.remote_server.keep_alive)
 
@@ -248,8 +262,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST"
-                          "|S|keepalive_hint.millis|S|9000")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|keepalive_hint.millis|S|9000"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(expected_keepalive, self.remote_server.keep_alive)
 
@@ -258,8 +274,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|data_provider.name|S|STOCKLIST"
-                          "|S|keepalive_hint.millis|S|500")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|keepalive_hint.millis|S|500"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(KeepaliveConstants.MIN.value,
                          self.remote_server.keep_alive)
@@ -269,8 +287,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|11000"
-                          "|S|data_provider.name|S|STOCKLIST")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(KeepaliveConstants.DEFAULT.value,
                          self.remote_server.keep_alive)
@@ -282,8 +302,10 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|4000"
-                          "|S|data_provider.name|S|STOCKLIST")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(expected_keepalive, self.remote_server.keep_alive)
 
@@ -293,33 +315,36 @@ class DataProviderServerInitializationTest(RemoteAdapterBase):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
                           "|S|keepalive_hint.millis|S|500"
-                          "|S|data_provider.name|S|STOCKLIST")
-        self.assert_reply('10000010c3e4d0462|DPI|V')
+                          "|S|data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertIsNone(self.adapter.config_file)
         self.assertEqual(KeepaliveConstants.MIN.value,
                          self.remote_server.keep_alive)
 
     def test_remote_credentials_with_user_and_password(self):
         self.setup_remote_adapter(username="remote1", password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
-                          "enableClosePacket|S|true")
-        self.assert_notify("RAC|S|user|S|remote1|S|password|S|fdhjkslghak|S|"
-                           "enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|user|S|remote1|S|password|S|fdhjkslghak"
+                          "|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
     def test_remote_credentials_with_user(self):
         self.setup_remote_adapter(username="remote1")
-        self.assert_reply("1|RAC|S|user|S|remote1|S|enableClosePacket|S|true")
-        self.assert_notify("RAC|S|user|S|remote1|S|enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|user|S|remote1"
+                          "|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
     def test_remote_credentials_with_password(self):
         self.setup_remote_adapter(password="fdhjkslghak")
-        self.assert_reply("1|RAC|S|password|S|fdhjkslghak|S|enableClosePacket|S|true")
-        self.assert_notify("RAC|S|password|S|fdhjkslghak|S|enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|password|S|fdhjkslghak"
+                          "|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
     def test_remote_credentials_with_no_credentials(self):
         self.setup_remote_adapter()
-        self.assert_reply("1|RAC|S|enableClosePacket|S|true")
-        self.assert_notify("RAC|S|enableClosePacket|S|true")
+        self.assert_reply("1|RAC|S|enableClosePacket|S|true"
+                          "|S|SDK|S|Python+Adapter+SDK")
 
 
 class DataProviderServerTest(RemoteAdapterBase):
@@ -334,9 +359,6 @@ class DataProviderServerTest(RemoteAdapterBase):
             name="DataProviderTest")
         self.launch_remote_server(remote_server)
 
-    def is_enable_notify(self):
-        return True
-
     def on_teardown(self):
         LOG.info("DataProviderTest completed")
 
@@ -347,35 +369,29 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.send_request(request_id + "|SUB|S|" + item_name)
 
     def do_subscription_and_skip(self, item_name):
-        self.send_request("10000010c3e4d0462|SUB|S|" + item_name, True)
+        self.send_request("10000010c3e4d0462|SUB|S|" + item_name)
+        self.skip_messages()
 
     def do_unsubscription(self, item_name):
         self.send_request("10000010c3e4d0463|USB|S|" + item_name)
 
     def do_init(self):
-        self.send_request("10000010c3e4d0462|DPI")
+        self.send_request("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + accepted_version)
 
     def do_init_and_skip(self):
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|DPI", True)
+        self.send_request("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.skip_messages()
 
-    def test_default_keep_alive_on_reply(self):
+    def test_default_keep_alive(self):
         assert_credentials_response(self)
         # Receive a KEEPALIVE message because no requests have been issued
         for _ in range(0, 1):
             start = time.time()
             self.assert_reply(expected="KEEPALIVE", timeout=11.1,
                               skip_keepalive=False)
-            end = time.time()
-            self.assertGreaterEqual(end - start, 0.99)
-
-    def test_default_keep_alive_on_notify(self):
-        assert_credentials_response(self)
-        # Receive a KEEPALIVE message because no updates have been issued
-        for _ in range(0, 1):
-            start = time.time()
-            self.assert_notify(expected="KEEPALIVE", timeout=11.1,
-                               skip_keepalive=False)
             end = time.time()
             self.assertGreaterEqual(end - start, 0.99)
 
@@ -389,7 +405,7 @@ class DataProviderServerTest(RemoteAdapterBase):
             # Wait for half the KEEPALIVE time
             time.sleep(0.5)
             self.do_subscription(item_name)
-            self.assert_not_reply("KEEPALIVE", skip_keepalive=False)
+            self.assert_reply("10000010c3e4d0462|SUB|V", timeout=0.2, skip_keepalive=False)
 
         # As no more requests have been issued, a period longer than 1 second
         # must have been elapsed, therefore we expect a KEEPALIVE message
@@ -398,7 +414,8 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init(self):
         assert_credentials_response(self)
         self.do_init()
-        self.assert_reply("10000010c3e4d0462|DPI|V")
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({}, self.collector['params'])
         self.assertIsNotNone(self.adapter.listener)
 
@@ -410,9 +427,11 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_with_local_params(self):
         self.remote_server.adapter_params = {"par1": "val1", "par2": "val2"}
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|DPI|")
+        self.send_request("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + accepted_version)
 
-        self.assert_reply("10000010c3e4d0462|DPI|V")
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({"par1": "val1",
                               "par2": "val2"},
                              self.collector['params'])
@@ -420,8 +439,10 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_with_remote_params(self):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
-                          "data_provider.name|S|STOCKLIST")
-        self.assert_reply("10000010c3e4d0462|DPI|V")
+                          "data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "data_provider.name": "STOCKLIST"},
                              self.collector['params'])
@@ -429,11 +450,13 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_with_local_and_remote_params(self):
         self.remote_server.adapter_params = {"my_param.name": "my_local_param"}
         request = ("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
-                   "data_provider.name|S|STOCKLIST")
+                   "data_provider.name|S|STOCKLIST"
+                   "|S|ARI.version|S|" + accepted_version)
         assert_credentials_response(self)
         self.send_request(request)
 
-        self.assert_reply("10000010c3e4d0462|DPI|V")
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "data_provider.name": "STOCKLIST",
                               "my_param.name": "my_local_param"},
@@ -443,11 +466,12 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.remote_server.adapter_params = {"data_provider.name":
                                              "my_local_provider"}
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.0|S|"
+        self.send_request("10000010c3e4d0462|DPI|S|"
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
-        self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+protocol+"
-                          "version+number%3A+1.8.0")
+
+        self.assert_reply("10000010c3e4d0462|DPI|E|Incompatible+Proxy+Adapter+"
+                          "for+protocol+version%3A+1.8.0")
         self.assertFalse('params' in self.collector)
 
     def test_init_with_protocol_1_8_1(self):
@@ -457,6 +481,7 @@ class DataProviderServerTest(RemoteAdapterBase):
         self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.1|S|"
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
+
         self.assert_reply("10000010c3e4d0462|DPI|E|Unsupported+reserved+"
                           "protocol+version+number%3A+1.8.1")
         self.assertFalse('params' in self.collector)
@@ -469,11 +494,9 @@ class DataProviderServerTest(RemoteAdapterBase):
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
 
-        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2")
-
-        self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "my_local_provider"},
-                             self.collector['params'])
+        self.assert_reply("10000010c3e4d0462|DPI|E|Incompatible+Proxy+Adapter+"
+                          "for+protocol+version%3A+1.8.2")
+        self.assertFalse('params' in self.collector)
 
     def test_init_with_protocol_1_8_3(self):
         self.remote_server.adapter_params = {"data_provider.name":
@@ -483,11 +506,9 @@ class DataProviderServerTest(RemoteAdapterBase):
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
 
-        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
-
-        self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "my_local_provider"},
-                             self.collector['params'])
+        self.assert_reply("10000010c3e4d0462|DPI|E|Incompatible+Proxy+Adapter+"
+                          "for+protocol+version%3A+1.8.3")
+        self.assertFalse('params' in self.collector)
 
     def test_init_with_protocol_1_8_4(self):
         self.remote_server.adapter_params = {"data_provider.name":
@@ -497,14 +518,39 @@ class DataProviderServerTest(RemoteAdapterBase):
                           "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
                           "STOCKLIST")
 
-        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
+        self.assert_reply("10000010c3e4d0462|DPI|E|Incompatible+Proxy+Adapter+"
+                          "for+protocol+version%3A+1.8.4")
+        self.assertFalse('params' in self.collector)
 
+    def test_init_with_protocol_1_9_0(self):
+        self.remote_server.adapter_params = {"data_provider.name":
+                                             "my_local_provider"}
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.9.0|S|"
+                          "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                          "STOCKLIST")
+
+        self.assert_reply("10000010c3e4d0462|DPI|E|Incompatible+Proxy+Adapter+"
+                          "for+protocol+version%3A+1.9.0")
+        self.assertFalse('params' in self.collector)
+
+    def test_init_with_protocol_1_9_1(self):
+        self.remote_server.adapter_params = {"data_provider.name":
+                                             "my_local_provider"}
+        assert_credentials_response(self)
+        self.send_request("10000010c3e4d0462|DPI|S|ARI.version|S|1.9.1|S|"
+                          "adapters_conf.id|S|DEMO|S|data_provider.name|S|"
+                          "STOCKLIST")
+
+        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "data_provider.name": "my_local_provider"},
                              self.collector['params'])
 
     def test_malformed_init_for_unkown_token_type(self):
-        request = ("10000010c3e4d0462|DPI|H|adapters_conf.id|S|DEMO|S|"
+        request = ("10000010c3e4d0462|DPI"
+                   "|S|ARI.version|S|" + accepted_version +
+                   "|H|adapters_conf.id|S|DEMO|S|"
                    "data_provider.name|S|STOCKLIST")
         assert_credentials_response(self)
         self.send_request(request)
@@ -537,13 +583,15 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def test_init_with_data_provider_exception(self):
         assert_credentials_response(self)
-        request = "10000010c3e4d0462|DPI|S|data_provider.name|S|STOCKLIST"
+        request = ("10000010c3e4d0462|DPI|S|data_provider.name|S|STOCKLIST"
+                   "|S|ARI.version|S|" + accepted_version)
         self.send_request(request)
         self.assert_reply("10000010c3e4d0462|DPI|ED|The+ID+must+be+supplied")
 
     def test_init_with_generic_exception(self):
         assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO")
+        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO"
+                          "|S|ARI.version|S|" + accepted_version)
         self.assert_reply("10000010c3e4d0462|DPI|E|RuntimeError")
 
     def test_init_init(self):
@@ -554,15 +602,17 @@ class DataProviderServerTest(RemoteAdapterBase):
     def test_init_miss(self):
         assert_credentials_response(self)
         # Test error when the very first request is not a DPI request
-        self.do_subscription('aapl%5F')
+        self.do_subscription('item')
         self.assert_notify("FAL|E|Unexpected+request+SUB+while+waiting+for+DPI"
                            "+request")
 
     def test_close(self):
         assert_credentials_response(self)
         self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
-                          "data_provider.name|S|STOCKLIST|S|ARI.version|S|1.8.3")
-        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.3")
+                          "data_provider.name|S|STOCKLIST"
+                          "|S|ARI.version|S|" + accepted_version)
+        self.assert_reply("10000010c3e4d0462|DPI"
+                          "|S|ARI.version|S|" + basic_version)
         self.assertDictEqual({"adapters_conf.id": "DEMO",
                               "data_provider.name": "STOCKLIST"},
                              self.collector['params'])
@@ -571,73 +621,59 @@ class DataProviderServerTest(RemoteAdapterBase):
         with self.assertRaises(Exception):
             self.assert_reply()
 
-    def test_close_not_recognized_because_of_protocol_1_8_0(self):
-        assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
-                          "data_provider.name|S|STOCKLIST")
-        self.assert_reply("10000010c3e4d0462|DPI|V")
-        self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "STOCKLIST"},
-                             self.collector['params'])
-
-        self.send_request("0|CLOSE|S|reason|S|any-reason")
-        with self.assertRaises(Exception):
-            self.assert_notify("FAL|E|Close+requested+by+the+counterpart+with+reason%3A+any-reason")
-
-    def test_close_not_recognized_because_of_protocol_1_8_2(self):
-        assert_credentials_response(self)
-        self.send_request("10000010c3e4d0462|DPI|S|adapters_conf.id|S|DEMO|S|"
-                          "data_provider.name|S|STOCKLIST|S|ARI.version|S|1.8.2")
-        self.assert_reply("10000010c3e4d0462|DPI|S|ARI.version|S|1.8.2")
-        self.assertDictEqual({"adapters_conf.id": "DEMO",
-                              "data_provider.name": "STOCKLIST"},
-                             self.collector['params'])
-
-        self.send_request("0|CLOSE|S|reason|S|any-reason")
-        with self.assertRaises(Exception):
-            self.assert_notify("FAL|E|Close+requested+by+the+counterpart+with+reason%3A+any-reason")
-
     def test_subscribe(self):
         self.do_init_and_skip()
-        self.do_subscription('aapl%5F')
+        self.do_subscription('item-nosnap')
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected; the SDK library will send it even before
+        # the SUB reply, which is allowed
+        self.assert_notify("EOS|S|item-nosnap|S|10000010c3e4d0462")
         self.assert_reply("10000010c3e4d0462|SUB|V")
-        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
         item_name = self.adapter.subscribed.get()
         self.adapter.subscribed.task_done()
-        self.assertEqual(item_name, "aapl_")
+        self.assertEqual(item_name, "item-nosnap")
 
     def test_subscribe_to_more_items(self):
         self.do_init_and_skip()
-        self.do_subscription_with_request_id("10000010c3e4d0462", 'aapl%5F')
+        self.do_subscription_with_request_id("10000010c3e4d0462", 'item1-nosnap')
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected; the SDK library will send it even before
+        # the SUB reply, which is allowed
+        self.assert_notify("EOS|S|item1-nosnap|S|10000010c3e4d0462")
         self.assert_reply("10000010c3e4d0462|SUB|V")
-        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
 
-        self.do_subscription_with_request_id("20000010c3e4d0462", 'saals%5F')
+        self.do_subscription_with_request_id("20000010c3e4d0462", 'item2-nosnap')
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected; the SDK library will send it even before
+        # the SUB reply, which is allowed
+        self.assert_notify("EOS|S|item2-nosnap|S|20000010c3e4d0462")
         self.assert_reply("20000010c3e4d0462|SUB|V")
-        self.assert_notify("EOS|S|saals_|S|20000010c3e4d0462")
 
-        self.do_subscription_with_request_id("30000010c3e4d0462", 'paals%5F')
+        self.do_subscription_with_request_id("30000010c3e4d0462", 'item3-nosnap')
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected; the SDK library will send it even before
+        # the SUB reply, which is allowed
+        self.assert_notify("EOS|S|item3-nosnap|S|30000010c3e4d0462")
         self.assert_reply("30000010c3e4d0462|SUB|V")
-        self.assert_notify("EOS|S|paals_|S|30000010c3e4d0462")
 
     def test_subscribe_with_subscribe_exception(self):
         self.do_init_and_skip()
-        self.do_subscription('aapl%5F1')
+        self.do_subscription('item-err-1')
         self.assert_reply("10000010c3e4d0462|SUB|EU|Subscription+Error")
 
     def test_subscribe_with_failure_exception(self):
         self.do_init_and_skip()
-        self.do_subscription('aapl%5F2')
+        self.do_subscription('item-err-2')
         self.assert_reply("10000010c3e4d0462|SUB|EF|Failure+Error")
 
     def test_subscribe_with_genieric_exception(self):
         self.do_init_and_skip()
-        self.do_subscription('aapl%5F3')
+        self.do_subscription('item-err-3')
         self.assert_reply("10000010c3e4d0462|SUB|E|Error")
 
     def test_malformed_subscribe(self):
         self.do_init_and_skip()
-        self.send_request("10000010c3e4d0462|SUB|S1|item_name")
+        self.send_request("10000010c3e4d0462|SUB|S1|item")
         self.assert_notify("FAL|E|Unknown+type+%27S1%27+found+while+parsing+"
                            "SUB+request")
         self.send_request("10000010c3e4d0462|SUB|S||")
@@ -645,41 +681,41 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def test_unsubscribe(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip('aapl%5F')
+        self.do_subscription_and_skip('item')
         item_name = self.adapter.subscribed.get()
         self.adapter.subscribed.task_done()
-        self.assertEqual(item_name, "aapl_")
-        self.do_unsubscription('aapl%5F')
+        self.assertEqual(item_name, "item")
+        self.do_unsubscription('item')
         self.assert_reply("10000010c3e4d0463|USB|V")
 
     def test_unsubscribe_with_unsubscribe_exception(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip('aapl%5F4')
-        self.do_unsubscription('aapl%5F4')
+        self.do_subscription_and_skip('item-err-4')
+        self.do_unsubscription('item-err-4')
         self.assert_reply("10000010c3e4d0463|USB|EU|Subscription+Error")
 
     def test_unsubscribe_with_failure_exception(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip('aapl%5F5')
-        self.do_unsubscription('aapl%5F5')
+        self.do_subscription_and_skip('item-err-5')
+        self.do_unsubscription('item-err-5')
         self.assert_reply("10000010c3e4d0463|USB|EF|Failure+Error")
 
     def test_unsubscribe_with_genieric_exception(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip('aapl%5F6')
-        self.do_unsubscription('aapl%5F6')
+        self.do_subscription_and_skip('item-err-6')
+        self.do_unsubscription('item-err-6')
         self.assert_reply("10000010c3e4d0463|USB|E|Error")
 
     def test_unsubscribe_without_subscription(self):
         self.do_init_and_skip()
-        self.do_unsubscription('aapl%5F')
+        self.do_unsubscription('item')
         with self.assertRaises(Exception):
             self.assert_reply(timeout=0.5)
         LOG.exception("Timeout expired")
 
     def test_malformed_unsubscribe(self):
         self.do_init_and_skip()
-        self.send_request("10000010c3e4d0462|USB|S1|item_name")
+        self.send_request("10000010c3e4d0462|USB|S1|item")
         self.assert_notify("FAL|E|Unknown+type+%27S1%27+found+while+parsing+"
                            "USB+request")
         self.send_request("10000010c3e4d0462|USB|S||")
@@ -687,46 +723,39 @@ class DataProviderServerTest(RemoteAdapterBase):
 
     def test_eos(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip('aapl%5F')
-        # As snapshot is not available, an EOS is expected on the notify
-        # channel
-        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
-        self.adapter.listener.end_of_snapshot("aapl_")
-        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
+        self.do_subscription_and_skip('item')
+        self.adapter.listener.end_of_snapshot("item")
+        self.assert_notify("EOS|S|item|S|10000010c3e4d0462")
 
     def test_cls(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip('aapl%5F')
-        # As snapshot is not available, an EOS is expected on the notify
-        # channel
-        self.assert_notify("EOS|S|aapl_|S|10000010c3e4d0462")
+        self.do_subscription_and_skip('item-nosnap')
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected, but it is skipped as well
 
-        self.adapter.listener.clear_snapshot("aapl_")
-        self.assert_notify("CLS|S|aapl_|S|10000010c3e4d0462")
+        self.adapter.listener.clear_snapshot("item-nosnap")
+        self.assert_notify("CLS|S|item-nosnap|S|10000010c3e4d0462")
 
     def test_update_with_str_value(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip("item1")
-        # As snapshot is not available, an EOS is expected on the notify
-        # channel
-        self.assert_notify("EOS|S|item1|S|10000010c3e4d0462")
+        self.do_subscription_and_skip("item-nosnap")
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected, but it is skipped as well
 
         # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("field1", "value1"),
                                   ("field2", "value2")])
-        self.adapter.listener.update("item1", events_map, False)
+        self.adapter.listener.update("item-nosnap", events_map, False)
 
-        self.assert_notify("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
+        self.assert_notify("UD3|S|item-nosnap|S|10000010c3e4d0462|B|0|S|field1|S"
                            "|value1|S|field2|S|value2")
 
     def test_massive_update(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip("item1")
-
-        # Skip first data received on the notification channel because of
-        # unavailability of snapshot
-        self.receive_notifications()
+        self.do_subscription_and_skip("item-nosnap")
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected, but it is skipped as well
 
         # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
@@ -734,58 +763,55 @@ class DataProviderServerTest(RemoteAdapterBase):
             events_map = OrderedDict([("field1", "value1"),
                                       ("field2", str(i))])
 
-            self.adapter.listener.update("item1", events_map, False)
-            self.assert_notify("UD3|S|item1|S|10000010c3e4d0462|B|0|S|field1|S"
+            self.adapter.listener.update("item-nosnap", events_map, False)
+            self.assert_notify("UD3|S|item-nosnap|S|10000010c3e4d0462|B|0|S|field1|S"
                                "|value1|S|field2|S|{}".format(i))
 
     def test_update_with_byte_value(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip("aapl")
-        # As snapshot is not available, an EOS is expected on the notify
-        # channel
-        self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
+        self.do_subscription_and_skip("item-nosnap")
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected, but it is skipped as well
 
         # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", b'12:48:24')])
-        self.adapter.listener.update('aapl', events_map, True)
+        self.adapter.listener.update('item-nosnap', events_map, True)
 
-        self.assert_notify("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
+        self.assert_notify("UD3|S|item-nosnap|S|10000010c3e4d0462|B|1|S|pct_change|"
                            "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|Y|"
                            "MTI6NDg6MjQ=")
 
     def test_update_with_none_value(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip("aapl")
-        # As snapshot is not available, an EOS is expected on the notify
-        # channel
-        self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
+        self.do_subscription_and_skip("item-nosnap")
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected, but it is skipped as well
 
         # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", None)])
-        self.adapter.listener.update('aapl', events_map, True)
-        self.assert_notify("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
+        self.adapter.listener.update('item-nosnap', events_map, True)
+        self.assert_notify("UD3|S|item-nosnap|S|10000010c3e4d0462|B|1|S|pct_change|"
                            "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|S|#")
 
     def test_update_with_empty_value(self):
         self.do_init_and_skip()
-        self.do_subscription_and_skip("aapl")
-        # As snapshot is not available, an EOS is expected on the notify
-        # channel
-        self.assert_notify("EOS|S|aapl|S|10000010c3e4d0462")
+        self.do_subscription_and_skip("item-nosnap")
+        # As snapshot is not available for this item, an EOS notification
+        # is also expected, but it is skipped as well
 
         # Usage of OrderdDict with the only purpose of respecting the order
         # expressed in the assert statement.
         events_map = OrderedDict([("pct_change", b'0.44'),
                                   ("last_price", b'6.82'),
                                   ("time", "")])
-        self.adapter.listener.update('aapl', events_map, True)
-        self.assert_notify("UD3|S|aapl|S|10000010c3e4d0462|B|1|S|pct_change|"
+        self.adapter.listener.update('item-nosnap', events_map, True)
+        self.assert_notify("UD3|S|item-nosnap|S|10000010c3e4d0462|B|1|S|pct_change|"
                            "Y|MC40NA==|S|last_price|Y|Ni44Mg==|S|time|S|$")
 
     def test_failure(self):
