@@ -4,7 +4,7 @@ Release History
 ---------------
 
 
-1.3.0 (xxxx-xx-xx)
+1.3.0 (2023-07-17)
 ++++++++++++++++++
 
 **New Features**
@@ -16,9 +16,10 @@ Release History
   Hence, the "address" argument of __init__ for the DataProviderServer class,
   which is a tuple, can now have only 2 values (including one port); a tuple
   with 3-values will now be refused.
-  As a consequence, if an existing Remote Server based on this SDK launches
-  a Remote Data Adapter, it cannot be upgraded to this new SDK version
-  seamlessly. The upgrade will require a change in the code to supply a single
+  As a consequence, if an existing Remote Server based on the previous
+  version of this SDK launches a Remote Data Adapter, it cannot be upgraded
+  to this new SDK version seamlessly.
+  The upgrade will require a change in the code to supply a single
   port for the connection to the Proxy Data Adapter. This, in turn, will
   require the configuration of a single port on the Proxy Data Adapter,
   which is only possible with Lightstreamer Server 7.4 or later.
