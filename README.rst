@@ -49,7 +49,7 @@ Write the Adapters
 
 Create a new python module, let's call it ``adapters.py``, where we will put  the minimal logic required to write a basic Adapter Set.
 
-1) Import the sever classes needed to setup the connection to the Lightstreamer server, and the adapter classes to be extended to write your own Remote Adapters:
+1) Import the server classes needed to setup the connection to the Lightstreamer server, and the adapter classes to be extended to write your own Remote Adapters:
 
    .. code-block:: python
    
@@ -166,7 +166,7 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-API Reference is available at `<http://lightstreamer-lib-python-adapter.readthedocs.io/en/version-1.3.0>`_.
+API Reference is available at `<https://lightstreamer.com/api/ls-python-adapter/1.3.1/>`_.
 
 You can generate it by executing the following command from the ``doc`` folder:
 
@@ -194,5 +194,5 @@ Compatible with Adapter Remoting Infrastructure since Server version 7.4.
 - For a version of this library compatible with Adapter Remoting Infrastructure for Server version 7,3, please refer to `this tag`_.
 - For a version of this library compatible with Adapter Remoting Infrastructure for Server version 6.0 (corresponding to Adapter Remoting Infrastructure 1.7), please refer to `this older tag`_.
 
-.. _this tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.2.2
+.. _this tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.2.3
 .. _this older tag: https://github.com/Lightstreamer/Lightstreamer-lib-python-adapter/tree/version-1.0.0post1-27

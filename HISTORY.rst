@@ -4,6 +4,18 @@ Release History
 ---------------
 
 
+1.3.1 (2023-12-11)
+++++++++++++++++++
+
+**Improvements**
+
+- Stored the API docs on a different place.
+
+**Lightstreamer Compatibility Notes**
+
+- Compatible with Adapter Remoting Infrastructure since Server version 7.4.
+
+
 1.3.0 (2023-07-17)
 ++++++++++++++++++
 
