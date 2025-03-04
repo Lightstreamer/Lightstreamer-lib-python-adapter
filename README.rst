@@ -93,7 +93,7 @@ Create a new python module, let's call it ``adapters.py``, where we will put  th
               you should stop sending updates for item_name item."""
 
 
-3) Create a new Remote Metadata Adapter by subclassing the MetadataProvider class, if the latter's default behaviour does not meet your requirements, and override the methods for which you want to supply a custom implementation:
+3) Create a new Remote Metadata Adapter by subclassing the MetadataProvider class, if the latter's default behavior does not meet your requirements, and override the methods for which you want to supply a custom implementation:
 
    .. code-block:: python
       
