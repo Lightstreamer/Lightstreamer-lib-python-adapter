@@ -166,7 +166,7 @@ where ``LS_SERVER_HOST`` is the host of the Lightstreamer Server, and ``"PROXY_P
 API Reference
 -------------
 
-API Reference is available at `<https://lightstreamer.com/api/ls-python-adapter/1.3.1/>`_.
+API Reference is available at `<https://lightstreamer.com/sdks/ls-python-adapter/1.3.1/api/index.html>`_.
 
 You can generate it by executing the following command from the ``doc`` folder:
 
