@@ -8,12 +8,18 @@ lightstreamer_adapter.interfaces.data module
 --------------------------------------------
 
 .. automodule:: lightstreamer_adapter.interfaces.data
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 lightstreamer_adapter.interfaces.metadata module
 ------------------------------------------------
 
 .. automodule:: lightstreamer_adapter.interfaces.metadata
-    :exclude-members: MetadataError, MetadataProviderError, NotificationError, AccessError, ItemsError, SchemaError, CreditsError, ConflictingSessionError
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: MetadataError, MetadataProviderError, NotificationError, AccessError, ItemsError, SchemaError, CreditsError, ConflictingSessionError
     
 .. autoclass:: MetadataError
     :members:

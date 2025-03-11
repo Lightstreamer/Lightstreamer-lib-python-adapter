@@ -1,4 +1,0 @@
-# File: doc/requirements.txt
-
-# Defining the exact version will make sure things don't break
-sphinx==1.8.5
