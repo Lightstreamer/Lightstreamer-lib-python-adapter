@@ -168,13 +168,13 @@ API Reference
 
 API Reference is available at `<https://lightstreamer.com/sdks/ls-python-adapter/1.3.1/api/index.html>`_.
 
-You can generate it by executing the following command from the ``doc`` folder:
+You can generate it by executing the following command from the ``docs`` folder:
 
 .. code-block:: bash
 
    $ make html
    
-The generated documentation will be available under the ``doc\_build\html`` folder. 
+The generated documentation will be available under the ``docs\build\html`` folder. 
 
 
 See Also
